@@ -1,0 +1,8 @@
+{
+  "name": "log-view-machine",
+  "version": "0.0.1",
+  "description": "Log View (ViewModel) Machine pattern framework librarty",
+  "main": "index.js",
+  "author": "John Holland <john.gebhard.holland@gmail.com>",
+  "license": "MIT"
+}
