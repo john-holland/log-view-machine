@@ -14,6 +14,7 @@ type Transition<T extends State> = {
 
 type Message<TData extends any, TState extends State> = Transition<TState> & {
     data: TData
+    csrfToken: string
 }
 
 type Location = String & {
