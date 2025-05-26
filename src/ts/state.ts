@@ -90,3 +90,5 @@ export class ExampleState implements State {
         this.previousStates = attributes.previousStates;
     }
 }
+
+export const ViewMachine = {}

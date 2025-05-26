@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  java-server:
+    build:
+      context: ./src/server/java
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - API_KEY=java-server-key
+    volumes:
+      - ./src/server/java/machines:/app/machines
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kotlin-server:
+    build:
+      context: ./src/server/kotlin
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - API_KEY=kotlin-server-key
+    volumes:
+      - ./src/server/kotlin/machines:/app/machines
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3 

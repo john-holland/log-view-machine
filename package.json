@@ -1,8 +1,42 @@
 {
   "name": "log-view-machine",
   "version": "0.0.1",
-  "description": "Log View (ViewModel) Machine pattern framework librarty",
-  "main": "index.js",
+  "description": "Log View (ViewModel) Machine pattern framework library with React, Mithril, and GraphQL support",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "test": "jest",
+    "lint": "eslint src/**/*.{ts,tsx}",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\""
+  },
   "author": "John Holland <john.gebhard.holland@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "apollo-client": "^3.8.10",
+    "graphql": "^16.8.1",
+    "mithril": "^2.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@apollo/client": "^3.8.0",
+    "graphql-request": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/mithril": "^2.0.13",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.57",
+    "@types/react-dom": "^18.2.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "jest": "^29.5.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.3.3",
+    "@pact-foundation/pact": "^10.0.0",
+    "@types/jest": "^29.5.0"
+  }
 }

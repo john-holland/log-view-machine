@@ -1,0 +1,41 @@
+type LogEntry {
+  id: ID!
+  timestamp: DateTime!
+  level: LogLevel!
+  message: String!
+  metadata: JSON
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+input LogFilter {
+  level: LogLevel
+  search: String
+  startDate: DateTime
+  endDate: DateTime
+}
+
+type Query {
+  logs(filter: LogFilter): [LogEntry!]!
+  logById(id: ID!): LogEntry
+}
+
+type Mutation {
+  updateLogFilter(filter: LogFilter!): [LogEntry!]!
+  addLog(entry: LogEntryInput!): LogEntry!
+  clearLogs: Boolean!
+}
+
+input LogEntryInput {
+  level: LogLevel!
+  message: String!
+  metadata: JSON
+}
+
+scalar DateTime
+scalar JSON 
