@@ -27,7 +27,7 @@ export type _Transition = {
     timestamp?: Date
 }
 
-const View = (componentView: React.ReactNode | _Transition, log: Any) => {
+export const View = (componentView: React.ReactNode | _Transition, log: Any) => {
     return {
         "componentView":componentView,
         "log":log,
@@ -35,14 +35,14 @@ const View = (componentView: React.ReactNode | _Transition, log: Any) => {
     } as any as _View
 }
 
-const Log = (log: Any) => {
+export const Log = (log: Any) => {
     return {
         "log":log,
         // add timestamp on consumption
     } as any as _Log;
 }
 
-const Clear = () => {
+export const Clear = () => {
     return {} as any as _Clear;
 }
 
@@ -66,6 +66,7 @@ export interface ViewModel {
     transitions: StateTransition[];
     logEntries: LogEntry[];
     isStable: boolean;
+    isHungry?: boolean;
 }
 
 export interface FishBurgerData {

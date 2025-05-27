@@ -1,37 +1,14 @@
 import { ViewModel, StateTransition, LogEntry } from '../types/TastyFishBurger';
+import { BaseStateMachine, StateDefinition, StateHandler } from '../core/StateMachine';
+import * as mori from 'mori';
 
-export class TastyFishBurgerMachine {
-    private viewModel: ViewModel = {
-        currentState: 'INITIAL',
-        transitions: [],
-        logEntries: [],
-        isStable: true,
-        hungry: false,
-        burgersMade: 0,
-        burgersEaten: 0,
-        burgersTrashed: 0,
-        burgersCooking: 0,
-        burgersReady: 0,
-        burgersEating: 0,
-        burgersTrashing: 0,
-    };
-
+export class TastyFishBurgerMachine extends BaseStateMachine {
     constructor() {
+        super();
         this.addLogEntry('INFO', 'TastyFishBurgerMachine initialized');
     }
 
-    private addLogEntry(level: 'INFO' | 'WARNING' | 'ERROR', message: string, metadata: Record<string, unknown> = {}) {
-        const entry: LogEntry = {
-            id: crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-            level,
-            message,
-            metadata
-        };
-        this.viewModel.logEntries.push(entry);
-    }
-
-    private addTransition(from: string, to: string) {
+    protected addTransition(from: string, to: string) {
         const transition: StateTransition = {
             from,
             to,
@@ -41,7 +18,7 @@ export class TastyFishBurgerMachine {
         this.viewModel.currentState = to;
     }
 
-    protected states() {
+    protected states(): [StateDefinition, StateHandler] {
         return [{
             "INITIAL": {
                 "PREPARING": {
@@ -65,57 +42,58 @@ export class TastyFishBurgerMachine {
             }
         }, {
             "INITIAL": (model, transition) => {
-                return State(model, transition("PREPARING"))
+                return this.transition("PREPARING");
             },
             "PREPARING": (model, transition) => {
-                return State(model, transition("COOKING"))
+                return this.transition("COOKING");
             },
             "COOKING": (model, transition) => {
-                if (view.isHungry()) {
-                    return State(model, transition("EAT"))
+                const isHungry = mori.get(model, 'isHungry') as boolean;
+                if (isHungry) {
+                    return this.transition("EAT");
                 } else if (Math.random() < 0.1) {
-                    return State(model, transition("TRASH"))
+                    return this.transition("TRASH");
                 }
-                return State(model, transition("READY"))
+                return this.transition("READY");
             },
             "READY": (model, transition) => {
-                return State(model, transition)
+                return this.transition("READY");
             },
             "TRASH": (model, transition) => {
                 if (Math.random() < 0.5) {
-                    return State(model, transition("EAT")) // it was just overcooked, i'll eat it :3
+                    return this.transition("EAT");
                 }
-                return State(model, transition("PREPARING"))
+                return this.transition("PREPARING");
             },
             "EAT": (model, transition) => {
                 if (Math.random() < 0.001) {
-                    return State(model, transition("FIREEXTINGUISH")) // I WAS JUST HUNGRY SORRY, I'LLL MAKE ANOTHER, WHAAAT DONT FIRE ME COMMMEONNNNN
+                    return this.transition("FIREEXTINGUISH");
                 }
-                return State(model, transition("PREPARING"))
-            },
-            "ANXIOUS": (model, transition) => {
-                return State(model, transition)
-            },
-            "FIREEXTINGUISH": (model, transition) => {
-                return State(model, transition("ANXIOUS", this.sendMessage("~/BossManMachine/DONTFIRE")))
+                return this.transition("PREPARING");
             }
-        }]
+        }];
+    }
+
+    protected transition(to: string): StateTransition {
+        const viewModel = this.getViewModel();
+        const from = viewModel.currentState;
+        this.addTransition(from, to);
+        return { from, to, timestamp: new Date().toISOString() };
     }
 
     public startCooking() {
-        this.viewModel.isStable = false;
+        this.setStable(false);
         this.addLogEntry('INFO', 'Starting to cook the fish burger');
-        this.addTransition(this.viewModel.currentState, 'PREPARING');
+        this.transition('PREPARING');
         
-        // Simulate cooking process
         setTimeout(() => {
-            this.addTransition('PREPARING', 'COOKING');
+            this.transition('COOKING');
             this.addLogEntry('INFO', 'Fish burger is cooking');
             
             setTimeout(() => {
-                this.addTransition('COOKING', 'READY');
+                this.transition('READY');
                 this.addLogEntry('INFO', 'Fish burger is ready to eat!');
-                this.viewModel.isStable = true;
+                this.setStable(true);
             }, 2000);
         }, 1000);
     }

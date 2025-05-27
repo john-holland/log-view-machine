@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
-import { CartItem, FishBurgerData, View, Log, Clear, ViewModel } from '../types/TastyFishBurger';
+import * as React from 'react';
+import { useState } from 'react';
+import { CartItem, FishBurgerData, Log, ViewModel } from '../types/TastyFishBurger';
+import { BaseStateMachine, StateDefinition, StateHandler } from '../core/StateMachine';
 import * as mori from 'mori';
 
 interface BurgerBuilderProps {
     onAddToCart: (burger: FishBurgerData) => void;
+}
+
+
+
+class BurgerBuilderView {
+    ViewMachine(view, modelMachine) {
+        modelMachine.loadForView(view)
+        return {
+            "base":View(, (model: CartItem[]) => {
+            },
+            "select"
+        }
+    }
 }
 
 const AVAILABLE_INGREDIENTS = [
@@ -17,83 +32,88 @@ const AVAILABLE_INGREDIENTS = [
     'Brioche Bun',
     'Seared Ahi',
     'LandFish Seared Ahi'
-];
+] as const;
 
-export class BurgerBuilderMachine {
-    private viewModel: ViewModel = mori.hash_map(
-        'currentState', 'INITIAL',
-        'transitions', mori.vector(),
-        'logEntries', mori.vector(),
-        'isStable', true
-    );
+type Ingredient = typeof AVAILABLE_INGREDIENTS[number];
 
-    protected states() {
+export class BurgerBuilderMachine extends BaseStateMachine {
+    constructor() {
+        super();
+        this.addLogEntry('INFO', 'BurgerBuilderMachine initialized');
+    }
+
+    protected states(): [StateDefinition, StateHandler] {
         return [{
-                "INITIAL": {
-                    "BUILDING": {}
-                },
-                "BUILDING": {
-                    "SELECT INGREDIENT": {},
-                    "ADD INGREDIENT": {},
-                    "DONE": {}
-                },
-                "DONE": {
-                    "ADD TO CART": {}
-                },
-                "ADD TO CART": {
-                    "ANOTHER?": {},
-                    "CHECKOUT": {}
-                },
-                "SELECT INGREDIENT": {
-                    "BUILDING": {}
-                },
-                "ADD INGREDIENT": {
-                    "BUILDING": {}
-                }
+            "INITIAL": {
+                "BUILDING": {}
             },
-                {
-                "INITIAL": (model, transition) => {
-                    model.hungry = true
-                    return State(model, transition("BUILDING"))
-                },
-                "BUILDING": (model, transition) => {
-                    return State(model, transition("SELECT INGREDIENT"))
-                },
-                "SELECT INGREDIENT": (model, transition) => {
-                    return State(model, transition("ADD INGREDIENT"))
-                },
-                "ADD INGREDIENT": (model, transition) => {
-                    return State(model, transition("BUILDING"))
-                },
-                "DONE": (model, transition) => {
-                    return State(model, transition("ADD TO CART"))
-                },
-                "ADD TO CART": (model, transition) => {
-                    return State(model, transition("ANOTHER?"))
-                },
-                "ANOTHER?": (model, transition) => {
-                    return State(model, transition("CHECKOUT"))
-                },
-            }]
+            "BUILDING": {
+                "SELECT_INGREDIENT": {},
+                "ADD_INGREDIENT": {},
+                "DONE": {}
+            },
+            "DONE": {
+                "ADD_TO_CART": {}
+            },
+            "ADD_TO_CART": {
+                "ANOTHER": {},
+                "CHECKOUT": {}
+            }
+        }, {
+            "INITIAL": (model, transition) => {
+                return Log(model, this.transition("BUILDING"));
+            },
+            "BUILDING": (model, transition) => {
+                return Log(model, this.transition("SELECT_INGREDIENT"));
+            },
+            "SELECT_INGREDIENT": (model, transition) => {
+                return Log(model, this.transition("ADD_INGREDIENT"));
+            },
+            "ADD_INGREDIENT": (model, transition) => {
+                return Log(model, this.transition("BUILDING"));
+            },
+            "DONE": (model, transition) => {
+                return Log(model, this.transition("ADD_TO_CART"));
+            },
+            "ADD_TO_CART": (model, transition) => {
+                if (model.wantsAnother) {
+                    return this.transition("ANOTHER");
+                }
+                return this.transition("CHECKOUT");
+            }
+        }];
+    }
+
+    protected transition(to: string) {
+        const viewModel = this.getViewModel();
+        const from = viewModel.currentState;
+        this.addTransition(from, to);
+        return { from, to, timestamp: new Date().toISOString() };
+    }
+
+    public addIngredient(ingredient: Ingredient) {
+        this.addLogEntry('INFO', `Adding ingredient: ${ingredient}`);
+        this.transition("ADD_INGREDIENT");
+    }
+
+    public finishBuilding() {
+        this.addLogEntry('INFO', 'Finished building burger');
+        this.transition("DONE");
     }
 }
 
-export const BurgerBuilderView = {ViewMachine(view, modelMachine) {
-    modelMachine.loadForView(view)
-    return {
-        "base":View(["empty", "burgers"], (model: CartItem[]) => {
-    }
-}}
+export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }: BurgerBuilderProps) => {
+    const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+    const [machine] = useState(() => new BurgerBuilderMachine());
 
-export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }) => {
-    const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
-
-    const toggleIngredient = (ingredient: string) => {
-        setSelectedIngredients(prev => 
-            prev.includes(ingredient)
-                ? prev.filter(i => i !== ingredient)
-                : [...prev, ingredient]
-        );
+    const toggleIngredient = (ingredient: Ingredient) => {
+        setSelectedIngredients((prev: Ingredient[]) => {
+            const newIngredients = prev.includes(ingredient)
+                ? prev.filter((i: Ingredient) => i !== ingredient)
+                : [...prev, ingredient];
+            machine.addIngredient(ingredient);
+            return newIngredients;
+        });
     };
 
     const handleBuildBurger = () => {
@@ -103,9 +123,13 @@ export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }) => 
             orderId: `order-${Date.now()}`,
             ingredients: selectedIngredients,
             cookingTime: 0,
-            temperature: 0
+            temperature: 0,
+            currentState: 'INITIAL',
+            transitions: [],
+            logEntries: []
         };
 
+        machine.finishBuilding();
         onAddToCart(newBurger);
         setSelectedIngredients([]);
     };
@@ -117,7 +141,7 @@ export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }) => 
             <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-2">Select Ingredients:</h3>
                 <div className="grid grid-cols-2 gap-2">
-                    {AVAILABLE_INGREDIENTS.map(ingredient => (
+                    {AVAILABLE_INGREDIENTS.map((ingredient: Ingredient) => (
                         <button
                             key={ingredient}
                             onClick={() => toggleIngredient(ingredient)}
@@ -126,6 +150,7 @@ export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }) => 
                                     ? 'bg-blue-500 text-white'
                                     : 'bg-gray-200 hover:bg-gray-300'
                             }`}
+                            type="button"
                         >
                             {ingredient}
                         </button>
@@ -141,6 +166,7 @@ export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }) => 
                         ? 'bg-gray-300 cursor-not-allowed'
                         : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
+                type="button"
             >
                 Add to Cart
             </button>
