@@ -1,33 +1,37 @@
 /// <reference types="react" />
 /// <reference types="react-dom" />
 
-declare namespace React {
-  interface FC<P = {}> {
-    (props: P): React.ReactElement | null;
+declare module 'react' {
+  export type ReactNode = ReactElement | string | number | boolean | null | undefined;
+
+  export interface FC<P = {}> {
+    (props: P): ReactElement | null;
   }
 
-  interface ReactElement {
-    type: string | React.ComponentType<any>;
+  export interface ReactElement {
+    type: string | ComponentType<any>;
     props: any;
     key: string | number | null;
   }
 
-  interface ComponentType<P = {}> {
+  export interface ComponentType<P = {}> {
     (props: P): ReactElement | null;
   }
 
-  interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
+  export interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
     className?: string;
   }
 
-  interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean;
     type?: 'button' | 'submit' | 'reset';
   }
 
-  interface DetailedHTMLProps<E extends HTMLAttributes<T>, T> extends E {
+  export interface DetailedHTMLProps<E extends HTMLAttributes<T>, T> extends E {
     ref?: Ref<T>;
   }
+
+  export function useState<T>(initialState: T | (() => T)): [T, (newState: T | ((prevState: T) => T)) => void];
 }
 
 declare global {

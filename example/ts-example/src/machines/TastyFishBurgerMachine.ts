@@ -1,104 +1,137 @@
 import { ViewModel, StateTransition, LogEntry } from '../types/TastyFishBurger';
-import { BaseStateMachine, StateDefinition, StateHandler } from '../core/StateMachine';
+import { createStateMachine, StateMachine, StateMachineConfig, StateDefinition } from '../core/StateMachine';
 import * as mori from 'mori';
 
-export class TastyFishBurgerMachine extends BaseStateMachine {
-    constructor() {
-        super();
-        this.addLogEntry('INFO', 'TastyFishBurgerMachine initialized');
-    }
+export interface TastyFishBurgerConfig {
+    machineId: string;
+    initialState?: string;
+    isHungry?: boolean;
+}
 
-    protected addTransition(from: string, to: string) {
-        const transition: StateTransition = {
-            from,
-            to,
-            timestamp: new Date().toISOString()
-        };
-        this.viewModel.transitions.push(transition);
-        this.viewModel.currentState = to;
-    }
+export interface TastyFishBurgerModel {
+    isHungry: boolean;
+    burgers: any[];
+}
 
-    protected states(): [StateDefinition, StateHandler] {
-        return [{
-            "INITIAL": {
-                "PREPARING": {
-                    "COOKING": {
-                        "READY": {}
-                    }
-                }
-            },
-            "PREPARING": {
-                "COOKING": {
-                    "EAT": {},
-                    "READY": {}
-                }
-            },
-            "READY": {},
-            "EAT": {
-                "PREPARING": {}
-            },
-            "TRASH": {
-                "PREPARING": {}
+export type TastyFishBurgerFactory = (config: TastyFishBurgerConfig) => StateMachine<TastyFishBurgerConfig, TastyFishBurgerModel>;
+
+const stateDefinitions: StateDefinition = {
+    INITIAL: {
+        PREPARING: {
+            COOKING: {
+                EAT: {},
+                READY: {},
+                TRASH: {}
             }
-        }, {
-            "INITIAL": (model, transition) => {
-                return this.transition("PREPARING");
-            },
-            "PREPARING": (model, transition) => {
-                return this.transition("COOKING");
-            },
-            "COOKING": (model, transition) => {
-                const isHungry = mori.get(model, 'isHungry') as boolean;
-                if (isHungry) {
-                    return this.transition("EAT");
-                } else if (Math.random() < 0.1) {
-                    return this.transition("TRASH");
-                }
-                return this.transition("READY");
-            },
-            "READY": (model, transition) => {
-                return this.transition("READY");
-            },
-            "TRASH": (model, transition) => {
-                if (Math.random() < 0.5) {
-                    return this.transition("EAT");
-                }
-                return this.transition("PREPARING");
-            },
-            "EAT": (model, transition) => {
-                if (Math.random() < 0.001) {
-                    return this.transition("FIREEXTINGUISH");
-                }
-                return this.transition("PREPARING");
-            }
-        }];
+        }
+    },
+    TRASH: {
+        EAT: {},
+        PREPARING: {}
+    },
+    EAT: {
+        PREPARING: {},
+        FIREEXTINGUISH: {}
     }
+};
 
-    protected transition(to: string): StateTransition {
-        const viewModel = this.getViewModel();
-        const from = viewModel.currentState;
-        this.addTransition(from, to);
-        return { from, to, timestamp: new Date().toISOString() };
-    }
-
-    public startCooking() {
-        this.setStable(false);
-        this.addLogEntry('INFO', 'Starting to cook the fish burger');
-        this.transition('PREPARING');
+const TastyFishBurgerMachine = createStateMachine<TastyFishBurgerConfig, TastyFishBurgerModel>({
+    defaultConfig: {
+        machineId: 'tasty-fish-burger',
+        initialState: 'INITIAL'
+    },
+    defaultViewModel: {
+        isHungry: false,
+        burgers: []
+    },
+    states: stateDefinitions
+}).
+withMethod('startCooking', ({machine, viewModel, transition, sendMessage}) => {
+    viewModel.setStable(false);
+    sendMessage('LOG', {
+        level: 'INFO',
+        message: 'Starting to cook the fish burger',
+        metadata: { machineId: machine.config.machineId }
+    });
+    transition('PREPARING');
+    
+    setTimeout(() => {
+        transition('COOKING');
+        sendMessage('LOG', {
+            level: 'INFO',
+            message: 'Fish burger is cooking',
+            metadata: { machineId: machine.config.machineId }
+        });
         
         setTimeout(() => {
-            this.transition('COOKING');
-            this.addLogEntry('INFO', 'Fish burger is cooking');
-            
-            setTimeout(() => {
-                this.transition('READY');
-                this.addLogEntry('INFO', 'Fish burger is ready to eat!');
-                this.setStable(true);
-            }, 2000);
-        }, 1000);
+            transition('READY');
+            sendMessage('LOG', {
+                level: 'INFO',
+                message: 'Fish burger is ready to eat!',
+                metadata: { machineId: machine.config.machineId }
+            });
+            viewModel.setStable(true);
+        }, 2000);
+    }, 1000);
+}).
+withState('INITIAL', ({machine, viewModel, transition, sendMessage}) => {
+    transition('PREPARING');
+}).
+withState('PREPARING', ({machine, viewModel, transition, sendMessage}) => {
+    transition('COOKING');
+}).
+withState('COOKING', ({machine, viewModel, transition, sendMessage}) => {
+    if (viewModel.isHungry) {
+        transition('EAT');
+    } else if (Math.random() < 0.1) {
+        transition('TRASH');
+    } else {
+        transition('READY');
     }
+}).
+withState('READY', ({machine, viewModel, transition, sendMessage}) => {
+    sendMessage('LOG', {
+        level: 'INFO',
+        message: 'Fish burger is ready to eat!',
+        metadata: { machineId: machine.config.machineId },
+        viewModel: {
+            isHungry: true
+        }
+    });
+}).
+withState('TRASH', ({machine, viewModel, transition, sendMessage}) => {
+    if (Math.random() < 0.5) {
+        transition('EAT');
+    } else {
+        transition('PREPARING');
+    }
+}).
+withState('EAT', ({machine, viewModel, transition, sendMessage}) => {
+    if (Math.random() < 0.001) {
+        transition('FIREEXTINGUISH');
+    }
+    sendMessage('LOG', {
+        type: 'LOG',
+        payload: {
+            viewModel: {
+                isHungry: false
+            }
+        }
+    });
+    transition('PREPARING');
+}).
+withState('FIREEXTINGUISH', ({machine, viewModel, transition, sendMessage}) => {
+    // woooosh, and it's out
+    transition('PREPARING');
+});
 
-    public getViewModel(): ViewModel {
-        return { ...this.viewModel };
-    }
-} 
+export const createTastyFishBurger: TastyFishBurgerFactory = (config: TastyFishBurgerConfig) => {
+    return createStateMachine<TastyFishBurgerConfig, TastyFishBurgerModel>({
+        defaultConfig: config,
+        defaultViewModel: {
+            isHungry: config.isHungry || false,
+            burgers: []
+        },
+        states: stateDefinitions
+    });
+}; 

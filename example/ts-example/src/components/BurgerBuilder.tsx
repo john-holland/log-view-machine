@@ -1,175 +1,170 @@
-import * as React from 'react';
-import { useState } from 'react';
-import { CartItem, FishBurgerData, Log, ViewModel } from '../types/TastyFishBurger';
-import { BaseStateMachine, StateDefinition, StateHandler } from '../core/StateMachine';
-import * as mori from 'mori';
+import React, { useState } from 'react';
+import { createView, ViewProps, ViewMachine } from '../core/ViewMachine';
+import { FishBurgerData } from '../types/TastyFishBurger';
+
+interface Ingredient {
+    name: string;
+}
 
 interface BurgerBuilderProps {
-    onAddToCart: (burger: FishBurgerData) => void;
+    onAddToCart: (burger: { ingredients: Ingredient[] }) => void;
 }
 
-
-
-class BurgerBuilderView {
-    ViewMachine(view, modelMachine) {
-        modelMachine.loadForView(view)
-        return {
-            "base":View(, (model: CartItem[]) => {
-            },
-            "select"
-        }
-    }
-}
-
-const AVAILABLE_INGREDIENTS = [
-    'Fresh Fish Patty',
-    'Crispy Lettuce',
-    'Tomato Slice',
-    'Special Sauce',
-    'Pickles',
-    'Onion Rings',
-    'Cheese Slice',
-    'Brioche Bun',
-    'Seared Ahi',
-    'LandFish Seared Ahi'
-] as const;
-
-type Ingredient = typeof AVAILABLE_INGREDIENTS[number];
-
-export class BurgerBuilderMachine extends BaseStateMachine {
-    constructor() {
-        super();
-        this.addLogEntry('INFO', 'BurgerBuilderMachine initialized');
-    }
-
-    protected states(): [StateDefinition, StateHandler] {
-        return [{
-            "INITIAL": {
-                "BUILDING": {}
-            },
-            "BUILDING": {
-                "SELECT_INGREDIENT": {},
-                "ADD_INGREDIENT": {},
-                "DONE": {}
-            },
-            "DONE": {
-                "ADD_TO_CART": {}
-            },
-            "ADD_TO_CART": {
-                "ANOTHER": {},
-                "CHECKOUT": {}
-            }
-        }, {
-            "INITIAL": (model, transition) => {
-                return Log(model, this.transition("BUILDING"));
-            },
-            "BUILDING": (model, transition) => {
-                return Log(model, this.transition("SELECT_INGREDIENT"));
-            },
-            "SELECT_INGREDIENT": (model, transition) => {
-                return Log(model, this.transition("ADD_INGREDIENT"));
-            },
-            "ADD_INGREDIENT": (model, transition) => {
-                return Log(model, this.transition("BUILDING"));
-            },
-            "DONE": (model, transition) => {
-                return Log(model, this.transition("ADD_TO_CART"));
-            },
-            "ADD_TO_CART": (model, transition) => {
-                if (model.wantsAnother) {
-                    return this.transition("ANOTHER");
-                }
-                return this.transition("CHECKOUT");
-            }
-        }];
-    }
-
-    protected transition(to: string) {
-        const viewModel = this.getViewModel();
-        const from = viewModel.currentState;
-        this.addTransition(from, to);
-        return { from, to, timestamp: new Date().toISOString() };
-    }
-
-    public addIngredient(ingredient: Ingredient) {
-        this.addLogEntry('INFO', `Adding ingredient: ${ingredient}`);
-        this.transition("ADD_INGREDIENT");
-    }
-
-    public finishBuilding() {
-        this.addLogEntry('INFO', 'Finished building burger');
-        this.transition("DONE");
-    }
-}
-
-export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }: BurgerBuilderProps) => {
-    const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
-    const [machine] = useState(() => new BurgerBuilderMachine());
-
-    const toggleIngredient = (ingredient: Ingredient) => {
-        setSelectedIngredients((prev: Ingredient[]) => {
-            const newIngredients = prev.includes(ingredient)
-                ? prev.filter((i: Ingredient) => i !== ingredient)
-                : [...prev, ingredient];
-            machine.addIngredient(ingredient);
-            return newIngredients;
-        });
-    };
-
-    const handleBuildBurger = () => {
-        if (selectedIngredients.length === 0) return;
-
-        const newBurger: FishBurgerData = {
-            orderId: `order-${Date.now()}`,
-            ingredients: selectedIngredients,
-            cookingTime: 0,
-            temperature: 0,
-            currentState: 'INITIAL',
-            transitions: [],
-            logEntries: []
-        };
-
-        machine.finishBuilding();
-        onAddToCart(newBurger);
-        setSelectedIngredients([]);
-    };
-
+const burgerBuilderView = createView({
+    machineId: 'burgerBuilder',
+    states: ['INITIAL', 'BUILDING', 'SELECT_INGREDIENT', 'ADD_INGREDIENT', 'DONE', 'ADD_TO_CART'],
+    render: (props: ViewProps) => {
+        // Default loading UI for undefined states
+        return (
+            <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    },
+    container: ({ children }: { children: React.ReactNode }) => (
+        <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+            {children}
+        </div>
+    )
+})
+.withState('INITIAL', (props: ViewProps) => (
+    <div className="text-center">
+        <h2 className="text-2xl font-bold mb-4">Welcome to Burger Builder</h2>
+        <button
+            onClick={() => props.transition('BUILDING')}
+            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+        >
+            Start Building
+        </button>
+    </div>
+))
+.withState('BUILDING', (props: ViewProps) => {
+    const ingredients = props.model as Ingredient[];
     return (
-        <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md">
-            <h2 className="text-2xl font-bold mb-4">Build Your Tasty Fish Burger!</h2>
-            
-            <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-2">Select Ingredients:</h3>
-                <div className="grid grid-cols-2 gap-2">
-                    {AVAILABLE_INGREDIENTS.map((ingredient: Ingredient) => (
-                        <button
-                            key={ingredient}
-                            onClick={() => toggleIngredient(ingredient)}
-                            className={`p-2 rounded ${
-                                selectedIngredients.includes(ingredient)
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-200 hover:bg-gray-300'
-                            }`}
-                            type="button"
-                        >
-                            {ingredient}
-                        </button>
-                    ))}
+        <div>
+            <h2 className="text-2xl font-bold mb-4">Build Your Burger</h2>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 className="text-lg font-semibold mb-2">Selected Ingredients</h3>
+                    {ingredients.length === 0 ? (
+                        <p className="text-gray-500">No ingredients selected yet</p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {ingredients.map((ingredient: Ingredient, index: number) => (
+                                <li key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                    <span>{ingredient.name}</span>
+                                    <button
+                                        onClick={() => props.sendMessage({ type: 'REMOVE_INGREDIENT', payload: { index } })}
+                                        className="text-red-500 hover:text-red-700"
+                                    >
+                                        Remove
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <div>
+                    <h3 className="text-lg font-semibold mb-2">Available Ingredients</h3>
+                    <div className="space-y-2">
+                        {['Lettuce', 'Tomato', 'Cheese', 'Bacon', 'Onion'].map((name: string) => (
+                            <button
+                                key={name}
+                                onClick={() => props.sendMessage({ type: 'ADD_INGREDIENT', payload: { name } })}
+                                className="w-full text-left p-2 bg-gray-50 rounded hover:bg-gray-100"
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
-
+            <div className="mt-6 flex justify-end space-x-4">
+                <button
+                    onClick={() => props.transition('DONE')}
+                    className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+                >
+                    Finish Building
+                </button>
+            </div>
+        </div>
+    );
+})
+.withState('DONE', (props: ViewProps) => {
+    const ingredients = props.model as Ingredient[];
+    return (
+        <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Burger Complete!</h2>
+            <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2">Your Burger Ingredients:</h3>
+                <ul className="space-y-1">
+                    {ingredients.map((ingredient: Ingredient, index: number) => (
+                        <li key={index}>{ingredient.name}</li>
+                    ))}
+                </ul>
+            </div>
+            <div className="space-x-4">
+                <button
+                    onClick={() => props.transition('BUILDING')}
+                    className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                >
+                    Continue Building
+                </button>
+                <button
+                    onClick={() => props.transition('ADD_TO_CART')}
+                    className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+                >
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    );
+})
+.withState('ADD_TO_CART', (props: ViewProps) => {
+    const ingredients = props.model as Ingredient[];
+    return (
+        <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Burger Added to Cart!</h2>
+            <p className="mb-6">Your burger has been added to your cart.</p>
             <button
-                onClick={handleBuildBurger}
-                disabled={selectedIngredients.length === 0}
-                className={`w-full py-2 px-4 rounded ${
-                    selectedIngredients.length === 0
-                        ? 'bg-gray-300 cursor-not-allowed'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
-                type="button"
+                onClick={() => props.transition('INITIAL')}
+                className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
             >
-                Add to Cart
+                Build Another Burger
             </button>
         </div>
     );
+});
+
+export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }: BurgerBuilderProps) => {
+    const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+
+    const handleStateChange = (newState: string) => {
+        if (newState === 'ADD_TO_CART') {
+            onAddToCart({ ingredients: selectedIngredients });
+        }
+    };
+
+    const handleMessage = (message: { type: string; payload: any }) => {
+        switch (message.type) {
+            case 'ADD_INGREDIENT':
+                setSelectedIngredients([...selectedIngredients, { name: message.payload.name }]);
+                break;
+            case 'REMOVE_INGREDIENT':
+                setSelectedIngredients(selectedIngredients.filter((_: Ingredient, index: number) => index !== message.payload.index));
+                break;
+        }
+    };
+
+    // Use ViewMachine directly for the view instance
+    const viewMachine = new ViewMachine({
+        machineId: 'burgerBuilder',
+        states: ['INITIAL', 'BUILDING', 'SELECT_INGREDIENT', 'ADD_INGREDIENT', 'DONE', 'ADD_TO_CART'],
+        render: burgerBuilderView({} as any).viewConfig.render,
+        container: burgerBuilderView({} as any).viewConfig.container
+    }, {
+        getViewModel: () => ({ currentState: selectedIngredients.length === 0 ? 'INITIAL' : 'BUILDING', transitions: [], logEntries: [], isStable: true })
+    } as any);
+
+    return burgerBuilderView(viewMachine).render(selectedIngredients);
 }; 
