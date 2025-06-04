@@ -8,7 +8,7 @@ export interface TastyFishBurgerCartConfig {
     initialState?: string;
 }
 
-export interface TastyFishBurgerCartModel {
+export interface TastyFishBurgerCartModel extends ViewModel {
     burgers: CartItem[];
     subMachines: {
         TastyFishBurgerMachine: StateMachine<TastyFishBurgerConfig, any>;
@@ -60,7 +60,11 @@ const TastyFishBurgerCartMachine = createStateMachine<TastyFishBurgerCartConfig,
                 machineId: 'tasty-fish-burger',
                 initialState: 'INITIAL'
             })
-        }
+        },
+        currentState: 'INITIAL',
+        transitions: [],
+        logEntries: [],
+        isStable: true
     },
     states: stateDefinitions
 }).
@@ -172,7 +176,11 @@ export const createTastyFishBurgerCart: TastyFishBurgerCartFactory = (config: Ta
                     machineId: 'tasty-fish-burger',
                     initialState: 'INITIAL'
                 })
-            }
+            },
+            currentState: 'INITIAL',
+            transitions: [],
+            logEntries: [],
+            isStable: true
         },
         states: stateDefinitions
     });

@@ -1,0 +1,65 @@
+type FishBurger {
+    id: ID!
+    name: String!
+    price: Float!
+    ingredients: [String!]!
+    status: BurgerStatus!
+    orderId: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+enum BurgerStatus {
+    INITIAL
+    PREPARING
+    COOKING
+    READY
+    EATEN
+    TRASHED
+}
+
+type CartItem {
+    id: ID!
+    burger: FishBurger!
+    quantity: Int!
+}
+
+type Cart {
+    id: ID!
+    items: [CartItem!]!
+    totalPrice: Float!
+    status: CartStatus!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+enum CartStatus {
+    EMPTY
+    BURGERS
+    EATEN
+    TRASHED
+}
+
+type Query {
+    burger(id: ID!): FishBurger
+    burgers(status: BurgerStatus, limit: Int, offset: Int): [FishBurger!]!
+    cart: Cart
+}
+
+type Mutation {
+    createBurger(input: CreateBurgerInput!): FishBurger!
+    updateBurgerStatus(id: ID!, status: BurgerStatus!): FishBurger!
+    addToCart(burgerId: ID!): Cart!
+    updateCartItemQuantity(itemId: ID!, quantity: Int!): Cart!
+    removeFromCart(itemId: ID!): Cart!
+    eatBurgers: Cart!
+    trashBurgers: Cart!
+}
+
+input CreateBurgerInput {
+    name: String!
+    price: Float!
+    ingredients: [String!]!
+}
+
+scalar DateTime 

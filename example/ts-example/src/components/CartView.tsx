@@ -8,15 +8,14 @@ import * as mori from 'mori';
 const cartItemsView = createView({
     machineId: 'cart-items',
     states: ['EMPTY', 'ITEMS', 'LOADING'],
-    render: (props) => {
-        const { model, state, transition, sendMessage } = props;
+    render: ({ state }) => {
         if (state === undefined) {
             return <div>Loading...</div>
         }
         return <></>;
     },
     container: ({ children }) => {
-        return <div className="cart-items">{children}</div>
+        return (<div className="cart-items">{children}</div>);
     }
 }).withState('EMPTY', ({ sendMessage }) => {
     return (<div className="empty-cart">
@@ -24,7 +23,7 @@ const cartItemsView = createView({
         <button onClick={() => sendMessage({ type: 'START_SHOPPING' })}>
             Start Shopping
         </button>
-    </div>)
+    </div>);
 }).withState('ITEMS', ({ model, sendMessage }) => {
     return (<div className="items-list">
         {model.items.map((item: CartItem) => (
@@ -39,7 +38,7 @@ const cartItemsView = createView({
                 </button>
             </div>
         ))}
-    </div>)
+    </div>);
 });
 
 // Create a view for the cart summary that handles pricing

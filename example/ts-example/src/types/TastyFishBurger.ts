@@ -1,20 +1,22 @@
+import React from 'react';
+
 export interface LogEntry {
     id: string;
     timestamp: string;
     level: 'INFO' | 'WARNING' | 'ERROR';
     message: string;
     metadata: Record<string, unknown>;
+    viewModel: Record<string, unknown>;
 }
-
 
 export type _View = {
     componentView: React.ReactNode | _Transition,
-    log: Any,
+    log: unknown,
     timestamp?: Date
 }
 
 export type _Log = {
-    log: Any,
+    log: unknown,
     timestamp?: Date
 }
 
@@ -27,17 +29,17 @@ export type _Transition = {
     timestamp?: Date
 }
 
-export const View = (componentView: React.ReactNode | _Transition, log: Any) => {
+export const View = (componentView: React.ReactNode | _Transition, log: unknown) => {
     return {
-        "componentView":componentView,
-        "log":log,
+        "componentView": componentView,
+        "log": log,
         // add timestamp on consumption
     } as any as _View
 }
 
-export const Log = (log: Any) => {
+export const Log = (log: unknown) => {
     return {
-        "log":log,
+        "log": log,
         // add timestamp on consumption
     } as any as _Log;
 }
@@ -45,7 +47,6 @@ export const Log = (log: Any) => {
 export const Clear = () => {
     return {} as any as _Clear;
 }
-
 
 export interface StateTransition {
     from: string;
@@ -71,6 +72,8 @@ export interface ViewModel {
 
 export interface FishBurgerData {
     orderId: string;
+    name: string;
+    price: number;
     ingredients: string[];
     cookingTime: number;
     temperature: number;
@@ -110,3 +113,24 @@ export interface MessageUpdate {
 
 // GraphQL Queries and Subscriptions
 export const STATE_MACHINE_UPDATES = `
+    subscription StateMachineUpdates($id: ID!) {
+        stateMachineUpdates(id: $id) {
+            id
+            currentState
+            transitions {
+                from
+                to
+                timestamp
+            }
+            logEntries {
+                id
+                timestamp
+                level
+                message
+                metadata
+                viewModel
+            }
+            isStable
+        }
+    }
+`;

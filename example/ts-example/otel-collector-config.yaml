@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1500
+    spike_limit_mib: 512
+  # Add state machine specific attributes
+  attributes:
+    actions:
+      - key: state.machine.type
+        value: fishburger
+        action: upsert
+      - key: state.machine.version
+        value: 1.0.0
+        action: upsert
+
+exporters:
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  # DataDog configuration (commented out until API key is available)
+  # datadog:
+  #   api:
+  #     key: ${DD_API_KEY}
+  #   metrics:
+  #     endpoint: https://api.datadoghq.com/api/v1/series
+  #   traces:
+  #     endpoint: https://trace.agent.datadoghq.com
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes, batch]
+      exporters: [jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes, batch]
+      exporters: [] 
