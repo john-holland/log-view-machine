@@ -110,6 +110,19 @@ withState('EAT', ({machine, viewModel, transition, sendMessage}) => {
     transition('PREPARING');
 }).
 withState('TRASH', ({machine, viewModel, transition, sendMessage}) => {
+    if (Math.random() > 0.9) {
+        sendMessage('LOG', {
+            level: 'INFO',
+            message: 'Aw, this was just overcooked. I\'ll just eat it. Ow hot hot hot, oh so good! Arugala save me!',
+            metadata: { machineId: machine.config.machineId },
+            viewModel: {
+                burgers: []
+            }
+        });
+        transition('EAT');
+        return;
+    }
+
     sendMessage('LOG', {
         level: 'INFO',
         message: 'Burgers trashed!',
