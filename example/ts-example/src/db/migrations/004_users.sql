@@ -13,10 +13,10 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 
 -- Create trigger for updating timestamps
-CREATE TRIGGER update_users_timestamp
+CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
-    EXECUTE FUNCTION update_timestamp();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Add foreign key constraints to existing tables
 ALTER TABLE skins

@@ -35,7 +35,8 @@ export abstract class BaseStateMachine {
                 timestamp: new Date().toISOString(),
                 level: 'INFO',
                 message: `Transition completed: ${entry.transition.from} -> ${entry.transition.to}`,
-                metadata: { transition: entry.transition }
+                metadata: { transition: entry.transition },
+                viewModel: {}
             });
 
         } catch (error) {
@@ -48,7 +49,8 @@ export abstract class BaseStateMachine {
                 timestamp: new Date().toISOString(),
                 level: 'ERROR',
                 message: `Transition failed: ${entry.error}`,
-                metadata: { transition: entry.transition, error: entry.error }
+                metadata: { transition: entry.transition, error: entry.error },
+                viewModel: {}
             });
         }
 
@@ -77,7 +79,8 @@ export abstract class BaseStateMachine {
             timestamp: new Date().toISOString(),
             level: 'INFO',
             message: `Transition queued: ${transition.from} -> ${transition.to}`,
-            metadata: { transition }
+            metadata: { transition },
+            viewModel: {}
         });
 
         await this.processQueue();

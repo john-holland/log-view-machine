@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createView, ViewProps, ViewMachine } from '../core/ViewMachine';
 import { FishBurgerData } from '../types/TastyFishBurger';
+import { StateMachine } from '../core/StateMachine';
 
 interface Ingredient {
     name: string;
@@ -8,6 +9,7 @@ interface Ingredient {
 
 interface BurgerBuilderProps {
     onAddToCart: (burger: { ingredients: Ingredient[] }) => void;
+    stateMachine: StateMachine<any, any>;
 }
 
 const burgerBuilderView = createView({
@@ -136,8 +138,11 @@ const burgerBuilderView = createView({
     );
 });
 
-export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart }: BurgerBuilderProps) => {
+export const BurgerBuilder: React.FC<BurgerBuilderProps> = ({ onAddToCart, stateMachine }: BurgerBuilderProps) => {
     const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+
+    // Use the state machine's view model
+    const viewModel = stateMachine.getViewModel();
 
     const handleStateChange = (newState: string) => {
         if (newState === 'ADD_TO_CART') {

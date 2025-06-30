@@ -15,28 +15,28 @@ export interface Observable<T> {
 export class Subject<T> implements Observable<T>, Observer<T> {
   private observers: Observer<T>[] = [];
   private completed = false;
-  private error: Error | null = null;
+  private errorState: Error | null = null;
 
   next(value: T): void {
-    if (this.completed || this.error) return;
+    if (this.completed || this.errorState) return;
     this.observers.forEach(observer => observer.next(value));
   }
 
   error(error: Error): void {
     if (this.completed) return;
-    this.error = error;
+    this.errorState = error;
     this.observers.forEach(observer => observer.error(error));
   }
 
   complete(): void {
-    if (this.completed || this.error) return;
+    if (this.completed || this.errorState) return;
     this.completed = true;
     this.observers.forEach(observer => observer.complete());
   }
 
   subscribe(observer: Observer<T>): Subscription {
-    if (this.error) {
-      observer.error(this.error);
+    if (this.errorState) {
+      observer.error(this.errorState);
       return { unsubscribe: () => {} };
     }
 

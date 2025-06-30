@@ -35,7 +35,7 @@ const stateDefinitions: StateDefinition = {
     }
 };
 
-const TastyFishBurgerMachine = createStateMachine<TastyFishBurgerConfig, TastyFishBurgerModel>({
+export const TastyFishBurgerMachine = createStateMachine<TastyFishBurgerConfig, TastyFishBurgerModel>({
     defaultConfig: {
         machineId: 'tasty-fish-burger',
         initialState: 'INITIAL'

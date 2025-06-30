@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.http.BurgerHttpClientTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2025-06-28T21:24:29.718Z" hostname="Johns-MacBook-Pro-2.local" time="5.077">
+  <properties/>
+  <testcase name="test health check()" classname="com.example.http.BurgerHttpClientTest" time="0.048"/>
+  <testcase name="test eat burger()" classname="com.example.http.BurgerHttpClientTest" time="5.018"/>
+  <testcase name="test create and get burgers()" classname="com.example.http.BurgerHttpClientTest" time="0.009"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

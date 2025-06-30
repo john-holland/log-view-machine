@@ -1,5 +1,24 @@
-import { ViewModel, StateTransition, LogEntry } from '../types/TastyFishBurger';
-import * as mori from 'mori';
+export interface StateTransition {
+    from: string;
+    to: string;
+    timestamp: string;
+}
+
+export interface LogEntry {
+    id: string;
+    timestamp: string;
+    level: 'INFO' | 'WARNING' | 'ERROR';
+    message: string;
+    metadata: Record<string, unknown>;
+    viewModel: Record<string, unknown>;
+}
+
+export interface ViewModel {
+    currentState: string;
+    transitions: StateTransition[];
+    logEntries: LogEntry[];
+    isStable: boolean;
+}
 
 export interface StateDefinition {
     [key: string]: {
@@ -121,10 +140,26 @@ export class StateMachine<TConfig = any, TViewModel = any> {
         this.viewModel.logEntries.push(entry);
     }
 
-    public sendMessage(type: string, payload?: any) {
+    public async sendMessage(type: string, payload?: any) {
         if (type === 'LOG') {
             const { level, message, metadata, viewModel } = payload;
             this.addLogEntry(level, message, metadata, viewModel);
+        } else {
+            // Store payload in viewModel for method access
+            if (payload !== undefined && this.viewModel.hasOwnProperty('lastPayload')) {
+                (this.viewModel as any).lastPayload = payload;
+            }
+            
+            // Call methods defined with withMethod
+            const method = this.methods.get(type);
+            if (method) {
+                await method({
+                    machine: { config: this.config },
+                    viewModel: this.viewModel,
+                    transition: this.transition.bind(this),
+                    sendMessage: this.sendMessage.bind(this)
+                });
+            }
         }
     }
 
@@ -143,8 +178,9 @@ export class StateMachine<TConfig = any, TViewModel = any> {
         }
     }
 
-    public getViewModel(): ViewModel {
+    public getViewModel(): TViewModel & ViewModel {
         return {
+            ...this.viewModel,
             currentState: this.viewModel.currentState,
             transitions: this.viewModel.transitions,
             logEntries: this.viewModel.logEntries,
