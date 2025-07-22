@@ -1,5 +1,6 @@
 import { ViewModel, StateTransition, LogEntry } from '../types/TastyFishBurger';
 import * as mori from 'mori';
+import React from 'react';
 
 export interface ViewStateConfig {
     machineId: string;
@@ -13,6 +14,44 @@ export interface ViewProps {
     model: any;
     sendMessage: (message: any) => void;
     transition: (state: string) => void;
+}
+
+// Add the missing ViewStateMachine class that ViewMachine.ts expects
+export class ViewStateMachine {
+    private machineId: string;
+    private recognizedStates: string[];
+    private renderDelay: number;
+    private superMachine: any;
+
+    constructor(config: { machineId: string; recognizedStates: string[]; renderDelay: number }) {
+        this.machineId = config.machineId;
+        this.recognizedStates = config.recognizedStates;
+        this.renderDelay = config.renderDelay;
+    }
+
+    getMachineId(): string {
+        return this.machineId;
+    }
+
+    getRecognizedStates(): string[] {
+        return this.recognizedStates;
+    }
+
+    getSuperMachine(): any {
+        return this.superMachine;
+    }
+
+    setSuperMachine(machine: any): void {
+        this.superMachine = machine;
+    }
+
+    getViewModel(): any {
+        return this.superMachine?.getViewModel();
+    }
+
+    addLogEntry(level: string, message: string, metadata?: any): void {
+        // Implementation for logging
+    }
 }
 
 export class ViewMachine {
@@ -122,8 +161,8 @@ export function createViewStateMachine<TConfig, TViewModel>(
         return renderer(context);
       }
       
-      // Default render for unknown states
-      return { type: 'div', props: { className: 'view-state-machine-default' }, children: `State: ${context.currentState}` };
+      // Default render for unknown states - return proper React element
+      return <div className="view-state-machine-default">State: {context.currentState}</div>;
     },
 
     withState: (state, renderer) => {
@@ -150,14 +189,7 @@ export function createViewFromStateMachine<TConfig, TViewModel>(
   // Add default state renderers
   Object.keys(config.states).forEach(state => {
     view.withState(state, (context) => {
-      return { 
-        type: 'div', 
-        props: { 
-          className: `view-state-${state}`,
-          'data-state': state
-        }, 
-        children: `View for state: ${state}` 
-      };
+      return <div className={`view-state-${state}`} data-state={state}>View for state: {state}</div>;
     });
   });
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { BurgerCreationUI } from './components/BurgerCreationUI';
-import { SimpleFishBurgerView } from './components/SimpleFishBurgerView';
+import BurgerCreationUI from './components/BurgerCreationUI';
+import XStateBurgerCreationUI from './components/XStateBurgerCreationUI';
+import SimpleFishBurgerView from './components/SimpleFishBurgerView';
 import MetricsDashboard from './components/MetricsDashboard';
 import AdminDashboard from './components/AdminDashboard';
 
@@ -23,6 +24,9 @@ export function App() {
                                 <Link to="/" className="text-gray-600 hover:text-gray-800">
                                     🍔 Burger Builder
                                 </Link>
+                                <Link to="/xstate" className="text-gray-600 hover:text-gray-800">
+                                    ⚡ XState Burger
+                                </Link>
                                 <Link to="/simple" className="text-gray-600 hover:text-gray-800">
                                     🔧 Simple API View
                                 </Link>
@@ -43,6 +47,7 @@ export function App() {
                 <main className="py-8">
                     <Routes>
                         <Route path="/" element={<BurgerCreationUI />} />
+                        <Route path="/xstate" element={<XStateBurgerCreationUI />} />
                         <Route path="/simple" element={<SimpleFishBurgerView />} />
                         <Route path="/metrics" element={<MetricsDashboard />} />
                         <Route
