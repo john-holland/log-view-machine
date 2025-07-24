@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import XStateBurgerCreationUI from './components/XStateBurgerCreationUI';
 import FluentBurgerCreationUI from './components/FluentBurgerCreationUI';
 import AdvancedFluentDemo from './components/AdvancedFluentDemo';
+import RobotCopyProxyDemo from './components/RobotCopyProxyDemo';
 import './index.css';
 
 const App: React.FC = () => {
@@ -17,6 +18,7 @@ const App: React.FC = () => {
               <Link to="/xstate" className="nav-link">⚡ XState Demo</Link>
               <Link to="/fluent" className="nav-link">✨ Fluent API</Link>
               <Link to="/advanced" className="nav-link">🤖 Advanced Demo</Link>
+              <Link to="/proxy" className="nav-link">🤖 RobotCopy Proxy</Link>
             </div>
           </div>
         </nav>
@@ -43,12 +45,18 @@ const App: React.FC = () => {
                     <p>Sub-machines + RobotCopy message broker + ClientGenerator</p>
                     <Link to="/advanced" className="demo-link">View Demo</Link>
                   </div>
+                  <div className="demo-card">
+                    <h3>🤖 RobotCopy Proxy</h3>
+                    <p>RobotCopy as first-class citizen replacing XState with async API proxy</p>
+                    <Link to="/proxy" className="demo-link">View Demo</Link>
+                  </div>
                 </div>
               </div>
             } />
             <Route path="/xstate" element={<XStateBurgerCreationUI />} />
             <Route path="/fluent" element={<FluentBurgerCreationUI />} />
             <Route path="/advanced" element={<AdvancedFluentDemo />} />
+            <Route path="/proxy" element={<RobotCopyProxyDemo />} />
           </Routes>
         </main>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMachine } from '@xstate/react';
-import { createMachine, assign, interpret } from 'xstate';
+import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
+import { RobotCopy } from './RobotCopy';
 
 // Types for the fluent API
 export type StateContext<TModel = any> = {
@@ -253,6 +254,69 @@ export class ViewStateMachine<TModel = any> {
       </div>
     );
   }
+}
+
+class ProxyMachine implements AnyStateMachine {
+  private robotCopy: RobotCopy;
+  
+  constructor(robotCopy: RobotCopy) {
+    this.robotCopy = robotCopy;
+  }
+
+  async send(event: any) {
+    await this.robotCopy.sendMessage(event);
+  }
+
+  async on(eventName: string, handler: () => void) {
+    await this.robotCopy.on(eventName);
+    handler();
+  }
+}
+
+export type ProxyRobotCopyStateViewStateMachineConfig<TModel = any> = ViewStateMachineConfig<TModel> & {
+  robotCopy: RobotCopy;
+};
+
+export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<TModel> {
+  private robotCopy: RobotCopy;
+  private machine: ProxyMachine;
+  constructor(config: ProxyRobotCopyStateViewStateMachineConfig<TModel>) {
+    super(config);
+    this.robotCopy = config.robotCopy;
+    this.machine = new ProxyMachine(this.robotCopy);
+  }
+
+  override async send(event: any) {
+    await this.robotCopy.sendMessage(event);
+  }
+
+  override async on(eventName: string, handler: () => void) {
+    await this.robotCopy.sendMessage(eventName);
+    handler();
+  }
+
+  override render(model: TModel): React.ReactNode {
+    throw new Error('ProxyStateMachine does not support rendering');
+  }
+
+  override useViewStateMachine(initialModel: TModel) {
+    throw new Error('ProxyStateMachine does not support useViewStateMachine');
+  }
+
+  override compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
+    throw new Error('ProxyStateMachine does not support compose');
+  }
+
+  // should we support this for traceability?
+  override synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel> {
+    throw new Error('ProxyStateMachine does not support synchronizeWithTome');
+  }
+}
+
+export function createProxyRobotCopyStateMachine<TModel = any>(
+  config: ProxyRobotCopyStateViewStateMachineConfig<TModel>
+): ProxyRobotCopyStateMachine<TModel> {
+  return new ProxyRobotCopyStateMachine(config);
 }
 
 // Helper function to create a ViewStateMachine
