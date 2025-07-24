@@ -1,176 +1,169 @@
-# Log View Machine
+# Fish Burger Example
 
-A flexible log viewing framework that supports both React and Mithril, with GraphQL integration and semantic versioning.
+This is a demonstration of the ViewStateMachine package using a fish burger creation application.
 
 ## Features
 
-- TypeScript support
-- React and Mithril adapters
-- GraphQL integration
-- Semantic versioning with fallback mechanisms
-- Kotlin server integration for version management
-- Real-time log updates
-- Filtering and search capabilities
-- Customizable UI components
+- **XState Demo**: Traditional XState implementation with manual state management
+- **Fluent API Demo**: ViewStateMachine with beautiful fluent API for state management
+- **Advanced Demo**: Sub-machines + RobotCopy message broker + ClientGenerator
 
-## Installation
+## Getting Started
+
+### Prerequisites
+
+Make sure you have the ViewStateMachine package built:
 
 ```bash
-npm install log-view-machine
+cd ../log-view-machine
+npm run build
 ```
 
-## Usage
+### Installation
 
-### React
-
-```tsx
-import { LogViewProvider, LogView } from 'log-view-machine/adapters/react';
-import { createApolloClient } from 'log-view-machine/graphql/client';
-
-const client = createApolloClient('http://your-graphql-endpoint');
-
-function App() {
-  return (
-    <LogViewProvider 
-      client={client}
-      version="1.2.0"
-      versionConstraint={{
-        requireStable: true,
-        minVersion: { major: 1, minor: 0, patch: 0, stable: true }
-      }}
-      kotlinServer={{
-        baseUrl: 'http://your-kotlin-server',
-        apiKey: 'your-api-key'
-      }}
-    >
-      <LogView />
-    </LogViewProvider>
-  );
-}
+```bash
+npm install
 ```
 
-### Mithril
+### Development
 
-```ts
-import { LogViewComponent } from 'log-view-machine/adapters/mithril';
-import { createApolloClient } from 'log-view-machine/graphql/client';
-import m from 'mithril';
+```bash
+npm run dev
+```
 
-const client = createApolloClient('http://your-graphql-endpoint');
-const logView = new LogViewComponent({
-  client,
-  version: '1.2.0',
-  versionConstraint: {
-    requireStable: true,
-    minVersion: { major: 1, minor: 0, patch: 0, stable: true }
-  },
-  kotlinServer: {
-    baseUrl: 'http://your-kotlin-server',
-    apiKey: 'your-api-key'
+The application will be available at http://localhost:5173
+
+## Examples
+
+### 1. XState Demo (`/xstate`)
+
+Traditional XState implementation showing:
+- Manual state management
+- Direct XState usage
+- Manual UI rendering
+
+### 2. Fluent API Demo (`/fluent`)
+
+ViewStateMachine with fluent API showing:
+- Beautiful `withState()` syntax
+- Automatic view stacking
+- Logging integration
+- Fluent context methods (`log`, `view`, `clear`, `send`)
+
+### 3. Advanced Demo (`/advanced`)
+
+Advanced features showing:
+- Sub-machine composition
+- RobotCopy message broker
+- ClientGenerator code generation
+- GraphQL integration
+- Multi-language client generation
+
+## Package Dependency
+
+This example depends on the ViewStateMachine package:
+
+```json
+{
+  "dependencies": {
+    "log-view-machine": "file:../log-view-machine"
   }
+}
+```
+
+The package provides:
+- `createViewStateMachine()` - Create state machines with fluent API
+- `createRobotCopy()` - Configurable message broker
+- `createClientGenerator()` - Automated client discovery and generation
+
+## Architecture
+
+```
+fish-burger-example/
+├── src/
+│   ├── components/
+│   │   ├── XStateBurgerCreationUI.tsx    # Traditional XState
+│   │   ├── FluentBurgerCreationUI.tsx    # Fluent API demo
+│   │   └── AdvancedFluentDemo.tsx        # Advanced features
+│   ├── App.tsx                           # Main app with routing
+│   └── main.tsx                          # Entry point
+├── package.json                          # Dependencies
+└── README.md                            # This file
+```
+
+## Key Concepts Demonstrated
+
+### Fluent API
+```typescript
+const machine = createViewStateMachine({
+  machineId: 'my-machine',
+  xstateConfig: { /* XState config */ }
+})
+.withState('idle', async ({ log, view, send }) => {
+  await log('Entered idle state');
+  return view(<div>Idle UI</div>);
 });
-
-m.mount(document.body, logView);
 ```
 
-## Versioning
-
-The framework supports semantic versioning with the following features:
-
-- Version constraints (min/max versions)
-- Stable version requirements
-- Local version fallback
-- Kotlin server integration for remote version management
-- Automatic version resolution
-
-### Version Format
-
-Versions follow the semantic versioning format: `major.minor.patch[-prerelease][+build]`
-
-Example: `1.2.3-beta.1+20240220`
-
-### Version Resolution
-
-1. Check local versions first
-2. If not found, try Kotlin server
-3. Fall back to latest compatible local version
-4. If no compatible version found, use default implementation
-
-## GraphQL Schema
-
-The framework expects the following GraphQL schema:
-
-```graphql
-input LogFiltersInput {
-  level: String
-  search: String
-  startDate: DateTime
-  endDate: DateTime
-}
-
-input LogInput {
-  level: String!
-  message: String!
-  metadata: JSON
-}
-
-type Log {
-  id: ID!
-  timestamp: DateTime!
-  level: String!
-  message: String!
-  metadata: JSON
-}
-
-type Query {
-  logs(filters: LogFiltersInput): [Log!]!
-}
-
-type Mutation {
-  addLog(input: LogInput!): Log!
-}
+### Sub-Machines
+```typescript
+.withState('selecting', async ({ getSubMachine, view }) => {
+  const childMachine = getSubMachine('child');
+  return view(childMachine.render(model));
+});
 ```
 
-## Kotlin Server API
+### RobotCopy Message Broker
+```typescript
+const robotCopy = createRobotCopy();
+robotCopy.registerMachine('my-machine', machine, {
+  messageBrokers: [
+    { type: 'window-intercom', config: { targetOrigin: '*' } },
+    { type: 'http-api', config: { baseUrl: 'https://api.com' } },
+    { type: 'graphql', config: { endpoint: 'https://api.com/graphql' } }
+  ]
+});
+```
 
-The Kotlin server should implement the following endpoints:
-
-```kotlin
-GET /api/machines/{major}.{minor}
-  Headers:
-    - Accept: application/javascript
-    - X-Require-Stable: true/false
-  Response: JavaScript code for the machine implementation
-
-GET /api/machines/versions
-  Response: List of available versions
-
-GET /api/machines/validate/{major}.{minor}
-  Response: Boolean indicating if version is valid
+### ClientGenerator
+```typescript
+const clientGenerator = createClientGenerator();
+clientGenerator.registerMachine('my-machine', machine, {
+  description: 'My awesome machine',
+  version: '1.0.0'
+});
+const typescriptClient = clientGenerator.generateClientCode('typescript', 'my-machine');
 ```
 
 ## Development
 
-```bash
-# Install dependencies
-npm install
+### Adding New Examples
 
-# Build
-npm run build
+1. Create a new component in `src/components/`
+2. Import from the ViewStateMachine package: `import { createViewStateMachine } from 'log-view-machine'`
+3. Add a route in `src/App.tsx`
+4. Test with `npm run dev`
 
-# Development mode
-npm run dev
+### Modifying the Package
 
-# Run tests
-npm test
+1. Make changes in `../log-view-machine/src/`
+2. Build the package: `cd ../log-view-machine && npm run build`
+3. The example will automatically use the updated package
 
-# Lint
-npm run lint
+## Troubleshooting
 
-# Format code
-npm run format
-```
+### Import Errors
+If you see import errors for `log-view-machine`, make sure:
+1. The package is built: `cd ../log-view-machine && npm run build`
+2. The dependency is correctly specified in `package.json`
+3. Run `npm install` to reinstall dependencies
+
+### TypeScript Errors
+The example uses TypeScript with strict settings. If you see type errors:
+1. Check that all imports are correct
+2. Ensure proper type annotations
+3. The ViewStateMachine package provides full TypeScript support
 
 ## License
 
-MIT 
+MIT - Same as the ViewStateMachine package 

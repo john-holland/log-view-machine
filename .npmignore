@@ -1,0 +1,40 @@
+# Development files
+example/
+scripts/
+docs/
+.github/
+
+# Build artifacts
+*.tsbuildinfo
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Configuration files
+.eslintrc*
+.prettierrc*
+jest.config.*
+rollup.config.js
+tsconfig.json
+
+# Source maps (optional)
+*.map
+
+# Temporary files
+tmp/
+temp/ 

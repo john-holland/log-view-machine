@@ -11,7 +11,7 @@ const App: React.FC = () => {
       <div className="app">
         <nav className="app-nav">
           <div className="nav-container">
-            <h1>🍔 ViewStateMachine Examples</h1>
+            <h1>🍔 Fish Burger Examples</h1>
             <div className="nav-links">
               <Link to="/" className="nav-link">🏠 Home</Link>
               <Link to="/xstate" className="nav-link">⚡ XState Demo</Link>
@@ -25,7 +25,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={
               <div className="home-page">
-                <h2>Welcome to ViewStateMachine Examples</h2>
+                <h2>Welcome to Fish Burger Examples</h2>
                 <p>This demonstrates the ViewStateMachine package with different approaches:</p>
                 <div className="demo-cards">
                   <div className="demo-card">

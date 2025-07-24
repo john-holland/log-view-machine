@@ -1,144 +1,163 @@
-# 🐟 Tasty Fish Burger API 🍔
+# ViewStateMachine Examples
 
-Welcome to the most delicious API for creating custom fish burgers! This project combines the joy of burger creation with modern technology, including feature toggles, real-time metrics, and a beautiful GraphQL API.
+This directory contains comprehensive examples of the ViewStateMachine package, demonstrating different approaches to state management.
 
-## 🌟 Features
+## Examples
 
-- 🎮 Interactive burger creation with state machine magic
-- 🎯 Feature toggles for easy experimentation
-- 📊 Real-time metrics and tracing
-- 🎨 Beautiful GraphQL API
-- 🐘 PostgreSQL for storing burger dreams
-- 👥 Multi-cohort support for events and gatherings
-- 🎨 Customizable skins with ICP payments
-- 🎵 Sound effects and animations
-- 🎨 Theme customization
-- 📱 Responsive design
+### 1. XState Demo (`/xstate`)
+Traditional XState implementation showing:
+- Manual state management
+- Direct XState usage
+- Manual UI rendering
+- Standard XState patterns
 
-## 🚀 Getting Started
+### 2. Fluent API Demo (`/fluent`)
+ViewStateMachine with fluent API showing:
+- Beautiful `withState()` syntax
+- Automatic view stacking
+- Logging integration
+- Fluent context methods (`log`, `view`, `clear`, `send`)
+- Simplified state management
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+### 3. Advanced Demo (`/advanced`)
+Advanced features showing:
+- Sub-machine composition
+- RobotCopy message broker
+- ClientGenerator code generation
+- GraphQL integration
+- Multi-language client generation
+- Complex state orchestration
 
-## 🎨 Skin System
+## Getting Started
 
-The Fish Burger API includes a powerful skinning system that allows users to customize their burger creation experience:
+### Prerequisites
 
-### Skin Types
-- 🎨 **Themes**: Customize colors, fonts, and spacing
-- 🎬 **Animations**: Add custom animations for burger creation and state transitions
-- 🔊 **Sounds**: Include custom sound effects for various actions
-- 🎯 **Custom**: Add your own CSS, JavaScript, and assets
+Make sure the ViewStateMachine package is built:
 
-### Features
-- 💰 ICP payment integration
-- ⭐ Rating system
-- 📦 Collections for organizing skins
-- 🎯 Preview system
-- 🔄 Version compatibility checking
-
-### Creating a Skin
-1. Design your skin using the JSON schema
-2. Upload assets (images, sounds, etc.)
-3. Set your price in ICP
-4. Submit for review
-5. Once approved, your skin will be available in the store
-
-### Example Skin
-Check out `src/config/sample-skin.json` for a complete example of a skin configuration.
-
-## 🎮 API Usage
-
-### GraphQL Endpoint
-```
-http://localhost:3000/graphql
-```
-
-### Example Queries
-
-#### Create a Skin
-```graphql
-mutation CreateSkin($input: CreateSkinInput!) {
-  createSkin(input: $input) {
-    id
-    name
-    description
-    type
-    priceIcp
-    status
-  }
-}
-```
-
-#### Purchase a Skin
-```graphql
-mutation PurchaseSkin($id: ID!) {
-  purchaseSkin(id: $id) {
-    id
-    transactionId
-    amountIcp
-  }
-}
-```
-
-#### Rate a Skin
-```graphql
-mutation RateSkin($id: ID!, $rating: Int!, $comment: String) {
-  rateSkin(id: $id, rating: $rating, comment: $comment) {
-    id
-    rating
-  }
-}
-```
-
-## 🛠️ Development
-
-### Database Migrations
 ```bash
-npm run migrate
-```
-
-### Running Tests
-```bash
-npm test
-```
-
-### Building for Production
-```bash
+cd ../../
 npm run build
 ```
 
-## 📊 Monitoring
+### Installation
 
-- OpenTelemetry tracing via Jaeger
-- Metrics via DataDog
-- Custom dashboards for skin analytics
+```bash
+npm install
+```
 
-## 🤝 Contributing
+### Development
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+```bash
+npm run dev
+```
 
-## 📝 License
+The application will be available at http://localhost:5173
 
-MIT License - Because sharing is caring! 🎉
+## Package Dependency
 
-## 🙏 Acknowledgments
+This example depends on the ViewStateMachine package:
 
-- All the fish that made this possible
-- The burger enthusiasts who inspired this project
-- The amazing open-source community 
+```json
+{
+  "dependencies": {
+    "log-view-machine": "file:../../"
+  }
+}
+```
+
+The package provides:
+- `createViewStateMachine()` - Create state machines with fluent API
+- `createRobotCopy()` - Configurable message broker
+- `createClientGenerator()` - Automated client discovery and generation
+
+## Architecture
+
+```
+example/ts-example/
+├── src/
+│   ├── components/
+│   │   ├── XStateBurgerCreationUI.tsx    # Traditional XState
+│   │   ├── FluentBurgerCreationUI.tsx    # Fluent API demo
+│   │   └── AdvancedFluentDemo.tsx        # Advanced features
+│   ├── App.tsx                           # Main app with routing
+│   └── main.tsx                          # Entry point
+├── package.json                          # Dependencies
+└── README.md                            # This file
+```
+
+## Key Concepts Demonstrated
+
+### Fluent API
+```typescript
+const machine = createViewStateMachine({
+  machineId: 'my-machine',
+  xstateConfig: { /* XState config */ }
+})
+.withState('idle', async ({ log, view, send }) => {
+  await log('Entered idle state');
+  return view(<div>Idle UI</div>);
+});
+```
+
+### Sub-Machines
+```typescript
+.withState('selecting', async ({ getSubMachine, view }) => {
+  const childMachine = getSubMachine('child');
+  return view(childMachine.render(model));
+});
+```
+
+### RobotCopy Message Broker
+```typescript
+const robotCopy = createRobotCopy();
+robotCopy.registerMachine('my-machine', machine, {
+  messageBrokers: [
+    { type: 'window-intercom', config: { targetOrigin: '*' } },
+    { type: 'http-api', config: { baseUrl: 'https://api.com' } },
+    { type: 'graphql', config: { endpoint: 'https://api.com/graphql' } }
+  ]
+});
+```
+
+### ClientGenerator
+```typescript
+const clientGenerator = createClientGenerator();
+clientGenerator.registerMachine('my-machine', machine, {
+  description: 'My awesome machine',
+  version: '1.0.0'
+});
+const typescriptClient = clientGenerator.generateClientCode('typescript', 'my-machine');
+```
+
+## Development
+
+### Adding New Examples
+
+1. Create a new component in `src/components/`
+2. Import from the ViewStateMachine package: `import { createViewStateMachine } from 'log-view-machine'`
+3. Add a route in `src/App.tsx`
+4. Test with `npm run dev`
+
+### Modifying the Package
+
+1. Make changes in `../../src/`
+2. Build the package: `cd ../../ && npm run build`
+3. The example will automatically use the updated package
+
+## Troubleshooting
+
+### Import Errors
+If you see import errors for `log-view-machine`, make sure:
+1. The package is built: `cd ../../ && npm run build`
+2. The dependency is correctly specified in `package.json`
+3. Run `npm install` to reinstall dependencies
+
+### TypeScript Errors
+The example uses TypeScript with strict settings. If you see type errors:
+1. Check that all imports are correct
+2. Ensure proper type annotations
+3. The ViewStateMachine package provides full TypeScript support
+
+## License
+
+MIT - Same as the ViewStateMachine package 
