@@ -1,0 +1,54 @@
+{
+  "name": "log-view-machine",
+  "version": "1.0.0",
+  "description": "A powerful state machine library with fluent API, sub-machines, RobotCopy message broker, and GraphQL integration",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "INSTALLATION.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build",
+    "test": "node test-package.js"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@xstate/react": "^3.0.0",
+    "xstate": "^4.0.0",
+    "graphql": "^16.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "rollup": "^3.0.0",
+    "rollup-plugin-dts": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "state-machine",
+    "xstate",
+    "react",
+    "typescript",
+    "fluent-api",
+    "sub-machines",
+    "message-broker",
+    "graphql",
+    "robotcopy"
+  ],
+  "author": "ViewStateMachine Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/viewstatemachine/log-view-machine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/viewstatemachine/log-view-machine/issues"
+  },
+  "homepage": "https://github.com/viewstatemachine/log-view-machine#readme"
+}

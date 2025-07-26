@@ -43,6 +43,9 @@ export class ViewStateMachine<TModel = any> {
   private tomeConfig?: any;
   private isTomeSynchronized: boolean = false;
   private subMachines: Map<string, ViewStateMachine<any>> = new Map();
+  // Add RobotCopy support for incoming messages
+  private robotCopy?: RobotCopy;
+  private incomingMessageHandlers: Map<string, (message: any) => void> = new Map();
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
@@ -74,6 +77,12 @@ export class ViewStateMachine<TModel = any> {
           actions: assign((context: any, event: any) => ({
             subMachines: { ...context.subMachines, [event.payload.id]: event.payload }
           }))
+        },
+        // RobotCopy incoming message events
+        ROBOTCOPY_MESSAGE: {
+          actions: assign((context: any, event: any) => ({
+            robotCopyMessages: [...(context.robotCopyMessages || []), event.payload]
+          }))
         }
       }
     });
@@ -94,9 +103,61 @@ export class ViewStateMachine<TModel = any> {
     }
   }
 
+  // Add RobotCopy support methods
+  withRobotCopy(robotCopy: RobotCopy): ViewStateMachine<TModel> {
+    this.robotCopy = robotCopy;
+    this.setupRobotCopyIncomingHandling();
+    return this;
+  }
+
+  private setupRobotCopyIncomingHandling() {
+    if (!this.robotCopy) return;
+    
+    // Listen for incoming messages from RobotCopy
+    this.robotCopy.onResponse('default', (response: any) => {
+      const { type, payload } = response;
+      const handler = this.incomingMessageHandlers.get(type);
+      if (handler) {
+        handler(payload);
+      } else {
+        console.log('No handler found for incoming RobotCopy message type:', type);
+      }
+    });
+  }
+
+  registerRobotCopyHandler(eventType: string, handler: (message: any) => void): ViewStateMachine<TModel> {
+    this.incomingMessageHandlers.set(eventType, handler);
+    return this;
+  }
+
+  handleRobotCopyMessage(message: any): void {
+    const { type, payload } = message;
+    const handler = this.incomingMessageHandlers.get(type);
+    if (handler) {
+      handler(payload);
+    }
+  }
+
   // Fluent API methods
   withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel> {
     this.stateHandlers.set(stateName, handler);
+    return this;
+  }
+
+  // Override for withState that registers message handlers
+  withStateAndMessageHandler(
+    stateName: string, 
+    handler: StateHandler<TModel>, 
+    messageType: string, 
+    messageHandler: (message: any) => void
+  ): ViewStateMachine<TModel> {
+    this.stateHandlers.set(stateName, handler);
+    
+    // Register the message handler if RobotCopy is available
+    if (this.robotCopy) {
+      this.registerRobotCopyHandler(messageType, messageHandler);
+    }
+    
     return this;
   }
 
@@ -104,7 +165,6 @@ export class ViewStateMachine<TModel = any> {
   withSubMachine(machineId: string, config: ViewStateMachineConfig<any>): ViewStateMachine<TModel> {
     const subMachine = new ViewStateMachine(config);
     this.subMachines.set(machineId, subMachine);
-    this.machine.send({ type: 'SUB_MACHINE_CREATED', payload: { id: machineId, machine: subMachine } });
     return this;
   }
 
@@ -245,7 +305,8 @@ export class ViewStateMachine<TModel = any> {
             {view}
           </div>
         ))}
-        {/* Render sub-machines */}
+        {/* Render sub-machines
+        todo: should we add a UI order for subMachines to specifically order? */}
         {Array.from(this.subMachines.entries()).map(([id, subMachine]) => (
           <div key={id} className="sub-machine-container">
             {subMachine.render(model)}
@@ -256,7 +317,7 @@ export class ViewStateMachine<TModel = any> {
   }
 }
 
-class ProxyMachine implements AnyStateMachine {
+class ProxyMachine {
   private robotCopy: RobotCopy;
   
   constructor(robotCopy: RobotCopy) {
@@ -266,50 +327,87 @@ class ProxyMachine implements AnyStateMachine {
   async send(event: any) {
     await this.robotCopy.sendMessage(event);
   }
-
-  async on(eventName: string, handler: () => void) {
-    await this.robotCopy.on(eventName);
-    handler();
-  }
 }
 
 export type ProxyRobotCopyStateViewStateMachineConfig<TModel = any> = ViewStateMachineConfig<TModel> & {
   robotCopy: RobotCopy;
+  // Support for incoming message handling
+  incomingMessageHandlers?: Record<string, (message: any) => void>;
 };
 
 export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<TModel> {
-  private robotCopy: RobotCopy;
-  private machine: ProxyMachine;
+  private proxyRobotCopy: RobotCopy;
+  private proxyMachine: ProxyMachine;
+  private proxyIncomingMessageHandlers: Map<string, (message: any) => void> = new Map();
+  
   constructor(config: ProxyRobotCopyStateViewStateMachineConfig<TModel>) {
     super(config);
-    this.robotCopy = config.robotCopy;
-    this.machine = new ProxyMachine(this.robotCopy);
+    this.proxyRobotCopy = config.robotCopy;
+    this.proxyMachine = new ProxyMachine(this.proxyRobotCopy);
+    
+    // Set up incoming message handlers
+    if (config.incomingMessageHandlers) {
+      Object.entries(config.incomingMessageHandlers).forEach(([eventType, handler]) => {
+        this.proxyIncomingMessageHandlers.set(eventType, handler);
+      });
+    }
+    
+    // Set up RobotCopy to handle incoming messages
+    this.setupIncomingMessageHandling();
   }
 
-  override async send(event: any) {
-    await this.robotCopy.sendMessage(event);
+  private setupIncomingMessageHandling() {
+    // Listen for incoming messages from RobotCopy
+    this.proxyRobotCopy.onResponse('default', (response: any) => {
+      const { type, payload } = response;
+      const handler = this.proxyIncomingMessageHandlers.get(type);
+      if (handler) {
+        handler(payload);
+      } else {
+        console.log('No handler found for incoming message type:', type);
+      }
+    });
   }
 
-  override async on(eventName: string, handler: () => void) {
-    await this.robotCopy.sendMessage(eventName);
-    handler();
+  async send(event: any) {
+    // Send outgoing message through RobotCopy
+    await this.proxyRobotCopy.sendMessage(event);
   }
 
-  override render(model: TModel): React.ReactNode {
+  // Add method to register incoming message handlers
+  registerIncomingHandler(eventType: string, handler: (message: any) => void) {
+    this.proxyIncomingMessageHandlers.set(eventType, handler);
+  }
+
+  // Add method to handle incoming messages manually
+  handleIncomingMessage(message: any) {
+    const { type, payload } = message;
+    const handler = this.proxyIncomingMessageHandlers.get(type);
+    if (handler) {
+      handler(payload);
+    }
+  }
+
+  render(model: TModel): React.ReactNode {
     throw new Error('ProxyStateMachine does not support rendering');
   }
 
-  override useViewStateMachine(initialModel: TModel) {
+  useViewStateMachine(initialModel: TModel) {
     throw new Error('ProxyStateMachine does not support useViewStateMachine');
+    return {} as any; // This line will never be reached due to the throw
   }
 
-  override compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
+  compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
     throw new Error('ProxyStateMachine does not support compose');
   }
 
-  // should we support this for traceability?
-  override synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel> {
+  synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel> {
     throw new Error('ProxyStateMachine does not support synchronizeWithTome');
+  }
+
+  withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel> {
+    this.registerIncomingHandler(stateName, handler);
+    return this;
   }
 }
 

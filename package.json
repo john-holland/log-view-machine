@@ -1,40 +1,33 @@
 {
-  "name": "fish-burger-example",
+  "name": "log-view-machine-workspace",
   "version": "1.0.0",
-  "description": "Fish Burger example using ViewStateMachine package",
-  "main": "src/index.tsx",
+  "description": "Log View Machine - A powerful state machine library with examples",
+  "private": true,
+  "workspaces": [
+    "log-view-machine",
+    "example/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint src --ext .ts,.tsx"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.0",
-    "@xstate/react": "^3.0.0",
-    "xstate": "^4.0.0",
-    "log-view-machine": "file:../log-view-machine"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "eslint": "^8.0.0",
-    "eslint-plugin-react": "^7.0.0",
-    "typescript": "^5.0.0",
-    "vite": "^4.0.0"
+    "build": "npm run build --workspace=log-view-machine",
+    "test": "npm run test --workspace=log-view-machine",
+    "dev": "npm run dev --workspace=log-view-machine"
   },
   "keywords": [
-    "viewstatemachine",
+    "state-machine",
     "xstate",
     "react",
     "typescript",
-    "example"
+    "fluent-api",
+    "examples"
   ],
   "author": "ViewStateMachine Team",
-  "license": "MIT"
-}
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/viewstatemachine/log-view-machine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/viewstatemachine/log-view-machine/issues"
+  },
+  "homepage": "https://github.com/viewstatemachine/log-view-machine#readme"
+} 

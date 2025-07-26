@@ -2,6 +2,7 @@
 export { 
   ViewStateMachine, 
   createViewStateMachine,
+  createProxyRobotCopyStateMachine,
   type ViewStateMachineConfig,
   type StateContext,
   type StateHandler
