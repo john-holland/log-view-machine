@@ -3,6 +3,14 @@ import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
 import { RobotCopy } from './RobotCopy';
 
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  level: string;
+  message: string;
+  metadata?: any;
+}
+
 // Types for the fluent API
 export type StateContext<TModel = any> = {
   state: string;
@@ -38,6 +46,7 @@ export type ViewStateMachineConfig<TModel = any> = {
 export class ViewStateMachine<TModel = any> {
   private machine: any;
   private stateHandlers: Map<string, StateHandler<TModel>>;
+  private serverStateHandlers: Map<string, (context: ServerStateContext<TModel>) => void> = new Map();
   private viewStack: React.ReactNode[] = [];
   private logEntries: any[] = [];
   private tomeConfig?: any;
@@ -282,6 +291,16 @@ export class ViewStateMachine<TModel = any> {
       subMachine: context.subMachine,
       getSubMachine: context.getSubMachine
     };
+  }
+
+  // Event subscription methods for TomeConnector
+  on(eventType: string, handler: (event: any) => void): void {
+    this.machine.on(eventType, handler);
+  }
+
+  // Direct send method for TomeConnector
+  send(event: any): void {
+    this.machine.send(event);
   }
 
   async executeServerState(stateName: string, model: TModel): Promise<string> {

@@ -1,0 +1,62 @@
+{
+  "id": "fish-burger-component",
+  "name": "Fish Burger Component",
+  "description": "Interactive fish burger ordering component",
+  "type": "fish-burger",
+  "semanticVersions": [
+    "1.0.0",
+    "1.1.0"
+  ],
+  "template": "\n              <div class=\"fish-burger-component\" data-component-id=\"{{componentId}}\">\n                <div class=\"burger-builder\">\n                  <h3>Build Your Fish Burger</h3>\n                  <div class=\"ingredients\">\n                    <div class=\"ingredient\" data-ingredient=\"bun\">Bun</div>\n                    <div class=\"ingredient\" data-ingredient=\"fish\">Fish Patty</div>\n                    <div class=\"ingredient\" data-ingredient=\"lettuce\">Lettuce</div>\n                    <div class=\"ingredient\" data-ingredient=\"tomato\">Tomato</div>\n                    <div class=\"ingredient\" data-ingredient=\"cheese\">Cheese</div>\n                  </div>\n                  <div class=\"burger-preview\">\n                    <div class=\"burger-stack\"></div>\n                  </div>\n                  <button class=\"order-btn\">Order Now</button>\n                </div>\n              </div>\n            ",
+  "styles": "\n              .fish-burger-component {\n                padding: 20px;\n                border: 2px solid #007bff;\n                border-radius: 8px;\n                background: #f8f9fa;\n              }\n              .burger-builder {\n                text-align: center;\n              }\n              .ingredients {\n                display: flex;\n                justify-content: center;\n                gap: 10px;\n                margin: 20px 0;\n              }\n              .ingredient {\n                padding: 8px 16px;\n                border: 1px solid #ddd;\n                border-radius: 4px;\n                cursor: pointer;\n                background: white;\n              }\n              .ingredient:hover {\n                background: #e9ecef;\n              }\n              .burger-preview {\n                margin: 20px 0;\n                min-height: 100px;\n                border: 1px dashed #ccc;\n                display: flex;\n                align-items: center;\n                justify-content: center;\n              }\n              .order-btn {\n                padding: 10px 20px;\n                background: #007bff;\n                color: white;\n                border: none;\n                border-radius: 4px;\n                cursor: pointer;\n              }\n              .order-btn:hover {\n                background: #0056b3;\n              }\n            ",
+  "stateMachine": {
+    "id": "fish-burger-state",
+    "name": "Fish Burger State Machine",
+    "config": {
+      "id": "fishBurgerState",
+      "initial": "idle",
+      "states": {
+        "idle": {
+          "on": {
+            "START_BUILDING": "building"
+          }
+        },
+        "building": {
+          "on": {
+            "ADD_INGREDIENT": "building",
+            "COMPLETE_BUILD": "ready"
+          }
+        },
+        "ready": {
+          "on": {
+            "ORDER": "ordering",
+            "MODIFY": "building"
+          }
+        },
+        "ordering": {
+          "on": {
+            "CONFIRM": "confirmed",
+            "CANCEL": "ready"
+          }
+        },
+        "confirmed": {
+          "on": {
+            "RESET": "idle"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "author": "Fish Burger Team",
+    "created": "2025-08-02T22:06:29.345Z",
+    "tags": [
+      "food",
+      "interactive",
+      "burger"
+    ],
+    "isFishBurger": true
+  },
+  "lastModified": "2025-08-02T22:06:29.347Z",
+  "source": "local"
+}

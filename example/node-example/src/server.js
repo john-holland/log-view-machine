@@ -20,6 +20,7 @@ import { createStateMachines } from './machines/state-machines.js';
 import { setupWebSocketServer } from './websocket/server.js';
 import { setupMiddleware } from './middleware/index.js';
 import { setupRoutes } from './routes/index.js';
+import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
 
 // Load environment variables
 dotenv.config();
@@ -149,6 +150,26 @@ apolloServer.applyMiddleware({ app, path: '/graphql' });
 
 // Setup REST routes
 setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, logger);
+
+// TeleportHQ demo endpoint
+app.get('/api/teleporthq/demo', async (req, res) => {
+  try {
+    logger.info('Running TeleportHQ demo...');
+    await runTeleportHQDemo();
+    res.json({
+      success: true,
+      message: 'TeleportHQ demo completed successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('TeleportHQ demo failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Create HTTP server
 const server = createServer(app);

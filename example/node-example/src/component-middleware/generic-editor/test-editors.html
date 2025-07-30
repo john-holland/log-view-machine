@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-javascript.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-css.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .editor-container {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .editor-label {
+            background: #f8f9fa;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+        }
+        #css-editor, #js-editor, #json-editor {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Editor Test</h1>
+    
+    <div class="editor-container">
+        <div class="editor-label">CSS Editor</div>
+        <div id="css-editor"></div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-label">JavaScript Editor</div>
+        <div id="js-editor"></div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-label">JSON Editor</div>
+        <div id="json-editor"></div>
+    </div>
+    
+    <script>
+        // Initialize Ace editors
+        const cssEditor = ace.edit('css-editor');
+        cssEditor.setTheme('ace/theme/monokai');
+        cssEditor.session.setMode('ace/mode/css');
+        cssEditor.setValue('/* CSS styles will appear here */\nbody {\n  font-family: Arial, sans-serif;\n}');
+        
+        const jsEditor = ace.edit('js-editor');
+        jsEditor.setTheme('ace/theme/monokai');
+        jsEditor.session.setMode('ace/mode/javascript');
+        jsEditor.setValue('// JavaScript code will appear here\nfunction test() {\n  console.log("Hello World");\n}');
+        
+        const jsonEditor = ace.edit('json-editor');
+        jsonEditor.setTheme('ace/theme/monokai');
+        jsonEditor.session.setMode('ace/mode/json');
+        jsonEditor.setValue('{\n  "name": "test",\n  "version": "1.0.0"\n}');
+        
+        console.log('Editors initialized:', { css: cssEditor, js: jsEditor, json: jsonEditor });
+    </script>
+</body>
+</html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-javascript.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-css.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .editor-container {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .editor-label {
+            background: #f8f9fa;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+        }
+        #css-editor, #js-editor, #json-editor {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Editor Test</h1>
+    
+    <div class="editor-container">
+        <div class="editor-label">CSS Editor</div>
+        <div id="css-editor"></div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-label">JavaScript Editor</div>
+        <div id="js-editor"></div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-label">JSON Editor</div>
+        <div id="json-editor"></div>
+    </div>
+    
+    <script>
+        // Initialize Ace editors
+        const cssEditor = ace.edit('css-editor');
+        cssEditor.setTheme('ace/theme/monokai');
+        cssEditor.session.setMode('ace/mode/css');
+        cssEditor.setValue('/* CSS styles will appear here */\nbody {\n  font-family: Arial, sans-serif;\n}');
+        
+        const jsEditor = ace.edit('js-editor');
+        jsEditor.setTheme('ace/theme/monokai');
+        jsEditor.session.setMode('ace/mode/javascript');
+        jsEditor.setValue('// JavaScript code will appear here\nfunction test() {\n  console.log("Hello World");\n}');
+        
+        const jsonEditor = ace.edit('json-editor');
+        jsonEditor.setTheme('ace/theme/monokai');
+        jsonEditor.session.setMode('ace/mode/json');
+        jsonEditor.setValue('{\n  "name": "test",\n  "version": "1.0.0"\n}');
+        
+        console.log('Editors initialized:', { css: cssEditor, js: jsEditor, json: jsonEditor });
+    </script>
+</body>
+</html> 

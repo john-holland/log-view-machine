@@ -258,6 +258,10 @@ const messageTracker = new MessageTracker();
 const app = express();
 app.use(express.json());
 
+// Serve static files
+app.use(express.static('src'));
+app.use('/src', express.static('src'));
+
 // Middleware to extract trace context
 app.use((req, res, next) => {
   const traceId = req.headers['x-trace-id'] || uuidv4();

@@ -1,0 +1,55 @@
+{
+  "id": "blank-component",
+  "name": "Blank Component",
+  "description": "Default blank component - start here",
+  "type": "blank",
+  "semanticVersions": [
+    "1.0.0"
+  ],
+  "template": "<div class=\"blank-component\" data-component-id=\"{{componentId}}\"><!-- Start building here --></div>",
+  "styles": "\n          .blank-component { \n            min-height: 200px; \n            border: 2px dashed #ccc; \n            padding: 20px;\n            text-align: center;\n            color: #666;\n            background: #f9f9f9;\n          }\n          .blank-component:hover {\n            border-color: #007bff;\n            background: #f0f8ff;\n          }\n        ",
+  "stateMachine": {
+    "id": "blank-state",
+    "name": "Blank Component State Machine",
+    "config": {
+      "id": "blankState",
+      "initial": "empty",
+      "states": {
+        "empty": {
+          "on": {
+            "START_BUILDING": "building"
+          }
+        },
+        "building": {
+          "on": {
+            "SAVE": "saved",
+            "RESET": "empty"
+          }
+        },
+        "saved": {
+          "on": {
+            "EDIT": "building",
+            "PUBLISH": "published"
+          }
+        },
+        "published": {
+          "on": {
+            "UNPUBLISH": "saved"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "author": "System",
+    "created": "2025-08-02T22:06:29.345Z",
+    "tags": [
+      "default",
+      "blank",
+      "starter"
+    ],
+    "isDefault": true
+  },
+  "lastModified": "2025-08-02T22:15:29.014Z",
+  "source": "local"
+}

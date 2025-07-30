@@ -1,0 +1,557 @@
+/**
+ * Generic Editor Template Styles
+ * 
+ * CSS definitions for the main generic editor template component.
+ */
+
+/* Generic Editor Container */
+.generic-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* Editor Header */
+.generic-editor .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 1001;
+  position: relative;
+}
+
+.generic-editor .editor-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.generic-editor .editor-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.generic-editor .editor-controls button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.generic-editor .editor-controls button:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+/* Editor Tabs */
+.generic-editor .editor-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0 20px;
+}
+
+.generic-editor .editor-tabs button {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.generic-editor .editor-tabs button:hover {
+  color: #333;
+  background: #f8f9fa;
+}
+
+.generic-editor .editor-tabs button.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: #f0f4ff;
+}
+
+/* Editor Content */
+.generic-editor .editor-content {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  grid-template-rows: 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Panel */
+.generic-editor .left-panel {
+  background: #f8f9fa;
+  border-right: 1px solid #e0e0e0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Right Panel */
+.generic-editor .right-panel {
+  background: #f8f9fa;
+  border-left: 1px solid #e0e0e0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Panel Grabbers */
+.generic-editor .panel-grabber {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: #e0e0e0;
+  cursor: col-resize;
+  z-index: 1000;
+  transition: background-color 0.2s;
+}
+
+.generic-editor .panel-grabber:hover {
+  background: #667eea;
+}
+
+.generic-editor .panel-grabber.left {
+  right: 0;
+}
+
+.generic-editor .panel-grabber.right {
+  left: 0;
+}
+
+.generic-editor .panel-grabber.dragging {
+  background: #667eea;
+  width: 6px;
+}
+
+/* Main Editor */
+.generic-editor .main-editor {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Canvas Container */
+.generic-editor .canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #f8f9fa;
+}
+
+/* SunEditor Wrapper */
+.generic-editor .sun-editor-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-origin: center;
+  transition: transform 0.1s ease-out;
+}
+
+.generic-editor .sun-editor-wrapper.dragging {
+  cursor: grabbing;
+}
+
+/* Editor Panels */
+.generic-editor .editor-panel {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+.generic-editor .editor-panel.active {
+  display: block;
+}
+
+/* Component Library Panel */
+.generic-editor .component-library-panel {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Preview Panel */
+.generic-editor .preview-panel {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+}
+
+.generic-editor .preview-panel h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.generic-editor #preview-content {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  min-height: 200px;
+}
+
+/* Canvas Controls */
+.generic-editor .canvas-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+
+.generic-editor .canvas-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.generic-editor .canvas-btn:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+.generic-editor .zoom-level {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+}
+
+/* Gesture Indicator */
+.generic-editor .gesture-indicator {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+}
+
+/* SubView Navigation */
+.generic-editor .subview-navigation {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.generic-editor .subview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.generic-editor .subview-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.generic-editor .add-subview-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #667eea;
+  border-radius: 4px;
+  background: #667eea;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.generic-editor .add-subview-btn:hover {
+  background: #5a6fd8;
+  border-color: #5a6fd8;
+}
+
+.generic-editor .subview-selector {
+  margin-bottom: 12px;
+}
+
+.generic-editor .subview-selector select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.generic-editor .subview-selector select:focus {
+  border-color: #667eea;
+}
+
+.generic-editor .subview-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.generic-editor .subview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.generic-editor .subview-item:hover {
+  background: #f0f4ff;
+  border-color: #667eea;
+}
+
+.generic-editor .subview-item.active {
+  background: #667eea;
+  color: #fff;
+  border-color: #667eea;
+}
+
+.generic-editor .subview-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.generic-editor .subview-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.generic-editor .subview-file {
+  font-size: 12px;
+  color: #666;
+  opacity: 0.8;
+}
+
+.generic-editor .subview-item.active .subview-file {
+  color: #fff;
+  opacity: 0.9;
+}
+
+.generic-editor .subview-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.generic-editor .subview-item:hover .subview-actions {
+  opacity: 1;
+}
+
+.generic-editor .subview-actions button {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.generic-editor .subview-actions button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.generic-editor .subview-actions .delete-btn:hover {
+  background: #ff4444;
+  color: #fff;
+}
+
+.generic-editor .subview-item.active .subview-actions button {
+  color: #fff;
+}
+
+.generic-editor .subview-item.active .subview-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* SunEditor Container for SubViews */
+.generic-editor .sun-editor-container {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  display: none;
+}
+
+.generic-editor .sun-editor-container.active {
+  display: block;
+}
+
+/* Welcome Message */
+.generic-editor .welcome-message {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+.generic-editor .welcome-message h3 {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.generic-editor .welcome-message p {
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.generic-editor .welcome-message ul {
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+  padding-left: 20px;
+}
+
+.generic-editor .welcome-message li {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+/* Loading State */
+.generic-editor.loading .loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Saving State */
+.generic-editor.saving .saving-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Error State */
+.generic-editor.error .error-message {
+  padding: 20px;
+  text-align: center;
+  color: #d32f2f;
+}
+
+.generic-editor.error .error-message p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.generic-editor.error .error-message button {
+  padding: 8px 16px;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  background: #fff;
+  color: #d32f2f;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.generic-editor.error .error-message button:hover {
+  background: #d32f2f;
+  color: #fff;
+}
+
+/* Library State */
+.generic-editor.library .library-content {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .generic-editor .editor-content {
+    grid-template-columns: 200px 1fr 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .generic-editor .editor-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  
+  .generic-editor .left-panel,
+  .generic-editor .right-panel {
+    display: none;
+  }
+  
+  .generic-editor .editor-header {
+    padding: 12px 16px;
+  }
+  
+  .generic-editor .editor-header h2 {
+    font-size: 18px;
+  }
+  
+  .generic-editor .editor-controls button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .generic-editor .editor-tabs {
+    padding: 0 16px;
+  }
+  
+  .generic-editor .editor-tabs button {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+} 

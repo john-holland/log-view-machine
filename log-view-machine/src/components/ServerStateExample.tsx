@@ -210,13 +210,11 @@ const ServerStateExample: React.FC = () => {
 
     send({
       type: 'START_ORDER',
-      data: {
-        orderId,
-        customer,
-        items,
-        total,
-        status: 'processing',
-      },
+      orderId,
+      customer,
+      items,
+      total,
+      status: 'processing',
     });
   };
 
@@ -253,10 +251,8 @@ const ServerStateExample: React.FC = () => {
 
       send({
         type: 'SERVER_RENDER',
-        data: {
-          serverRenderedHtml: serverHtml,
-          status: result.status,
-        },
+        serverRenderedHtml: serverHtml,
+        status: result.status,
       });
     } catch (error) {
       console.error('Error in server render:', error);
@@ -273,10 +269,8 @@ const ServerStateExample: React.FC = () => {
 
       send({
         type: 'CLIENT_UPDATE',
-        data: {
-          clientState: 'updated',
-          status: 'client_processed',
-        },
+        clientState: 'updated',
+        status: 'client_processed',
       });
     } catch (error) {
       console.error('Error in client update:', error);
@@ -292,9 +286,7 @@ const ServerStateExample: React.FC = () => {
 
       send({
         type: 'COMPLETE_ORDER',
-        data: {
-          status: 'completed',
-        },
+        status: 'completed',
       });
     } catch (error) {
       console.error('Error completing order:', error);
@@ -403,7 +395,7 @@ const ServerStateExample: React.FC = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .server-state-example {
           padding: 20px;
           max-width: 1200px;

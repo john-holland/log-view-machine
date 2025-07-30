@@ -1,0 +1,377 @@
+/**
+ * Component Library Template Styles
+ * 
+ * CSS definitions for the component library template component.
+ */
+
+/* Component Library Container */
+.component-library {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Library Header */
+.component-library .library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.component-library .library-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.component-library .library-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.component-library .library-controls button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.component-library .library-controls button:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+/* Search Bar */
+.component-library .search-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.component-library .search-bar input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.component-library .search-bar input:focus {
+  border-color: #667eea;
+}
+
+.component-library .search-bar input::placeholder {
+  color: #999;
+}
+
+/* Component List */
+.component-library .component-list {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+/* Component Item */
+.component-library .component-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.component-library .component-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+}
+
+.component-library .component-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.component-library .component-item.drag-over {
+  border-color: #4caf50;
+  background: #f0f8f0;
+}
+
+/* Component Icon */
+.component-library .component-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  background: #667eea;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+}
+
+/* Component Info */
+.component-library .component-info {
+  flex: 1;
+}
+
+.component-library .component-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.component-library .component-description {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Component Actions */
+.component-library .component-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.component-library .component-item:hover .component-actions {
+  opacity: 1;
+}
+
+.component-library .component-actions button {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.component-library .component-actions button:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+/* Filter Controls */
+.component-library .filter-controls {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.component-library .filter-controls select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  outline: none;
+}
+
+.component-library .filter-controls button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.component-library .filter-controls button:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+/* Selection Mode */
+.component-library .selection-mode {
+  padding: 12px 16px;
+  background: #e3f2fd;
+  border-bottom: 1px solid #2196f3;
+  text-align: center;
+}
+
+.component-library .selection-mode p {
+  margin: 0 0 8px 0;
+  color: #1976d2;
+  font-size: 14px;
+}
+
+.component-library .selection-mode button {
+  padding: 6px 12px;
+  border: 1px solid #2196f3;
+  border-radius: 4px;
+  background: #fff;
+  color: #2196f3;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.component-library .selection-mode button:hover {
+  background: #2196f3;
+  color: #fff;
+}
+
+/* Drag Indicator */
+.component-library .drag-indicator {
+  padding: 12px 16px;
+  background: #fff3e0;
+  border-bottom: 1px solid #ff9800;
+  text-align: center;
+}
+
+.component-library .drag-indicator p {
+  margin: 0;
+  color: #e65100;
+  font-size: 14px;
+}
+
+/* Search Results */
+.component-library .search-results {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+/* Loading Spinner */
+.component-library .loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Drop Indicator */
+.component-library .drop-indicator {
+  padding: 12px 16px;
+  background: #e8f5e8;
+  border-bottom: 1px solid #4caf50;
+  text-align: center;
+}
+
+.component-library .drop-indicator p {
+  margin: 0;
+  color: #2e7d32;
+  font-size: 14px;
+}
+
+/* Error State */
+.component-library.error .error-message {
+  padding: 20px;
+  text-align: center;
+  color: #d32f2f;
+}
+
+.component-library.error .error-message p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.component-library.error .error-message button {
+  padding: 8px 16px;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  background: #fff;
+  color: #d32f2f;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.component-library.error .error-message button:hover {
+  background: #d32f2f;
+  color: #fff;
+}
+
+/* State-specific styling */
+.component-library.searching .search-bar input {
+  background: #fff3e0;
+  border-color: #ff9800;
+}
+
+.component-library.filtering .filter-controls {
+  background: #e8f5e8;
+  border-bottom-color: #4caf50;
+}
+
+.component-library.selecting .component-item {
+  border-color: #2196f3;
+}
+
+.component-library.selecting .component-item:hover {
+  background: #e3f2fd;
+}
+
+.component-library.dragging .component-item {
+  cursor: grabbing;
+}
+
+.component-library.dropping .drop-indicator {
+  background: #e8f5e8;
+  border-bottom-color: #4caf50;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .component-library .library-header {
+    padding: 8px 12px;
+  }
+  
+  .component-library .library-header h3 {
+    font-size: 14px;
+  }
+  
+  .component-library .library-controls button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .component-library .component-item {
+    padding: 8px;
+  }
+  
+  .component-library .component-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  
+  .component-library .component-name {
+    font-size: 14px;
+  }
+  
+  .component-library .component-description {
+    font-size: 11px;
+  }
+} 

@@ -1,4 +1,5 @@
 import { ViewStateMachine } from './ViewStateMachine';
+import { Tracing, createTracing, MessageMetadata } from './Tracing';
 
 export interface RobotCopyConfig {
   unleashUrl?: string;
@@ -11,20 +12,9 @@ export interface RobotCopyConfig {
   enableDataDog?: boolean;
 }
 
-export interface MessageMetadata {
-  messageId: string;
-  traceId: string;
-  spanId: string;
-  timestamp: string;
-  backend: 'kotlin' | 'node';
-  action: string;
-  data?: any;
-}
-
 export class RobotCopy {
   private config: RobotCopyConfig;
-  private messageHistory: Map<string, MessageMetadata> = new Map();
-  private traceMap: Map<string, string[]> = new Map();
+  private tracing: Tracing;
   private unleashToggles: Map<string, boolean> = new Map();
 
   constructor(config: RobotCopyConfig = {}) {
@@ -40,6 +30,7 @@ export class RobotCopy {
       ...config,
     };
 
+    this.tracing = createTracing();
     this.initializeUnleashToggles();
   }
 
@@ -67,56 +58,31 @@ export class RobotCopy {
   }
 
   generateMessageId(): string {
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return this.tracing.generateMessageId();
   }
 
   generateTraceId(): string {
-    return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return this.tracing.generateTraceId();
   }
 
   generateSpanId(): string {
-    return `span_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return this.tracing.generateSpanId();
   }
 
   trackMessage(messageId: string, traceId: string, spanId: string, metadata: Partial<MessageMetadata>): MessageMetadata {
-    const message: MessageMetadata = {
-      messageId,
-      traceId,
-      spanId,
-      timestamp: new Date().toISOString(),
-      backend: metadata.backend || 'node',
-      action: metadata.action || 'unknown',
-      data: metadata.data,
-    };
-
-    this.messageHistory.set(messageId, message);
-
-    if (!this.traceMap.has(traceId)) {
-      this.traceMap.set(traceId, []);
-    }
-    this.traceMap.get(traceId)!.push(messageId);
-
-    return message;
+    return this.tracing.trackMessage(messageId, traceId, spanId, metadata);
   }
 
   getMessage(messageId: string): MessageMetadata | undefined {
-    return this.messageHistory.get(messageId);
+    return this.tracing.getMessage(messageId);
   }
 
   getTraceMessages(traceId: string): MessageMetadata[] {
-    const messageIds = this.traceMap.get(traceId) || [];
-    return messageIds.map(id => this.messageHistory.get(id)).filter(Boolean) as MessageMetadata[];
+    return this.tracing.getTraceMessages(traceId);
   }
 
   getFullTrace(traceId: string) {
-    const messages = this.getTraceMessages(traceId);
-    return {
-      traceId,
-      messages,
-      startTime: messages[0]?.timestamp,
-      endTime: messages[messages.length - 1]?.timestamp,
-      backend: messages[0]?.backend,
-    };
+    return this.tracing.getFullTrace(traceId);
   }
 
   async sendMessage(action: string, data: any = {}): Promise<any> {
@@ -136,17 +102,8 @@ export class RobotCopy {
     // Prepare headers for tracing
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-trace-id': traceId,
-      'x-span-id': spanId,
-      'x-message-id': messageId,
+      ...this.tracing.createTracingHeaders(traceId, spanId, messageId, await this.isEnabled('enable-datadog')),
     };
-
-    // Add DataDog headers if enabled
-    if (await this.isEnabled('enable-datadog')) {
-      headers['x-datadog-trace-id'] = traceId;
-      headers['x-datadog-parent-id'] = spanId;
-      headers['x-datadog-sampling-priority'] = '1';
-    }
 
     try {
       const response = await fetch(`${backendUrl}/api/fish-burger/${action}`, {
@@ -208,6 +165,24 @@ export class RobotCopy {
     return this.sendMessage('complete', { orderId });
   }
 
+  // Integration with ViewStateMachine
+  integrateWithViewStateMachine(viewStateMachine: any): RobotCopy {
+    // Register message handlers for ViewStateMachine
+    viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message: any) => {
+      return this.startCooking(message.orderId, message.ingredients);
+    });
+
+    viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message: any) => {
+      return this.updateProgress(message.orderId, message.cookingTime, message.temperature);
+    });
+
+    viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message: any) => {
+      return this.completeCooking(message.orderId);
+    });
+
+    return this;
+  }
+
   async getTrace(traceId: string): Promise<any> {
     const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
@@ -240,36 +215,19 @@ export class RobotCopy {
     }
   }
 
-  // Integration with ViewStateMachine
-  integrateWithViewStateMachine(viewStateMachine: ViewStateMachine<any>): RobotCopy {
-    // Register message handlers for ViewStateMachine
-    viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message) => {
-      return this.startCooking(message.data.orderId, message.data.ingredients);
-    });
 
-    viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message) => {
-      return this.updateProgress(message.data.orderId, message.data.cookingTime, message.data.temperature);
-    });
-
-    viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message) => {
-      return this.completeCooking(message.data.orderId);
-    });
-
-    return this;
-  }
 
   // Debugging and monitoring methods
   getMessageHistory(): MessageMetadata[] {
-    return Array.from(this.messageHistory.values());
+    return this.tracing.getMessageHistory();
   }
 
   getTraceIds(): string[] {
-    return Array.from(this.traceMap.keys());
+    return this.tracing.getTraceIds();
   }
 
   clearHistory(): void {
-    this.messageHistory.clear();
-    this.traceMap.clear();
+    this.tracing.clearHistory();
   }
 
   // Configuration methods
@@ -279,6 +237,13 @@ export class RobotCopy {
 
   getConfig(): RobotCopyConfig {
     return { ...this.config };
+  }
+
+  // Response handling
+  onResponse(channel: string, handler: (response: any) => void): void {
+    // This would be implemented to handle incoming responses
+    // For now, we'll just store the handler for future use
+    console.log(`Registered response handler for channel: ${channel}`);
   }
 }
 

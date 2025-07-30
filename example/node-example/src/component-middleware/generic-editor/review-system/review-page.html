@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dotCMS Review System</title>
+    <style>
+        /* Review Page Styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+        }
+
+        .review-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .review-header {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .review-header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .review-header p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .admin-badge {
+            background: #dc3545;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .review-filters {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-controls select,
+        .filter-controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-controls button {
+            padding: 8px 16px;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            background: #667eea;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .filter-controls button:hover {
+            background: #5a6fd8;
+        }
+
+        .review-list {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .review-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .review-item:hover {
+            background: #f8f9fa;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .review-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .review-item-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .review-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-in_review { background: #d1ecf1; color: #0c5460; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+        .status-pending_admin_approval { background: #e2e3e5; color: #383d41; }
+
+        .review-item-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .review-item-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .review-item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .review-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .review-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .review-btn.primary {
+            background: #667eea;
+            color: #fff;
+            border-color: #667eea;
+        }
+
+        .review-btn.primary:hover {
+            background: #5a6fd8;
+        }
+
+        .review-btn.danger {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
+        .review-btn.danger:hover {
+            background: #c82333;
+        }
+
+        .review-btn.decline {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
+        .review-btn.decline:hover {
+            background: #c82333;
+        }
+
+        .review-btn.suggest {
+            background: #ffc107;
+            color: #212529;
+            border-color: #ffc107;
+        }
+
+        .review-btn.suggest:hover {
+            background: #e0a800;
+        }
+
+        .diff-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .review-options {
+            display: flex;
+            align-items: center;
+        }
+
+        .major-version-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .major-version-checkbox input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .review-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .diff-modal-btn.decline {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
+        .diff-modal-btn.decline:hover {
+            background: #c82333;
+        }
+
+        .diff-modal-btn.suggest {
+            background: #ffc107;
+            color: #212529;
+            border-color: #ffc107;
+        }
+
+        .diff-modal-btn.suggest:hover {
+            background: #e0a800;
+        }
+
+        /* Diff Modal Styles */
+        .diff-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .diff-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .diff-modal-content {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 1000px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .diff-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .diff-modal-header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .diff-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .diff-modal-body {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .diff-content {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow: auto;
+        }
+
+        .diff-line {
+            padding: 2px 0;
+            white-space: pre-wrap;
+        }
+
+        .diff-line.addition {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .diff-line.deletion {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .diff-line.modification {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .diff-line-number {
+            color: #999;
+            margin-right: 10px;
+            user-select: none;
+        }
+
+        .diff-modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .diff-modal-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .diff-modal-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .diff-modal-btn.approve {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+        }
+
+        .diff-modal-btn.approve:hover {
+            background: #218838;
+        }
+
+        .diff-modal-btn.reject {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
+        .diff-modal-btn.reject:hover {
+            background: #c82333;
+        }
+
+        /* Review Form Styles */
+        .review-form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .review-form h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .review-container {
+                padding: 10px;
+            }
+
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .review-item-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .diff-modal-content {
+                width: 95%;
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="review-container">
+        <!-- Review Header -->
+        <div class="review-header">
+            <h1>
+                dotCMS Review System
+                <span class="admin-badge" id="admin-badge" style="display: none;">ADMIN</span>
+            </h1>
+            <p>Review and approve changes before publishing to prevent mistakes</p>
+        </div>
+
+        <!-- Review Filters -->
+        <div class="review-filters">
+            <div class="filter-controls">
+                <select id="status-filter">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_review">In Review</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="pending_admin_approval">Pending Admin Approval</option>
+                </select>
+                <input type="text" id="search-filter" placeholder="Search reviews...">
+                <button onclick="filterReviews()">Filter</button>
+                <button onclick="createNewReview()" class="primary">Create Review</button>
+                <button onclick="updateReviewSettings()" class="admin-only" style="display: none;">⚙️ Review Settings</button>
+            </div>
+        </div>
+
+        <!-- Review List -->
+        <div class="review-list" id="review-list">
+            <!-- Reviews will be dynamically loaded here -->
+        </div>
+
+        <!-- Create Review Form -->
+        <div class="review-form" id="create-review-form" style="display: none;">
+            <h3>Create New Review</h3>
+            <div class="form-group">
+                <label for="review-name">Review Name</label>
+                <input type="text" id="review-name" placeholder="Enter review name">
+            </div>
+            <div class="form-group">
+                <label for="review-description">Description</label>
+                <textarea id="review-description" placeholder="Enter review description"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="review-reviewers">Reviewers (comma-separated)</label>
+                <input type="text" id="review-reviewers" placeholder="user1, user2, user3">
+            </div>
+            <div class="form-group">
+                <label for="review-admin-only">
+                    <input type="checkbox" id="review-admin-only"> Admin Only
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="review-requires-admin">
+                    <input type="checkbox" id="review-requires-admin"> Requires Admin Approval
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="review-original">Original Content</label>
+                <textarea id="review-original" placeholder="Enter original content"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="review-modified">Modified Content</label>
+                <textarea id="review-modified" placeholder="Enter modified content"></textarea>
+            </div>
+            <div class="form-actions">
+                <button onclick="cancelCreateReview()">Cancel</button>
+                <button onclick="submitCreateReview()" class="primary">Create Review</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diff Modal -->
+    <div class="diff-modal" id="diff-modal">
+        <div class="diff-modal-content">
+            <div class="diff-modal-header">
+                <h2 id="diff-modal-title">Review Changes</h2>
+                <button class="diff-modal-close" onclick="closeDiffModal()">&times;</button>
+            </div>
+            <div class="diff-modal-body">
+                <div class="diff-content" id="diff-content">
+                    <!-- Diff content will be loaded here -->
+                </div>
+            </div>
+            <div class="diff-modal-footer">
+                <div class="review-options">
+                    <label class="major-version-checkbox">
+                        <input type="checkbox" id="increment-major-version">
+                        Increment Major revision if approved and published
+                    </label>
+                </div>
+                <div class="review-actions">
+                    <button class="diff-modal-btn" onclick="closeDiffModal()">Close</button>
+                    <button class="diff-modal-btn decline" onclick="declineReview()">Decline</button>
+                    <button class="diff-modal-btn suggest" onclick="suggestChanges()">Suggest Changes</button>
+                    <button class="diff-modal-btn approve" onclick="approveReview()">Approve</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Review Manager Integration
+        let reviewManager = null;
+        let currentUser = 'user';
+        let selectedReview = null;
+
+        // Initialize review system
+        async function initializeReviewSystem() {
+            try {
+                // Import review manager (in production, this would be loaded from dotCMS)
+                const { createReviewManager } = await import('./review-manager.js');
+                reviewManager = createReviewManager();
+                
+                // Set current user (in production, this would come from dotCMS authentication)
+                currentUser = localStorage.getItem('currentUser') || 'user';
+                
+                // Show admin badge if user has admin permissions
+                if (reviewManager.hasAdminPermissions(currentUser)) {
+                    document.getElementById('admin-badge').style.display = 'inline';
+                    document.querySelector('.admin-only').style.display = 'inline-block';
+                }
+                
+                // Load reviews
+                loadReviews();
+                
+                console.log('Review system initialized');
+            } catch (error) {
+                console.error('Failed to initialize review system:', error);
+            }
+        }
+
+        // Load reviews
+        function loadReviews() {
+            const reviews = reviewManager.getAllReviews();
+            displayReviews(reviews);
+        }
+
+        // Display reviews in the list
+        function displayReviews(reviews) {
+            const reviewList = document.getElementById('review-list');
+            reviewList.innerHTML = '';
+
+            if (reviews.length === 0) {
+                reviewList.innerHTML = '<div style="padding: 40px; text-align: center; color: #666;">No reviews found</div>';
+                return;
+            }
+
+            reviews.forEach(review => {
+                const reviewItem = createReviewItem(review);
+                reviewList.appendChild(reviewItem);
+            });
+        }
+
+        // Create review item element
+        function createReviewItem(review) {
+            const item = document.createElement('div');
+            item.className = 'review-item';
+            item.onclick = () => selectReview(review.id);
+
+            const statusClass = `status-${review.status.replace('_', '-')}`;
+            
+            item.innerHTML = `
+                <div class="review-item-header">
+                    <h3 class="review-item-title">${review.name}</h3>
+                    <span class="review-status ${statusClass}">${review.status.replace('_', ' ').toUpperCase()}</span>
+                </div>
+                <div class="review-item-meta">
+                    <span>Created: ${new Date(review.createdAt).toLocaleDateString()}</span>
+                    <span>By: ${review.createdBy}</span>
+                    <span>Reviewers: ${review.reviewers.length}</span>
+                    ${review.adminOnly ? '<span style="color: #dc3545;">ADMIN ONLY</span>' : ''}
+                </div>
+                <div class="review-item-description">${review.description}</div>
+                <div class="review-item-actions">
+                    <button class="review-btn" onclick="event.stopPropagation(); showDiff('${review.id}')">View Diff</button>
+                    ${reviewManager.hasReviewPermissions(currentUser, review.id) ? 
+                        `<button class="review-btn primary" onclick="event.stopPropagation(); submitReview('${review.id}')">Submit Review</button>` : ''}
+                    ${reviewManager.hasAdminPermissions(currentUser) ? 
+                        `<button class="review-btn danger" onclick="event.stopPropagation(); deleteReview('${review.id}')">Delete</button>` : ''}
+                </div>
+            `;
+
+            return item;
+        }
+
+        // Filter reviews
+        function filterReviews() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const searchFilter = document.getElementById('search-filter').value.toLowerCase();
+
+            let reviews = reviewManager.getAllReviews();
+
+            if (statusFilter) {
+                reviews = reviews.filter(review => review.status === statusFilter);
+            }
+
+            if (searchFilter) {
+                reviews = reviews.filter(review => 
+                    review.name.toLowerCase().includes(searchFilter) ||
+                    review.description.toLowerCase().includes(searchFilter)
+                );
+            }
+
+            displayReviews(reviews);
+        }
+
+        // Create new review
+        function createNewReview() {
+            document.getElementById('create-review-form').style.display = 'block';
+        }
+
+        // Cancel create review
+        function cancelCreateReview() {
+            document.getElementById('create-review-form').style.display = 'none';
+            // Clear form
+            document.getElementById('review-name').value = '';
+            document.getElementById('review-description').value = '';
+            document.getElementById('review-reviewers').value = '';
+            document.getElementById('review-admin-only').checked = false;
+            document.getElementById('review-requires-admin').checked = false;
+            document.getElementById('review-original').value = '';
+            document.getElementById('review-modified').value = '';
+        }
+
+        // Submit create review
+        function submitCreateReview() {
+            const name = document.getElementById('review-name').value;
+            const description = document.getElementById('review-description').value;
+            const reviewers = document.getElementById('review-reviewers').value.split(',').map(r => r.trim()).filter(r => r);
+            const adminOnly = document.getElementById('review-admin-only').checked;
+            const requiresAdmin = document.getElementById('review-requires-admin').checked;
+            const original = document.getElementById('review-original').value;
+            const modified = document.getElementById('review-modified').value;
+
+            if (!name || !description || !original || !modified) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            try {
+                const review = reviewManager.createReview({
+                    name,
+                    description,
+                    reviewers,
+                    adminOnly,
+                    requiresAdminApproval: requiresAdmin,
+                    originalContent: original,
+                    modifiedContent: modified,
+                    createdBy: currentUser
+                });
+
+                console.log('Review created:', review);
+                cancelCreateReview();
+                loadReviews();
+            } catch (error) {
+                console.error('Failed to create review:', error);
+                alert('Failed to create review: ' + error.message);
+            }
+        }
+
+        // Select review
+        function selectReview(reviewId) {
+            selectedReview = reviewManager.getReview(reviewId);
+            if (selectedReview) {
+                showDiff(reviewId);
+            }
+        }
+
+        // Show diff modal
+        function showDiff(reviewId) {
+            const review = reviewManager.getReview(reviewId);
+            if (!review) return;
+
+            selectedReview = review;
+            
+            document.getElementById('diff-modal-title').textContent = `Review: ${review.name}`;
+            
+            const diffContent = document.getElementById('diff-content');
+            diffContent.innerHTML = generateDiffHTML(review.diffData);
+            
+            document.getElementById('diff-modal').classList.add('active');
+        }
+
+        // Generate diff HTML
+        function generateDiffHTML(diffData) {
+            let html = '';
+            
+            // Additions
+            diffData.additions.forEach(addition => {
+                html += `<div class="diff-line addition">
+                    <span class="diff-line-number">+${addition.line}</span>${addition.content}
+                </div>`;
+            });
+            
+            // Deletions
+            diffData.deletions.forEach(deletion => {
+                html += `<div class="diff-line deletion">
+                    <span class="diff-line-number">-${deletion.line}</span>${deletion.content}
+                </div>`;
+            });
+            
+            // Modifications
+            diffData.modifications.forEach(modification => {
+                html += `<div class="diff-line modification">
+                    <span class="diff-line-number">~${modification.line}</span>
+                    <div>Original: ${modification.original}</div>
+                    <div>Modified: ${modification.modified}</div>
+                </div>`;
+            });
+            
+            return html || '<div style="color: #666; text-align: center;">No changes detected</div>';
+        }
+
+        // Close diff modal
+        function closeDiffModal() {
+            document.getElementById('diff-modal').classList.remove('active');
+            selectedReview = null;
+        }
+
+        // Decline review - prevents publish
+        function declineReview() {
+            if (!selectedReview) return;
+            
+            const comment = prompt('Please provide a reason for declining:');
+            if (comment === null) return; // User cancelled
+            
+            try {
+                const declinedReview = reviewManager.declineReview(selectedReview.id, currentUser, comment);
+                
+                console.log('Review declined:', declinedReview);
+                closeDiffModal();
+                loadReviews();
+                alert('Review declined. Component cannot be published until review is resolved.');
+            } catch (error) {
+                console.error('Failed to decline review:', error);
+                alert('Failed to decline review: ' + error.message);
+            }
+        }
+
+        // Suggest changes - loads editor for editing
+        function suggestChanges() {
+            if (!selectedReview) return;
+            
+            const suggestions = prompt('Please provide suggestions for changes:');
+            if (suggestions === null) return; // User cancelled
+            
+            try {
+                const suggestedReview = reviewManager.suggestChanges(selectedReview.id, currentUser, suggestions);
+                
+                console.log('Changes suggested:', suggestedReview);
+                closeDiffModal();
+                loadReviews();
+                
+                // Load the component in the editor for editing
+                if (selectedReview.resources && selectedReview.resources.length > 0) {
+                    const resource = selectedReview.resources[0];
+                    loadComponentForEditing(resource.componentId, resource.version);
+                }
+                
+                alert('Changes suggested. Component loaded in editor for modifications.');
+            } catch (error) {
+                console.error('Failed to suggest changes:', error);
+                alert('Failed to suggest changes: ' + error.message);
+            }
+        }
+
+        // Approve review - adds approval
+        function approveReview() {
+            if (!selectedReview) return;
+            
+            const comment = prompt('Please provide approval comment (optional):');
+            if (comment === null) return; // User cancelled
+            
+            try {
+                const approvedReview = reviewManager.approveReview(selectedReview.id, currentUser, comment);
+                
+                console.log('Review approved:', approvedReview);
+                closeDiffModal();
+                loadReviews();
+                
+                // Check if review limit is reached
+                const settings = reviewManager.getReviewSettings();
+                if (approvedReview.approvals && approvedReview.approvals.length >= settings.reviewLimit) {
+                    alert('Review limit reached! Component can now be published.');
+                } else {
+                    alert(`Review approved. ${settings.reviewLimit - (approvedReview.approvals?.length || 0)} more approvals needed.`);
+                }
+            } catch (error) {
+                console.error('Failed to approve review:', error);
+                alert('Failed to approve review: ' + error.message);
+            }
+        }
+
+        // Submit review (general)
+        function submitReview(reviewId) {
+            const status = prompt('Enter review status (approved/rejected/needs_changes):');
+            const comments = prompt('Enter review comments:');
+            
+            if (!status) return;
+            
+            try {
+                const submission = reviewManager.submitReview(reviewId, currentUser, {
+                    status: status.toLowerCase(),
+                    comments: comments || '',
+                    diffApproved: status.toLowerCase() === 'approved'
+                });
+                
+                console.log('Review submitted:', submission);
+                loadReviews();
+            } catch (error) {
+                console.error('Failed to submit review:', error);
+                alert('Failed to submit review: ' + error.message);
+            }
+        }
+
+        // Load component for editing
+        function loadComponentForEditing(componentId, version) {
+            // This would integrate with the main editor
+            console.log(`Loading component ${componentId} version ${version} for editing`);
+            
+            // In a real implementation, this would:
+            // 1. Open the main editor
+            // 2. Load the specific component and version
+            // 3. Allow the user to make changes
+            // 4. Submit a new review with the changes
+            
+            alert(`Component ${componentId} version ${version} would be loaded in the editor for modifications.`);
+        }
+
+        // Check if component can be published
+        function checkPublishStatus(componentId, version) {
+            try {
+                const canPublish = reviewManager.canPublishComponent(componentId, version);
+                const incrementType = reviewManager.getVersionIncrementType(componentId, version, 
+                    document.getElementById('increment-major-version').checked);
+                
+                console.log(`Component ${componentId} version ${version}:`, {
+                    canPublish,
+                    incrementType
+                });
+                
+                return { canPublish, incrementType };
+            } catch (error) {
+                console.error('Failed to check publish status:', error);
+                return { canPublish: false, incrementType: 'revision' };
+            }
+        }
+
+        // Update review settings (admin only)
+        function updateReviewSettings() {
+            if (!reviewManager.hasAdminPermissions(currentUser)) {
+                alert('Admin permissions required to update review settings');
+                return;
+            }
+            
+            const reviewLimit = parseInt(prompt('Enter new review limit (current: ' + reviewManager.getReviewSettings().reviewLimit + '):'));
+            if (isNaN(reviewLimit) || reviewLimit < 1) {
+                alert('Invalid review limit');
+                return;
+            }
+            
+            try {
+                const settings = reviewManager.updateReviewSettings(currentUser, {
+                    reviewLimit: reviewLimit
+                });
+                
+                console.log('Review settings updated:', settings);
+                alert(`Review limit updated to ${settings.reviewLimit}`);
+            } catch (error) {
+                console.error('Failed to update review settings:', error);
+                alert('Failed to update review settings: ' + error.message);
+            }
+        }
+
+        // Delete review (admin only)
+        function deleteReview(reviewId) {
+            if (!confirm('Are you sure you want to delete this review?')) return;
+            
+            try {
+                const deleted = reviewManager.deleteReview(reviewId, currentUser);
+                
+                if (deleted) {
+                    console.log('Review deleted:', reviewId);
+                    loadReviews();
+                } else {
+                    alert('Failed to delete review');
+                }
+            } catch (error) {
+                console.error('Failed to delete review:', error);
+                alert('Failed to delete review: ' + error.message);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initializeReviewSystem);
+    </script>
+</body>
+</html> 

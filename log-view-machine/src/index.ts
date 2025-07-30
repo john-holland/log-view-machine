@@ -8,26 +8,27 @@ export {
   type StateHandler
 } from './core/ViewStateMachine';
 
+// Tracing exports
+export {
+  Tracing,
+  createTracing,
+  type MessageMetadata,
+  type TraceInfo
+} from './core/Tracing';
+
+// TomeConnector exports
+export {
+  TomeConnector,
+  createTomeConnector,
+  type TomeConnection,
+  type TomeConnectionConfig
+} from './core/TomeConnector';
+
 // RobotCopy message broker exports
 export {
   RobotCopy,
   createRobotCopy,
-  type RobotCopyConfig,
-  type RobotCopyMessage,
-  type RobotCopyResponse,
-  type MessageBrokerConfig,
-  type WindowIntercomConfig,
-  type ChromeMessageConfig,
-  type HttpApiConfig,
-  type GraphQLConfig,
-  type RobotCopyDiscovery,
-  type MachineCapabilities,
-  type GraphQLState,
-  type MessageBroker,
-  WindowIntercomBroker,
-  ChromeMessageBroker,
-  HttpApiBroker,
-  GraphQLBroker
+  type RobotCopyConfig
 } from './core/RobotCopy';
 
 // ClientGenerator exports
