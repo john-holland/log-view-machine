@@ -1,475 +1,287 @@
 import { ViewStateMachine } from './ViewStateMachine';
 
-// Message broker configurations
-export interface MessageBrokerConfig {
-  type: 'window-intercom' | 'chrome-message' | 'http-api' | 'graphql';
-  config: WindowIntercomConfig | ChromeMessageConfig | HttpApiConfig | GraphQLConfig;
-}
-
-export interface WindowIntercomConfig {
-  targetOrigin: string;
-  messageType: string;
-  timeout?: number;
-}
-
-export interface ChromeMessageConfig {
-  extensionId?: string;
-  messageType: string;
-  responseTimeout?: number;
-}
-
-export interface HttpApiConfig {
-  baseUrl: string;
-  headers?: Record<string, string>;
-  timeout?: number;
-  retryAttempts?: number;
-}
-
-export interface GraphQLConfig {
-  endpoint: string;
-  headers?: Record<string, string>;
-  timeout?: number;
-  wsEndpoint?: string; // For subscriptions
-}
-
-// RobotCopy configuration
 export interface RobotCopyConfig {
-  machineId: string;
-  description?: string;
-  messageBrokers: MessageBrokerConfig[];
-  autoDiscovery?: boolean;
-  clientSpecification?: ClientSpecification;
+  unleashUrl?: string;
+  unleashClientKey?: string;
+  unleashAppName?: string;
+  unleashEnvironment?: string;
+  kotlinBackendUrl?: string;
+  nodeBackendUrl?: string;
+  enableTracing?: boolean;
+  enableDataDog?: boolean;
 }
 
-export interface ClientSpecification {
-  supportedLanguages: string[];
-  autoGenerateClients: boolean;
-  includeExamples: boolean;
-  includeDocumentation: boolean;
-}
-
-export interface RobotCopyMessage {
-  id: string;
-  type: string;
-  payload: any;
-  timestamp: Date;
-  source: string;
-  target: string;
-  broker: string;
-}
-
-export interface RobotCopyResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-  timestamp: Date;
+export interface MessageMetadata {
   messageId: string;
+  traceId: string;
+  spanId: string;
+  timestamp: string;
+  backend: 'kotlin' | 'node';
+  action: string;
+  data?: any;
 }
 
 export class RobotCopy {
-  private machines: Map<string, ViewStateMachine<any>> = new Map();
-  private configs: Map<string, RobotCopyConfig> = new Map();
-  private messageBrokers: Map<string, MessageBroker> = new Map();
-  private messageQueue: RobotCopyMessage[] = [];
-  private responseHandlers: Map<string, (response: RobotCopyResponse) => void> = new Map();
+  private config: RobotCopyConfig;
+  private messageHistory: Map<string, MessageMetadata> = new Map();
+  private traceMap: Map<string, string[]> = new Map();
+  private unleashToggles: Map<string, boolean> = new Map();
 
-  constructor() {
-    this.initializeDefaultBrokers();
-  }
-
-  private initializeDefaultBrokers(): void {
-    // Initialize default message brokers
-    this.registerMessageBroker('window-intercom', new WindowIntercomBroker());
-    this.registerMessageBroker('chrome-message', new ChromeMessageBroker());
-    this.registerMessageBroker('http-api', new HttpApiBroker());
-    this.registerMessageBroker('graphql', new GraphQLBroker());
-  }
-
-  // Register a machine with RobotCopy
-  registerMachine(machineId: string, machine: ViewStateMachine<any>, config: RobotCopyConfig): void {
-    this.machines.set(machineId, machine);
-    this.configs.set(machineId, config);
-    
-    // Set up message brokers for this machine
-    config.messageBrokers.forEach(brokerConfig => {
-      const broker = this.messageBrokers.get(brokerConfig.type);
-      if (broker) {
-        broker.configure(brokerConfig.config);
-      }
-    });
-  }
-
-  // Register a custom message broker
-  registerMessageBroker(type: string, broker: MessageBroker): void {
-    this.messageBrokers.set(type, broker);
-  }
-
-  // Send a message through the appropriate broker
-  async sendMessage(message: Omit<RobotCopyMessage, 'id' | 'timestamp'>): Promise<RobotCopyResponse> {
-    const fullMessage: RobotCopyMessage = {
-      ...message,
-      id: this.generateMessageId(),
-      timestamp: new Date()
+  constructor(config: RobotCopyConfig = {}) {
+    this.config = {
+      unleashUrl: 'http://localhost:4242/api',
+      unleashClientKey: 'default:development.unleash-insecure-api-token',
+      unleashAppName: 'fish-burger-frontend',
+      unleashEnvironment: 'development',
+      kotlinBackendUrl: 'http://localhost:8080',
+      nodeBackendUrl: 'http://localhost:3001',
+      enableTracing: true,
+      enableDataDog: true,
+      ...config,
     };
 
-    // Add to queue
-    this.messageQueue.push(fullMessage);
-
-    // Find the appropriate broker
-    const broker = this.messageBrokers.get(message.broker);
-    if (!broker) {
-      throw new Error(`No message broker found for type: ${message.broker}`);
-    }
-
-    try {
-      const response = await broker.send(fullMessage);
-      this.handleResponse(response);
-      return response;
-    } catch (error) {
-      const errorResponse: RobotCopyResponse = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date(),
-        messageId: fullMessage.id
-      };
-      this.handleResponse(errorResponse);
-      return errorResponse;
-    }
+    this.initializeUnleashToggles();
   }
 
-  // Post message to window (intercom)
-  async postToWindow(message: any, targetOrigin: string = '*'): Promise<RobotCopyResponse> {
-    return this.sendMessage({
-      type: 'window-post',
-      payload: message,
-      source: 'robotcopy',
-      target: 'window',
-      broker: 'window-intercom'
-    });
+  private async initializeUnleashToggles() {
+    // Simulate Unleash toggle initialization
+    // In real implementation, this would fetch from Unleash API
+    this.unleashToggles.set('fish-burger-kotlin-backend', false);
+    this.unleashToggles.set('fish-burger-node-backend', true);
+    this.unleashToggles.set('enable-tracing', true);
+    this.unleashToggles.set('enable-datadog', true);
   }
 
-  // Post message to Chrome extension
-  async postToChrome(message: any, extensionId?: string): Promise<RobotCopyResponse> {
-    return this.sendMessage({
-      type: 'chrome-post',
-      payload: message,
-      source: 'robotcopy',
-      target: extensionId || 'chrome-extension',
-      broker: 'chrome-message'
-    });
+  async isEnabled(toggleName: string, context: any = {}): Promise<boolean> {
+    return this.unleashToggles.get(toggleName) || false;
   }
 
-  // Post to HTTP API
-  async postToHttp(message: any, endpoint: string): Promise<RobotCopyResponse> {
-    return this.sendMessage({
-      type: 'http-post',
-      payload: message,
-      source: 'robotcopy',
-      target: endpoint,
-      broker: 'http-api'
-    });
+  async getBackendUrl(): Promise<string> {
+    const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+    return useKotlin ? this.config.kotlinBackendUrl! : this.config.nodeBackendUrl!;
   }
 
-  // Post to GraphQL
-  async postToGraphQL(query: string, variables?: any): Promise<RobotCopyResponse> {
-    return this.sendMessage({
-      type: 'graphql-query',
-      payload: { query, variables },
-      source: 'robotcopy',
-      target: 'graphql-endpoint',
-      broker: 'graphql'
-    });
+  async getBackendType(): Promise<'kotlin' | 'node'> {
+    const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+    return useKotlin ? 'kotlin' : 'node';
   }
 
-  // Discover all registered machines and their capabilities
-  discover(): RobotCopyDiscovery {
-    const discovery: RobotCopyDiscovery = {
-      machines: new Map(),
-      messageBrokers: Array.from(this.messageBrokers.keys()),
-      configurations: new Map(),
-      capabilities: new Map()
-    };
-
-    this.machines.forEach((machine, machineId) => {
-      discovery.machines.set(machineId, machine);
-      
-      const config = this.configs.get(machineId);
-      if (config) {
-        discovery.configurations.set(machineId, config);
-        
-        // Analyze machine capabilities
-        const capabilities = this.analyzeMachineCapabilities(machine, config);
-        discovery.capabilities.set(machineId, capabilities);
-      }
-    });
-
-    return discovery;
-  }
-
-  private analyzeMachineCapabilities(machine: ViewStateMachine<any>, config: RobotCopyConfig): MachineCapabilities {
-    return {
-      supportedBrokers: config.messageBrokers.map(b => b.type),
-      autoDiscovery: config.autoDiscovery || false,
-      clientSpecification: config.clientSpecification,
-      messageTypes: ['state-change', 'event-send', 'log-entry', 'view-update'],
-      graphQLStates: this.extractGraphQLStates(machine)
-    };
-  }
-
-  private extractGraphQLStates(machine: ViewStateMachine<any>): GraphQLState[] {
-    // This would analyze the machine for GraphQL states
-    // For now, return a basic structure
-    return [
-      {
-        name: 'query',
-        operation: 'query',
-        query: 'query GetBurger($id: ID!) { burger(id: $id) { id ingredients } }',
-        variables: { id: 'string' }
-      },
-      {
-        name: 'mutation',
-        operation: 'mutation',
-        query: 'mutation CreateBurger($input: BurgerInput!) { createBurger(input: $input) { id } }',
-        variables: { input: 'BurgerInput' }
-      }
-    ];
-  }
-
-  private generateMessageId(): string {
+  generateMessageId(): string {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private handleResponse(response: RobotCopyResponse): void {
-    const handler = this.responseHandlers.get(response.messageId);
-    if (handler) {
-      handler(response);
-      this.responseHandlers.delete(response.messageId);
+  generateTraceId(): string {
+    return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  generateSpanId(): string {
+    return `span_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  trackMessage(messageId: string, traceId: string, spanId: string, metadata: Partial<MessageMetadata>): MessageMetadata {
+    const message: MessageMetadata = {
+      messageId,
+      traceId,
+      spanId,
+      timestamp: new Date().toISOString(),
+      backend: metadata.backend || 'node',
+      action: metadata.action || 'unknown',
+      data: metadata.data,
+    };
+
+    this.messageHistory.set(messageId, message);
+
+    if (!this.traceMap.has(traceId)) {
+      this.traceMap.set(traceId, []);
     }
+    this.traceMap.get(traceId)!.push(messageId);
+
+    return message;
   }
 
-  // Set up response handler for async operations
-  onResponse(messageId: string, handler: (response: RobotCopyResponse) => void): void {
-    this.responseHandlers.set(messageId, handler);
+  getMessage(messageId: string): MessageMetadata | undefined {
+    return this.messageHistory.get(messageId);
   }
 
-  // Get message queue
-  getMessageQueue(): RobotCopyMessage[] {
-    return [...this.messageQueue];
+  getTraceMessages(traceId: string): MessageMetadata[] {
+    const messageIds = this.traceMap.get(traceId) || [];
+    return messageIds.map(id => this.messageHistory.get(id)).filter(Boolean) as MessageMetadata[];
   }
 
-  // Clear message queue
-  clearMessageQueue(): void {
-    this.messageQueue = [];
-  }
-}
-
-// Message broker interface
-export interface MessageBroker {
-  configure(config: any): void;
-  send(message: RobotCopyMessage): Promise<RobotCopyResponse>;
-}
-
-// Window Intercom Broker
-export class WindowIntercomBroker implements MessageBroker {
-  private config: WindowIntercomConfig | null = null;
-
-  configure(config: WindowIntercomConfig): void {
-    this.config = config;
+  getFullTrace(traceId: string) {
+    const messages = this.getTraceMessages(traceId);
+    return {
+      traceId,
+      messages,
+      startTime: messages[0]?.timestamp,
+      endTime: messages[messages.length - 1]?.timestamp,
+      backend: messages[0]?.backend,
+    };
   }
 
-  async send(message: RobotCopyMessage): Promise<RobotCopyResponse> {
-    if (!this.config) {
-      throw new Error('WindowIntercomBroker not configured');
-    }
+  async sendMessage(action: string, data: any = {}): Promise<any> {
+    const messageId = this.generateMessageId();
+    const traceId = this.generateTraceId();
+    const spanId = this.generateSpanId();
+    const backend = await this.getBackendType();
+    const backendUrl = await this.getBackendUrl();
 
-    return new Promise((resolve, reject) => {
-      try {
-        window.postMessage(message.payload, this.config!.targetOrigin);
-        
-        // Set up response handler
-        const responseHandler = (event: MessageEvent) => {
-          if (event.data && event.data.messageId === message.id) {
-            window.removeEventListener('message', responseHandler);
-            resolve({
-              success: true,
-              data: event.data,
-              timestamp: new Date(),
-              messageId: message.id
-            });
-          }
-        };
-
-        window.addEventListener('message', responseHandler);
-
-        // Timeout
-        setTimeout(() => {
-          window.removeEventListener('message', responseHandler);
-          reject(new Error('Window message timeout'));
-        }, this.config!.timeout || 5000);
-      } catch (error) {
-        reject(error);
-      }
+    // Track the message
+    this.trackMessage(messageId, traceId, spanId, {
+      backend,
+      action,
+      data,
     });
-  }
-}
 
-// Chrome Message Broker
-export class ChromeMessageBroker implements MessageBroker {
-  private config: ChromeMessageConfig | null = null;
+    // Prepare headers for tracing
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-trace-id': traceId,
+      'x-span-id': spanId,
+      'x-message-id': messageId,
+    };
 
-  configure(config: ChromeMessageConfig): void {
-    this.config = config;
-  }
-
-  async send(message: RobotCopyMessage): Promise<RobotCopyResponse> {
-    if (!this.config) {
-      throw new Error('ChromeMessageBroker not configured');
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage(
-            this.config!.extensionId,
-            message.payload,
-            (response) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                resolve({
-                  success: true,
-                  data: response,
-                  timestamp: new Date(),
-                  messageId: message.id
-                });
-              }
-            }
-          );
-        } else {
-          reject(new Error('Chrome runtime not available'));
-        }
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-}
-
-// HTTP API Broker
-export class HttpApiBroker implements MessageBroker {
-  private config: HttpApiConfig | null = null;
-
-  configure(config: HttpApiConfig): void {
-    this.config = config;
-  }
-
-  async send(message: RobotCopyMessage): Promise<RobotCopyResponse> {
-    if (!this.config) {
-      throw new Error('HttpApiBroker not configured');
+    // Add DataDog headers if enabled
+    if (await this.isEnabled('enable-datadog')) {
+      headers['x-datadog-trace-id'] = traceId;
+      headers['x-datadog-parent-id'] = spanId;
+      headers['x-datadog-sampling-priority'] = '1';
     }
 
     try {
-      const response = await fetch(`${this.config.baseUrl}${message.target}`, {
+      const response = await fetch(`${backendUrl}/api/fish-burger/${action}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.config.headers
-        },
-        body: JSON.stringify(message.payload),
-        signal: AbortSignal.timeout(this.config.timeout || 10000)
-      });
-
-      const data = await response.json();
-
-      return {
-        success: response.ok,
-        data: data,
-        error: response.ok ? undefined : data.error || 'HTTP request failed',
-        timestamp: new Date(),
-        messageId: message.id
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'HTTP request failed',
-        timestamp: new Date(),
-        messageId: message.id
-      };
-    }
-  }
-}
-
-// GraphQL Broker
-export class GraphQLBroker implements MessageBroker {
-  private config: GraphQLConfig | null = null;
-
-  configure(config: GraphQLConfig): void {
-    this.config = config;
-  }
-
-  async send(message: RobotCopyMessage): Promise<RobotCopyResponse> {
-    if (!this.config) {
-      throw new Error('GraphQLBroker not configured');
-    }
-
-    try {
-      const response = await fetch(this.config.endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.config.headers
-        },
+        headers,
         body: JSON.stringify({
-          query: message.payload.query,
-          variables: message.payload.variables
+          ...data,
+          messageId,
+          traceId,
+          spanId,
         }),
-        signal: AbortSignal.timeout(this.config.timeout || 10000)
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      return {
-        success: !data.errors,
-        data: data.data,
-        error: data.errors ? data.errors[0].message : undefined,
-        timestamp: new Date(),
-        messageId: message.id
-      };
+      const result = await response.json();
+      
+      // Track the response
+      this.trackMessage(
+        `${messageId}_response`,
+        traceId,
+        spanId,
+        {
+          backend,
+          action: `${action}_response`,
+          data: result,
+        }
+      );
+
+      return result;
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'GraphQL request failed',
-        timestamp: new Date(),
-        messageId: message.id
-      };
+      // Track the error
+      this.trackMessage(
+        `${messageId}_error`,
+        traceId,
+        spanId,
+        {
+          backend,
+          action: `${action}_error`,
+          data: { error: error instanceof Error ? error.message : String(error) },
+        }
+      );
+
+      throw error;
     }
+  }
+
+  async startCooking(orderId: string, ingredients: string[]): Promise<any> {
+    return this.sendMessage('start', { orderId, ingredients });
+  }
+
+  async updateProgress(orderId: string, cookingTime: number, temperature: number): Promise<any> {
+    return this.sendMessage('progress', { orderId, cookingTime, temperature });
+  }
+
+  async completeCooking(orderId: string): Promise<any> {
+    return this.sendMessage('complete', { orderId });
+  }
+
+  async getTrace(traceId: string): Promise<any> {
+    const backend = await this.getBackendType();
+    const backendUrl = await this.getBackendUrl();
+
+    try {
+      const response = await fetch(`${backendUrl}/api/trace/${traceId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to get trace ${traceId}:`, error);
+      return this.getFullTrace(traceId);
+    }
+  }
+
+  async getMessageFromBackend(messageId: string): Promise<any> {
+    const backend = await this.getBackendType();
+    const backendUrl = await this.getBackendUrl();
+
+    try {
+      const response = await fetch(`${backendUrl}/api/message/${messageId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to get message ${messageId}:`, error);
+      return this.getMessage(messageId);
+    }
+  }
+
+  // Integration with ViewStateMachine
+  integrateWithViewStateMachine(viewStateMachine: ViewStateMachine<any>): RobotCopy {
+    // Register message handlers for ViewStateMachine
+    viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message) => {
+      return this.startCooking(message.data.orderId, message.data.ingredients);
+    });
+
+    viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message) => {
+      return this.updateProgress(message.data.orderId, message.data.cookingTime, message.data.temperature);
+    });
+
+    viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message) => {
+      return this.completeCooking(message.data.orderId);
+    });
+
+    return this;
+  }
+
+  // Debugging and monitoring methods
+  getMessageHistory(): MessageMetadata[] {
+    return Array.from(this.messageHistory.values());
+  }
+
+  getTraceIds(): string[] {
+    return Array.from(this.traceMap.keys());
+  }
+
+  clearHistory(): void {
+    this.messageHistory.clear();
+    this.traceMap.clear();
+  }
+
+  // Configuration methods
+  updateConfig(newConfig: Partial<RobotCopyConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  getConfig(): RobotCopyConfig {
+    return { ...this.config };
   }
 }
 
-// Discovery interfaces
-export interface RobotCopyDiscovery {
-  machines: Map<string, ViewStateMachine<any>>;
-  messageBrokers: string[];
-  configurations: Map<string, RobotCopyConfig>;
-  capabilities: Map<string, MachineCapabilities>;
-}
-
-export interface MachineCapabilities {
-  supportedBrokers: string[];
-  autoDiscovery: boolean;
-  clientSpecification?: ClientSpecification;
-  messageTypes: string[];
-  graphQLStates: GraphQLState[];
-}
-
-export interface GraphQLState {
-  name: string;
-  operation: 'query' | 'mutation' | 'subscription';
-  query: string;
-  variables?: Record<string, string>;
-}
-
-// Helper function to create RobotCopy
-export function createRobotCopy(): RobotCopy {
-  return new RobotCopy();
+export function createRobotCopy(config?: RobotCopyConfig): RobotCopy {
+  return new RobotCopy(config);
 } 

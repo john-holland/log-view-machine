@@ -2,20 +2,28 @@ package com.logview.example.tastyfishburger
 
 import com.logview.core.LogViewMachine
 import com.logview.core.LogEntry
-import com.logview.core.LogFilters
+import com.logview.core.LogFilter
+import com.logview.core.ViewStateMachine
 import java.time.Instant
 
-class TastyFishBurgerAdapter(private val machine: LogViewMachine) {
-    fun fetchLogs(filters: LogFilters? = null): List<LogEntry> {
-        return machine.fetchLogs(filters)
+class TastyFishBurgerAdapter(
+    private val stateMachine: TastyFishBurgerStateMachine
+) {
+    private val logViewMachine = stateMachine.getLogViewMachine()
+    private val viewStateMachine = stateMachine.getViewStateMachine()
+
+    fun fetchLogs(filter: LogFilter? = null): List<LogEntry> {
+        return logViewMachine.getLogs(filter)
     }
 
-    fun updateFilters(newFilters: LogFilters): List<LogEntry> {
-        return machine.updateFilters(newFilters)
+    fun updateFilters(newFilter: LogFilter): List<LogEntry> {
+        return logViewMachine.getLogs(newFilter)
     }
 
     fun addLog(level: String, message: String, metadata: Map<String, Any>? = null) {
-        machine.addLog(LogEntry(
+        logViewMachine.addLog(LogEntry(
+            id = "",
+            timestamp = Instant.EPOCH,
             level = level,
             message = message,
             metadata = metadata
@@ -23,7 +31,15 @@ class TastyFishBurgerAdapter(private val machine: LogViewMachine) {
     }
 
     fun clearLogs() {
-        machine.clearLogs()
+        logViewMachine.clearLogs()
+    }
+
+    fun getViewStateMachineLogs(): List<ViewStateMachine.LogEntry> {
+        return viewStateMachine.getLogEntries()
+    }
+
+    fun subscribeToLogs(callback: (List<LogEntry>) -> Unit): () -> Unit {
+        return logViewMachine.subscribe(callback)
     }
 
     data class FishBurgerLog(
@@ -42,5 +58,18 @@ class TastyFishBurgerAdapter(private val machine: LogViewMachine) {
             message = entry.message,
             metadata = entry.metadata
         )
+    }
+
+    // Enhanced methods for ViewStateMachine integration
+    suspend fun executeState(stateName: String, data: TastyFishBurgerStateMachine.FishBurgerData) {
+        viewStateMachine.executeState(stateName, data)
+    }
+
+    fun getStateMachineLogs(): List<ViewStateMachine.LogEntry> {
+        return viewStateMachine.getLogEntries()
+    }
+
+    fun clearStateMachineLogs() {
+        viewStateMachine.clearLogs()
     }
 } 

@@ -13,28 +13,32 @@ processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 1500
-    spike_limit_mib: 512
+  resourcedetection:
+    detectors: [env, docker]
 
 exporters:
+  logging:
+    loglevel: debug
   jaeger:
     endpoint: jaeger:14250
     tls:
       insecure: true
-  datadog:
-    api:
-      key: ${DD_API_KEY}
-    metrics:
-      endpoint: https://api.datadoghq.com/api/v1/series
-    traces:
-      endpoint: https://trace.agent.datadoghq.com
+  otlp/datadog:
+    endpoint: https://trace.agent.datadoghq.com:443
+    headers:
+      api-key: ${DD_API_KEY}
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [jaeger, datadog]
+      processors: [memory_limiter, batch, resourcedetection]
+      exporters: [logging, jaeger, otlp/datadog]
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [datadog] 
+      processors: [memory_limiter, batch, resourcedetection]
+      exporters: [logging]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resourcedetection]
+      exporters: [logging] 

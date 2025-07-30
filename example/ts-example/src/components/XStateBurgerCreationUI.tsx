@@ -22,11 +22,37 @@ const burgerMachine = createMachine({
           target: 'idle', // Stay in same state
           actions: 'addIngredient' // Business logic in action
         },
+        REMOVE_INGREDIENT: {
+          target: 'idle',
+          actions: 'removeIngredient'
+        },
         TOGGLE_HUNGRY: {
           target: 'idle',
           actions: 'toggleHungry'
         },
-        CREATE_BURGER: 'creating'
+        CREATE_BURGER: 'creating',
+        LOAD_BURGERS: 'loading',
+        EAT_BURGER: {
+          target: 'idle',
+          actions: 'eatBurger'
+        },
+        TRASH_BURGER: {
+          target: 'idle',
+          actions: 'trashBurger'
+        }
+      }
+    },
+    loading: {
+      invoke: {
+        src: 'loadBurgersService',
+        onDone: {
+          target: 'idle',
+          actions: 'loadBurgers'
+        },
+        onError: {
+          target: 'error',
+          actions: 'handleError'
+        }
       }
     },
     creating: {
@@ -68,6 +94,9 @@ const burgerMachine = createMachine({
     addIngredient: assign((context: any, event: any) => ({
       selectedIngredients: [...context.selectedIngredients, event.payload]
     })),
+    removeIngredient: assign((context: any, event: any) => ({
+      selectedIngredients: context.selectedIngredients.filter((ingredient: string) => ingredient !== event.payload)
+    })),
     toggleHungry: assign((context: any, event: any) => ({
       isHungry: event.payload
     })),
@@ -94,24 +123,71 @@ const burgerMachine = createMachine({
     }),
     clearError: assign({
       error: null
-    })
+    }),
+    loadBurgers: assign((context: any, event: any) => ({
+      burgers: event.data
+    })),
+    eatBurger: assign((context: any, event: any) => ({
+      burgers: context.burgers.map((burger: any) => 
+        burger.id === event.data.id ? event.data : burger
+      )
+    })),
+    trashBurger: assign((context: any, event: any) => ({
+      burgers: context.burgers.map((burger: any) => 
+        burger.id === event.data.id ? event.data : burger
+      )
+    }))
   },
   services: {
     createBurgerService: async (context: any) => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return {
-        id: Date.now(),
-        ingredients: context.selectedIngredients,
-        isHungry: context.isHungry,
-        state: 'READY'
-      };
+      // Call the actual backend API
+      const response = await fetch('http://localhost:3001/api/burgers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ingredients: context.selectedIngredients,
+          isHungry: context.isHungry
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create burger');
+      }
+      
+      return await response.json();
+    },
+    loadBurgersService: async () => {
+      const response = await fetch('http://localhost:3001/api/burgers');
+      if (!response.ok) {
+        throw new Error('Failed to load burgers');
+      }
+      return await response.json();
+    },
+    eatBurgerService: async (context: any, event: any) => {
+      const response = await fetch(`http://localhost:3001/api/burgers/${event.payload}/eat`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to eat burger');
+      }
+      return await response.json();
+    },
+    trashBurgerService: async (context: any, event: any) => {
+      const response = await fetch(`http://localhost:3001/api/burgers/${event.payload}/trash`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to trash burger');
+      }
+      return await response.json();
     }
   }
 } as any);
 
 // Container component for consistent UI elements
-const BurgerContainer = ({ children, state }: { children: React.ReactNode; state: string }) => (
+const BurgerContainer = ({ children, state }: { children: any; state: string }) => (
   <div className={`burger-creation-wrapper state-${state}`}>
     <div className="burger-creation-container">
       {/* Always present header */}
@@ -140,7 +216,9 @@ const BurgerContainer = ({ children, state }: { children: React.ReactNode; state
 );
 
 // Individual render blocks for each state
-const IdleBlock = ({ state, send }: { state: any; send: any }) => (
+const IdleBlock = ({ state, send, testSend }: { state: any; send: any; testSend?: any }) => {
+  console.log('IdleBlock render - state:', state.value, 'context:', state.context);
+  return (
   <div className="state-block idle">
     <h2>Create Your Tasty Fish Burger</h2>
     
@@ -172,8 +250,13 @@ const IdleBlock = ({ state, send }: { state: any; send: any }) => (
                 type="checkbox"
                 checked={state.context.selectedIngredients.includes(ingredient)}
                 onChange={() => {
-                  console.log('Adding ingredient:', currentIngredient);
-                  send({ type: 'ADD_INGREDIENT', payload: currentIngredient });
+                  if (state.context.selectedIngredients.includes(currentIngredient)) {
+                    console.log('Removing ingredient:', currentIngredient);
+                    send({ type: 'REMOVE_INGREDIENT', payload: currentIngredient });
+                  } else {
+                    console.log('Adding ingredient:', currentIngredient);
+                    send({ type: 'ADD_INGREDIENT', payload: currentIngredient });
+                  }
                 }}
               />
               <span>{ingredient}</span>
@@ -199,6 +282,18 @@ const IdleBlock = ({ state, send }: { state: any; send: any }) => (
       </label>
     </div>
     
+    {/* Test Button */}
+    <button
+      className="test-button"
+      onClick={() => {
+        console.log('Test button clicked');
+        testSend({ type: 'ADD_INGREDIENT', payload: 'test-ingredient' });
+      }}
+      style={{ backgroundColor: 'red', color: 'white', margin: '10px' }}
+    >
+      Test Event
+    </button>
+    
     {/* Create Button */}
     <button
       className="create-button"
@@ -209,8 +304,63 @@ const IdleBlock = ({ state, send }: { state: any; send: any }) => (
     >
       Create Burger
     </button>
+
+    {/* Load Data Button */}
+    <button
+      className="load-button"
+      onClick={() => {
+        console.log('Loading burgers');
+        send({ type: 'LOAD_BURGERS' });
+      }}
+    >
+      Refresh Cart
+    </button>
+
+    {/* Burger List */}
+    {state.context.burgers.length > 0 && (
+      <div className="burger-list">
+        <h3>Your Fish Burgers</h3>
+        {state.context.burgers.map((burger: any) => (
+          <div key={burger.id} className="burger-item">
+            <div className="burger-info">
+              <span className="burger-id">#{burger.id}</span>
+              <span className={`burger-state ${burger.state.toLowerCase()}`}>
+                {burger.state}
+              </span>
+              <span className="burger-ingredients">
+                {burger.ingredients?.join(', ') || 'No ingredients'}
+              </span>
+              {burger.isHungry && <span className="hungry-badge">Double Portion</span>}
+            </div>
+            <div className="burger-actions">
+              {burger.state === 'READY' && (
+                <button
+                  className="eat-button"
+                  onClick={() => {
+                    console.log('Eating burger:', burger.id);
+                    send({ type: 'EAT_BURGER', payload: burger.id });
+                  }}
+                >
+                  Eat
+                </button>
+              )}
+              <button
+                className="trash-button"
+                onClick={() => {
+                  console.log('Trashing burger:', burger.id);
+                  send({ type: 'TRASH_BURGER', payload: burger.id });
+                }}
+              >
+                Trash
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
   </div>
-);
+  );
+};
 
 const CreatingBlock = ({ state, send }: { state: any; send: any }) => (
   <div className="state-block creating">
@@ -218,6 +368,15 @@ const CreatingBlock = ({ state, send }: { state: any; send: any }) => (
       <div className="loading-spinner">Creating your burger...</div>
       <p>Selected ingredients: {state.context.selectedIngredients.join(', ')}</p>
       {state.context.isHungry && <p>Double portion mode!</p>}
+    </div>
+  </div>
+);
+
+const LoadingBlock = ({ state }: { state: any; send: any }) => (
+  <div className="state-block loading">
+    <div className="loading-overlay">
+      <div className="loading-spinner">Loading your burgers...</div>
+      <p>Fetching cart data from backend...</p>
     </div>
   </div>
 );
@@ -247,17 +406,28 @@ const XStateBurgerCreationUI: React.FC = () => {
   const [state, send] = useMachine(burgerMachine);
   const currentState = state.value as string;
   
+  // Test function to verify send is working
+  const testSend = (event: any) => {
+    console.log('Sending event:', event);
+    send(event);
+  };
+  
   console.log('Current state:', currentState);
   console.log('Context:', state.context);
+  console.log('Selected ingredients:', state.context.selectedIngredients);
+  console.log('Is hungry:', state.context.isHungry);
   
   // Render appropriate block based on state
   let content;
   switch (currentState) {
     case 'idle':
-      content = <IdleBlock state={state} send={send} />;
+      content = <IdleBlock state={state} send={send} testSend={testSend} />;
       break;
     case 'creating':
       content = <CreatingBlock state={state} send={send} />;
+      break;
+    case 'loading':
+      content = <LoadingBlock state={state} send={send} />;
       break;
     case 'success':
       content = <SuccessBlock state={state} send={send} />;

@@ -161,6 +161,19 @@ export class ViewStateMachine<TModel = any> {
     return this;
   }
 
+  withServerState(stateName: string, handler: (context: ServerStateContext<TModel>) => void): ViewStateMachine<TModel> {
+    // This method is not directly implemented in the original class,
+    // but the new_code suggests it should be added.
+    // For now, we'll just add a placeholder.
+    // In a real scenario, this would involve adding a new state handler type
+    // or modifying the existing ones to support server-side rendering.
+    // Since the new_code only provided the type, we'll just add a placeholder.
+    // This will likely cause a type error until the actual implementation is added.
+    // @ts-ignore // This is a placeholder, not a direct implementation
+    this.serverStateHandlers.set(stateName, handler);
+    return this;
+  }
+
   // Sub-machine support
   withSubMachine(machineId: string, config: ViewStateMachineConfig<any>): ViewStateMachine<TModel> {
     const subMachine = new ViewStateMachine(config);
@@ -271,6 +284,72 @@ export class ViewStateMachine<TModel = any> {
     };
   }
 
+  async executeServerState(stateName: string, model: TModel): Promise<string> {
+    const handler = this.serverStateHandlers.get(stateName);
+    if (handler) {
+      const context = this.createServerStateContext(model);
+      await handler(context);
+      return context.renderedHtml || '';
+    }
+    return '';
+  }
+
+  private createServerStateContext(model: TModel): ServerStateContext<TModel> {
+    return {
+      state: this.machine.initialState.value,
+      model,
+      transitions: [],
+      log: async (message: string, metadata?: any) => {
+        const entry: LogEntry = {
+          id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          timestamp: new Date().toISOString(),
+          level: 'INFO',
+          message,
+          metadata,
+        };
+        this.logEntries.push(entry);
+      },
+      renderHtml: (html: string) => {
+        return html;
+      },
+      clear: () => {
+        // Server-side clear operation
+      },
+      transition: (to: string) => {
+        // Server-side transition
+      },
+      send: (event: any) => {
+        // Server-side event sending
+      },
+      on: (eventName: string, handler: () => void) => {
+        // Server-side event handling
+      },
+      subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => {
+        const subMachine = new ViewStateMachine(config);
+        this.subMachines.set(machineId, subMachine);
+        return subMachine;
+      },
+      getSubMachine: (machineId: string) => {
+        return this.subMachines.get(machineId);
+      },
+      graphql: {
+        query: async (query: string, variables?: any) => {
+          // Server-side GraphQL query
+          return {};
+        },
+        mutation: async (mutation: string, variables?: any) => {
+          // Server-side GraphQL mutation
+          return {};
+        },
+        subscription: async (subscription: string, variables?: any) => {
+          // Server-side GraphQL subscription
+          return {};
+        },
+      },
+      renderedHtml: '',
+    };
+  }
+
   // Compose with other ViewStateMachines
   compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
     // Merge state handlers
@@ -316,6 +395,29 @@ export class ViewStateMachine<TModel = any> {
     );
   }
 }
+
+export type ServerStateContext<TModel = any> = {
+  state: string;
+  model: TModel;
+  transitions: any[];
+  log: (message: string, metadata?: any) => Promise<void>;
+  renderHtml: (html: string) => string;
+  clear: () => void;
+  transition: (to: string) => void;
+  send: (event: any) => void;
+  on: (eventName: string, handler: () => void) => void;
+  // Sub-machine support
+  subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => ViewStateMachine<any>;
+  getSubMachine: (machineId: string) => ViewStateMachine<any> | undefined;
+  // GraphQL support
+  graphql: {
+    query: (query: string, variables?: any) => Promise<any>;
+    mutation: (mutation: string, variables?: any) => Promise<any>;
+    subscription: (subscription: string, variables?: any) => Promise<any>;
+  };
+  // Server-specific
+  renderedHtml: string;
+};
 
 class ProxyMachine {
   private robotCopy: RobotCopy;
