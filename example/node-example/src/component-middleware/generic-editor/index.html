@@ -2031,6 +2031,10 @@
         let originalRightWidth = 400;
         let activeGrabber = null; // Track which grabber is being dragged
         
+        // Blob URL tracking for memory leak prevention
+        let activeBlobUrls = new Set();
+        let previewUpdateDebounceTimer = null;
+        
         // Canvas dragging variables
         let isDraggingCanvas = false;
         let canvasStartX = 0;
@@ -2089,6 +2093,14 @@
                 if (e.key === 'Escape') {
                     hideDiff();
                 }
+            });
+
+            // Clean up Blob URLs when page is unloaded
+            window.addEventListener('beforeunload', function() {
+                activeBlobUrls.forEach(url => {
+                    URL.revokeObjectURL(url);
+                });
+                activeBlobUrls.clear();
             });
         });
 
@@ -3404,7 +3416,8 @@
                 a.href = url;
                 a.download = `${currentComponent.name}-${currentVersion}.json`;
                 a.click();
-                URL.revokeObjectURL(url);
+                // Clean up immediately after download
+                setTimeout(() => URL.revokeObjectURL(url), 100);
 
                 showMessage('success', 'Component exported successfully');
             } catch (error) {
@@ -4005,7 +4018,8 @@
                 a.href = url;
                 a.download = 'state-machine.json';
                 a.click();
-                URL.revokeObjectURL(url);
+                // Clean up immediately after download
+                setTimeout(() => URL.revokeObjectURL(url), 100);
                 
                 showMessage('success', 'State machine exported successfully');
             } catch (error) {
@@ -4136,7 +4150,7 @@
             }
         }
 
-        // Update preview function
+        // Update preview function with memory leak prevention
         function updatePreview() {
             const previewContent = document.getElementById('preview-content');
             if (!previewContent || !currentComponent) return;
@@ -4144,6 +4158,12 @@
             const html = currentComponent.template || '';
             const css = currentComponent.styles || '';
             const js = currentComponent.script || '';
+
+            // Debug logging to see what's being generated
+            console.log('🔍 UpdatePreview Debug:');
+            console.log('HTML:', html);
+            console.log('CSS:', css);
+            console.log('JS:', js);
 
             const fullHtml = `
                 <!DOCTYPE html>
@@ -4161,8 +4181,17 @@
                 </html>
             `;
 
+            console.log('🔍 Full generated HTML:', fullHtml);
+
+            // Clean up previous Blob URLs
+            activeBlobUrls.forEach(url => {
+                URL.revokeObjectURL(url);
+            });
+            activeBlobUrls.clear();
+
             const blob = new Blob([fullHtml], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
+            activeBlobUrls.add(url);
 
             // Clear existing content
             previewContent.innerHTML = '';
@@ -4179,18 +4208,33 @@
 
             // Clean up URL after iframe loads
             iframe.onload = () => {
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                setTimeout(() => {
+                    if (activeBlobUrls.has(url)) {
+                        URL.revokeObjectURL(url);
+                        activeBlobUrls.delete(url);
+                    }
+                }, 1000);
             };
         }
 
-        // Real-time CSS updates
+        // Debounced preview update to prevent excessive Blob URL creation
+        function debouncedUpdatePreview() {
+            if (previewUpdateDebounceTimer) {
+                clearTimeout(previewUpdateDebounceTimer);
+            }
+            previewUpdateDebounceTimer = setTimeout(() => {
+                updatePreview();
+            }, 300); // 300ms debounce
+        }
+
+        // Real-time CSS updates with memory leak prevention
         function setupRealTimeUpdates() {
             // Update preview when CSS changes
             if (editors.css) {
                 editors.css.on('change', () => {
                     if (currentComponent) {
                         currentComponent.styles = editors.css.getValue();
-                        updatePreview();
+                        debouncedUpdatePreview();
                     }
                 });
             }
@@ -4200,7 +4244,7 @@
                 editors.html.onChange = (contents) => {
                     if (currentComponent) {
                         currentComponent.template = contents;
-                        updatePreview();
+                        debouncedUpdatePreview();
                     }
                 };
             }
@@ -4210,7 +4254,7 @@
                 editors.js.on('change', () => {
                     if (currentComponent) {
                         currentComponent.script = editors.js.getValue();
-                        updatePreview();
+                        debouncedUpdatePreview();
                     }
                 });
             }
@@ -4282,7 +4326,8 @@
             link.download = `${currentComponent.name || 'component'}.json`;
             link.click();
             
-            URL.revokeObjectURL(url);
+            // Clean up immediately after download
+            setTimeout(() => URL.revokeObjectURL(url), 100);
             showMessage('success', 'Component exported successfully');
         }
 

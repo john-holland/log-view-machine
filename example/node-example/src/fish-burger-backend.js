@@ -1,15 +1,26 @@
-const express = require('express');
-const { createMachine, interpret } = require('xstate');
-const { trace, context, SpanStatusCode } = require('@opentelemetry/api');
-const { Resource } = require('@opentelemetry/resources');
-const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
-const { NodeTracerProvider } = require('@opentelemetry/sdk-trace-node');
-const { BatchSpanProcessor } = require('@opentelemetry/sdk-trace-base');
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-const { registerInstrumentations } = require('@opentelemetry/instrumentation');
-const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express');
-const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
-const { v4: uuidv4 } = require('uuid');
+import express from 'express';
+import { createMachine, interpret } from 'xstate';
+import { trace, context, SpanStatusCode } from '@opentelemetry/api';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { v4 as uuidv4 } from 'uuid';
+
+// Import logging configuration
+import { createLogger, createPerformanceLogger, dumpActiveLogs } from './logging-config.js';
+
+// Initialize structured logging
+const logger = createLogger('fish-burger-backend', {
+  level: process.env.LOG_LEVEL || 'info',
+  enableConsole: process.env.NODE_ENV !== 'production',
+  enableFile: true,
+  enableWarehouse: true
+});
 
 // Initialize OpenTelemetry
 const provider = new NodeTracerProvider({
@@ -98,88 +109,54 @@ const fishBurgerMachine = createMachine({
 }, {
   actions: {
     logStartCooking: (context, event) => {
-      const span = tracer.startSpan('start_cooking');
-      span.setAttributes({
-        'order.id': context.orderId,
-        'ingredients': JSON.stringify(context.ingredients),
-        'message.id': event.messageId,
+      logger.info('Starting cooking for order', {
+        orderId: context.orderId,
+        ingredients: context.ingredients,
+        traceId: event.traceId
       });
-      
-      console.log(`[${new Date().toISOString()}] Starting cooking for order ${context.orderId}`);
-      span.end();
     },
-    
     logProgress: (context, event) => {
-      const span = tracer.startSpan('update_progress');
-      span.setAttributes({
-        'order.id': context.orderId,
-        'cooking.time': context.cookingTime,
-        'temperature': context.temperature,
-        'message.id': event.messageId,
+      logger.info('Cooking progress update', {
+        orderId: context.orderId,
+        cookingTime: context.cookingTime,
+        temperature: context.temperature,
+        traceId: event.traceId
       });
-      
-      console.log(`[${new Date().toISOString()}] Progress update: ${context.cookingTime}s, ${context.temperature}°F`);
-      span.end();
     },
-    
     logCompletion: (context, event) => {
-      const span = tracer.startSpan('complete_cooking');
-      span.setAttributes({
-        'order.id': context.orderId,
-        'message.id': event.messageId,
+      logger.info('Cooking completed successfully', {
+        orderId: context.orderId,
+        totalTime: context.cookingTime,
+        traceId: event.traceId
       });
-      
-      console.log(`[${new Date().toISOString()}] Cooking completed for order ${context.orderId}`);
-      span.end();
     },
-    
     logError: (context, event) => {
-      const span = tracer.startSpan('cooking_error');
-      span.setAttributes({
-        'order.id': context.orderId,
-        'error.message': event.error,
-        'message.id': event.messageId,
+      logger.error('Cooking error occurred', {
+        orderId: context.orderId,
+        error: event.error,
+        traceId: event.traceId
       });
-      span.setStatus({ code: SpanStatusCode.ERROR, message: event.error });
-      
-      console.log(`[${new Date().toISOString()}] Error: ${event.error}`);
-      span.end();
     },
-    
     logRetry: (context, event) => {
-      const span = tracer.startSpan('retry_cooking');
-      span.setAttributes({
-        'order.id': context.orderId,
-        'message.id': event.messageId,
+      logger.warn('Retrying cooking operation', {
+        orderId: context.orderId,
+        attempt: context.retryCount || 1,
+        traceId: event.traceId
       });
-      
-      console.log(`[${new Date().toISOString()}] Retrying cooking for order ${context.orderId}`);
-      span.end();
     },
-    
     logReset: (context, event) => {
-      const span = tracer.startSpan('reset_machine');
-      span.setAttributes({
-        'message.id': event.messageId,
+      logger.info('Machine reset to idle state', {
+        orderId: context.orderId,
+        traceId: event.traceId
       });
-      
-      console.log(`[${new Date().toISOString()}] Machine reset to idle`);
-      span.end();
     },
-    
     addToHistory: (context, event) => {
-      const historyEntry = {
-        id: uuidv4(),
+      context.messageHistory.push({
         timestamp: new Date().toISOString(),
         event: event.type,
-        messageId: event.messageId,
-        state: context.value,
         data: event.data || {},
-        traceId: context.traceId,
-        spanId: context.spanId,
-      };
-      
-      context.messageHistory.push(historyEntry);
+        traceId: event.traceId
+      });
     },
   },
 });
@@ -460,9 +437,12 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Fish Burger Node.js Backend running on port ${PORT}`);
-  console.log(`Unleash toggle 'fish-burger-node-backend': ${unleashClient.isEnabled('fish-burger-node-backend')}`);
-  console.log(`Tracing enabled: ${unleashClient.isEnabled('enable-tracing')}`);
+  logger.info('Fish Burger Node.js Backend started', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    unleashEnabled: unleashClient.isEnabled('fish-burger-node-backend'),
+    tracingEnabled: unleashClient.isEnabled('enable-tracing')
+  });
 });
 
-module.exports = { app, messageTracker, fishBurgerMachine }; 
+export { app, messageTracker, fishBurgerMachine }; 

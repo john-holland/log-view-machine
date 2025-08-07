@@ -1,0 +1,11 @@
+<div class="javascript-editor">
+  <div class="editor-header">
+    <h3>JavaScript Editor</h3>
+    <div class="editor-controls">
+      <button onclick="context.send({ type: 'EDIT' })">Edit</button>
+      <button onclick="context.send({ type: 'SAVE' })">Save</button>
+      <button onclick="context.send({ type: 'RUN_CODE' })">Run</button>
+    </div>
+  </div>
+  <div id="javascript-editor-ace" class="editor-content"></div>
+</div>

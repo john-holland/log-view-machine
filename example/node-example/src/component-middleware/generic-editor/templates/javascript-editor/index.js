@@ -6,6 +6,8 @@
  */
 
 const { createViewStateMachine } = require('../../../../../log-view-machine/src/core/ViewStateMachine');
+const fs = require('fs');
+const path = require('path');
 
 const JavaScriptEditorTemplate = {
   id: 'javascript-editor',
@@ -75,81 +77,62 @@ const JavaScriptEditorTemplate = {
       logStates: {
         ready: async (context) => {
           await context.log('JavaScript Editor ready');
-          return context.view(
-            <div className="javascript-editor">
-              <div className="editor-header">
-                <h3>JavaScript Editor</h3>
-                <div className="editor-controls">
-                  <button onClick={() => context.send({ type: 'EDIT' })}>Edit</button>
-                  <button onClick={() => context.send({ type: 'SAVE' })}>Save</button>
-                  <button onClick={() => context.send({ type: 'RUN_CODE' })}>Run</button>
-                </div>
-              </div>
-              <div id="javascript-editor-ace" className="editor-content"></div>
-            </div>
-          );
+          const viewPath = path.join(__dirname, 'views', 'ready-view.html');
+          const template = fs.readFileSync(viewPath, 'utf8');
+          return context.view(template);
         },
         loading: async (context) => {
           await context.log('Loading JavaScript content...');
           return context.view(
-            <div className="javascript-editor loading">
-              <div className="editor-header">
+            `<div class="javascript-editor loading">
+              <div class="editor-header">
                 <h3>JavaScript Editor</h3>
               </div>
-              <div className="loading-spinner">Loading content...</div>
-            </div>
+              <div class="loading-spinner">Loading content...</div>
+            </div>`
           );
         },
         editing: async (context) => {
           await context.log('JavaScript editing in progress');
-          return context.view(
-            <div className="javascript-editor editing">
-              <div className="editor-header">
-                <h3>JavaScript Editor</h3>
-                <div className="editor-controls">
-                  <button onClick={() => context.send({ type: 'SAVE' })}>Save</button>
-                  <button onClick={() => context.send({ type: 'CANCEL' })}>Cancel</button>
-                  <button onClick={() => context.send({ type: 'RUN_CODE' })}>Run</button>
-                </div>
-              </div>
-              <div id="javascript-editor-ace" className="editor-content active"></div>
-            </div>
-          );
+          const viewPath = path.join(__dirname, 'views', 'editing-view.html');
+          const template = fs.readFileSync(viewPath, 'utf8');
+          return context.view(template);
         },
         running: async (context) => {
           await context.log('Running JavaScript code...');
           return context.view(
-            <div className="javascript-editor running">
-              <div className="editor-header">
+            `<div class="javascript-editor running">
+              <div class="editor-header">
                 <h3>JavaScript Editor</h3>
               </div>
-              <div className="running-spinner">Running code...</div>
-            </div>
+              <div class="running-spinner">Running code...</div>
+            </div>`
           );
         },
         saving: async (context) => {
           await context.log('Saving JavaScript content...');
           return context.view(
-            <div className="javascript-editor saving">
-              <div className="editor-header">
+            `<div class="javascript-editor saving">
+              <div class="editor-header">
                 <h3>JavaScript Editor</h3>
               </div>
-              <div className="saving-spinner">Saving...</div>
-            </div>
+              <div class="saving-spinner">Saving...</div>
+            </div>`
           );
         },
         error: async (context) => {
           await context.log('JavaScript Editor error', { error: context.model.error });
+          const errorMessage = context.model.error?.message || 'An error occurred';
           return context.view(
-            <div className="javascript-editor error">
-              <div className="editor-header">
+            `<div class="javascript-editor error">
+              <div class="editor-header">
                 <h3>JavaScript Editor</h3>
               </div>
-              <div className="error-message">
-                <p>{context.model.error?.message || 'An error occurred'}</p>
-                <button onClick={() => context.send({ type: 'RETRY' })}>Retry</button>
+              <div class="error-message">
+                <p>${errorMessage}</p>
+                <button onclick="context.send({ type: 'RETRY' })">Retry</button>
               </div>
-            </div>
+            </div>`
           );
         }
       }

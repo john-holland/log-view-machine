@@ -1,11 +1,14 @@
 {
   "name": "fish-burger-node-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Fish Burger Node.js Backend with OpenTelemetry and Unleash",
   "main": "src/fish-burger-backend.js",
   "scripts": {
-    "start": "node src/fish-burger-backend.js",
-    "dev": "nodemon src/fish-burger-backend.js",
+    "start": "node src/main-server.js",
+    "dev": "nodemon src/main-server.js",
+    "fish-burger": "node src/fish-burger-backend.js",
+    "dev:fish-burger": "nodemon src/fish-burger-backend.js",
     "tome": "node src/tome-server.js",
     "dev:tome": "nodemon src/tome-server.js",
     "test": "jest",
@@ -14,26 +17,31 @@
     "docker:run": "docker run -p 3001:3001 fish-burger-node-backend"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "xstate": "^4.38.2",
     "@opentelemetry/api": "^1.7.0",
-    "@opentelemetry/sdk-trace-node": "^1.21.0",
-    "@opentelemetry/sdk-trace-base": "^1.21.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.45.1",
     "@opentelemetry/instrumentation": "^0.45.1",
     "@opentelemetry/instrumentation-express": "^0.33.0",
     "@opentelemetry/instrumentation-http": "^0.45.1",
     "@opentelemetry/resources": "^1.21.0",
+    "@opentelemetry/sdk-trace-base": "^1.21.0",
+    "@opentelemetry/sdk-trace-node": "^1.21.0",
     "@opentelemetry/semantic-conventions": "^1.21.0",
-    "uuid": "^9.0.1",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.0.1",
+    "express-slow-down": "^3.0.0",
     "helmet": "^7.1.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "xstate": "^4.38.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "jest": "^29.7.0",
     "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
   },
   "engines": {
