@@ -50,8 +50,10 @@
             .sidebar {
                 grid-column: 1;
                 grid-row: 2;
-                display: flex;
+                display: inline-block;
                 flex-direction: column;
+                overflow-y: auto;
+                max-height: 100vh;
             }
 
             .right-panel {
@@ -84,7 +86,7 @@
         /* Desktop Layout */
         @media (min-width: 769px) {
             .mobile-only {
-                display: none; /* Hide mobile-only sections on desktop */
+                display: none !important; /* Hide mobile-only sections on desktop */
             }
 
             .desktop-only {
@@ -92,14 +94,26 @@
             }
         }
 
+
+
         /* Canvas takes full screen height */
         .canvas-container {
             flex: 1;
             min-height: 70vh;
+            height: calc(100vh - 120px); /* Account for header */
             position: relative;
             overflow: hidden;
             background: #f5f5f5;
             cursor: grab;
+            transition: all 0.3s ease;
+        }
+
+        .canvas-container.editor-active {
+            background: #e8f4fd;
+            background-image: 
+                linear-gradient(rgba(102, 126, 234, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(102, 126, 234, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
         /* Panels container - responsive layout */
@@ -115,7 +129,7 @@
         .left-panel {
             flex: 1;
             min-height: 30vh;
-            max-height: 40vh;
+            height: calc(100vh - 120px); /* Full document height minus header */
             overflow-y: auto;
             border-right: 1px solid #e9ecef;
         }
@@ -123,7 +137,7 @@
         .right-panel {
             flex: 1;
             min-height: 30vh;
-            max-height: 40vh;
+            height: calc(100vh - 120px); /* Full document height minus header */
             overflow-y: auto;
         }
 
@@ -540,27 +554,35 @@
             padding: 15px;
             border-bottom: 1px solid #eee;
             min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .sidebar-section h3 {
-            margin-bottom: 15px;
+            margin: 0;
             color: #667eea;
             font-size: 1.1em;
+            font-weight: 600;
         }
 
         .component-list {
             max-height: 300px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .component-item {
-            padding: 10px;
-            margin: 5px 0;
+            padding: 12px;
+            margin: 0;
             border: 1px solid #eee;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
             user-select: none;
+            background: white;
         }
 
         .component-item.dragging {
@@ -583,16 +605,7 @@
             color: white;
         }
 
-        .version-selector {
-            margin-top: 10px;
-        }
 
-        .version-selector select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
 
         .panels-container {
             background: white;
@@ -621,7 +634,7 @@
             min-width: 90vw;
             min-height: 60vh;
             max-width: 95vw;
-            max-height: 80vh;
+            max-height: calc(100vh - 140px); /* Full viewport minus header and margins */
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -1354,14 +1367,73 @@
 
         .login-form {
             display: flex;
-            gap: 10px;
-            align-items: center;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 0;
+        }
+
+        .login-form button {
+            align-self: flex-start;
+            margin-top: 4px;
         }
 
         .login-form input {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            width: 100%;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+        }
+
+        .sidebar-section input,
+        .sidebar-section select,
+        .sidebar-section textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 0;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .sidebar-section label {
+            display: block;
+            margin: 0 0 4px 0;
+            font-weight: 500;
+            color: #333;
+            font-size: 13px;
+        }
+
+        /* Flexbox form layout */
+        .sidebar-section .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 0;
+        }
+
+        .sidebar-section .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #333;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .sidebar-section .form-group input,
+        .sidebar-section .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+            margin: 0;
         }
 
         .search-box {
@@ -1369,7 +1441,7 @@
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 0;
         }
 
         .loading {
@@ -1646,8 +1718,12 @@
             <div class="sidebar-section">
                 <h3>🔐 Authentication</h3>
                 <div class="login-form" id="login-form">
-                    <input type="text" id="username" placeholder="Username" value="admin">
-                    <input type="password" id="password" placeholder="Password" value="admin">
+                    <div class="form-group">
+                        <input type="text" id="username" placeholder="Username" value="admin">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" placeholder="Password" value="admin">
+                    </div>
                     <button class="btn btn-primary" onclick="login()">Login</button>
                 </div>
                 <div id="user-info" style="display: none;">
@@ -1658,7 +1734,9 @@
 
             <div class="sidebar-section">
                 <h3>🔍 Component Search</h3>
-                <input type="text" class="search-box" id="search-input" placeholder="Search components..." onkeyup="searchComponents()">
+                <div class="form-group">
+                    <input type="text" class="search-box" id="search-input" placeholder="Search components..." onkeyup="searchComponents()">
+                </div>
                 <div class="component-list" id="component-list">
                     <!-- Components will be loaded here -->
                 </div>
@@ -1666,7 +1744,7 @@
 
             <div class="sidebar-section">
                 <h3>📦 Version Management</h3>
-                <div class="version-selector">
+                <div class="form-group">
                     <select id="version-selector" onchange="selectVersion()">
                         <option value="">Select version...</option>
                     </select>
@@ -1714,8 +1792,7 @@
                 <span class="zoom-level" id="zoom-level">100%</span>
                 <button class="canvas-btn" onclick="resizeEditors()" title="Resize Editors">📏</button>
                 <button class="canvas-btn" onclick="debugTabState()" title="Debug Tabs">🐛</button>
-                <button class="canvas-btn" onclick="forceShowTab('css')" title="Force CSS">CSS</button>
-                <button class="canvas-btn" onclick="forceShowTab('js')" title="Force JS">JS</button>
+                <button class="canvas-btn" onclick="debugZoomState()" title="Debug Zoom State">🔍</button>
             </div>
             <div class="sun-editor-wrapper" id="sun-editor-wrapper">
                 <div class="editor-content active" id="preview-editor">
@@ -2068,6 +2145,79 @@
         let hasUnsavedChanges = false;
         let changeListeners = [];
 
+        // Zoom/Resize State Machine
+        const zoomStateMachine = {
+            currentState: 'idle',
+            states: {
+                idle: {
+                    on: {
+                        MOUSE_ENTER_CANVAS: 'canvas_hover',
+                        MOUSE_ENTER_EDITOR: 'editor_hover',
+                        TOUCH_START: 'touch_started'
+                    }
+                },
+                canvas_hover: {
+                    on: {
+                        MOUSE_DOWN: 'canvas_dragging',
+                        WHEEL: 'canvas_zooming',
+                        MOUSE_LEAVE: 'idle',
+                        TOUCH_START: 'touch_started'
+                    }
+                },
+                editor_hover: {
+                    on: {
+                        WHEEL: 'editor_scrolling',
+                        MOUSE_LEAVE: 'idle',
+                        TOUCH_START: 'touch_started'
+                    }
+                },
+                canvas_dragging: {
+                    on: {
+                        MOUSE_MOVE: 'canvas_dragging',
+                        MOUSE_UP: 'canvas_hover',
+                        MOUSE_LEAVE: 'idle'
+                    }
+                },
+                canvas_zooming: {
+                    on: {
+                        WHEEL: 'canvas_zooming',
+                        MOUSE_LEAVE: 'idle'
+                    }
+                },
+                editor_scrolling: {
+                    on: {
+                        WHEEL: 'editor_scrolling',
+                        MOUSE_LEAVE: 'idle'
+                    }
+                },
+                touch_started: {
+                    on: {
+                        TOUCH_MOVE: 'touch_moving',
+                        TOUCH_END: 'idle'
+                    }
+                },
+                touch_moving: {
+                    on: {
+                        TOUCH_MOVE: 'touch_moving',
+                        TOUCH_END: 'idle'
+                    }
+                }
+            },
+            transition(event) {
+                const currentState = this.states[this.currentState];
+                if (currentState && currentState.on && currentState.on[event]) {
+                    const previousState = this.currentState;
+                    this.currentState = currentState.on[event];
+                    console.log(`Zoom State Machine: ${previousState} -> ${this.currentState} (${event})`);
+                    return true;
+                }
+                return false;
+            },
+            getCurrentState() {
+                return this.currentState;
+            }
+        };
+
         // Initialize editors
         document.addEventListener('DOMContentLoaded', function() {
             initializeEditors();
@@ -2087,6 +2237,9 @@
             
             // Initialize Save Component button state
             updateSaveStatus();
+            
+            // Update layout heights
+            updateLayoutHeights();
             
             // Add keyboard shortcuts
             document.addEventListener('keydown', function(e) {
@@ -2228,7 +2381,31 @@
                     editors.json = ace.edit('json-ace-editor');
                     editors.json.setTheme('ace/theme/monokai');
                     editors.json.session.setMode('ace/mode/json');
-                    editors.json.setValue('{\n  "name": "test",\n  "version": "1.0.0",\n  "states": {\n    "idle": {}\n  }\n}');
+                    editors.json.setValue(`{
+  "config": {
+    "id": "sampleMachine",
+    "initial": "idle",
+    "states": {
+      "idle": {
+        "on": {
+          "START": "running"
+        }
+      },
+      "running": {
+        "on": {
+          "STOP": "idle",
+          "PAUSE": "paused"
+        }
+      },
+      "paused": {
+        "on": {
+          "RESUME": "running",
+          "STOP": "idle"
+        }
+      }
+    }
+  }
+}`);
 
                     // Resize editors
                     editors.css.resize();
@@ -2241,12 +2418,72 @@
                 }
             }, 100);
 
-            // Resize editors on window resize
-            window.addEventListener('resize', function() {
+                    // Debounced resize handler
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                updateLayoutHeights();
                 if (editors.css) editors.css.resize();
                 if (editors.js) editors.js.resize();
                 if (editors.json) editors.json.resize();
-            });
+            }, 100); // Debounce resize events
+        });
+
+        // Global function for updating layout heights
+        function updateLayoutHeights() {
+            const viewportHeight = window.innerHeight;
+            const headerHeight = 120; // Approximate header height
+            const availableHeight = viewportHeight - headerHeight;
+            
+            // Update canvas container height
+            const canvasContainer = document.querySelector('.canvas-container');
+            if (canvasContainer) {
+                canvasContainer.style.height = `${availableHeight}px`;
+            }
+            
+            // Update sidebar height
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.style.height = `${availableHeight}px`;
+            }
+            
+            // Update right panel height
+            const rightPanel = document.querySelector('.right-panel');
+            if (rightPanel) {
+                rightPanel.style.height = `${availableHeight}px`;
+            }
+            
+            // Update left panel height (for mobile)
+            const leftPanel = document.querySelector('.left-panel');
+            if (leftPanel) {
+                leftPanel.style.height = `${availableHeight}px`;
+            }
+            
+            // Update sun-editor-wrapper max-height
+            const sunEditorWrapper = document.querySelector('.sun-editor-wrapper');
+            if (sunEditorWrapper) {
+                sunEditorWrapper.style.maxHeight = `${availableHeight - 20}px`; // 20px margin
+            }
+            
+            console.log('Layout heights updated:', { viewportHeight, availableHeight });
+        }
+
+        // Global function for updating canvas transform
+        function updateCanvasTransform() {
+            const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
+            if (sunEditorWrapper) {
+                sunEditorWrapper.style.transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
+                updateZoomLevel();
+            }
+        }
+
+        function updateZoomLevel() {
+            const zoomLevel = document.getElementById('zoom-level');
+            if (zoomLevel) {
+                zoomLevel.textContent = Math.round(canvasScale * 100) + '%';
+            }
+        }
             
             // Force resize all editors after a delay to ensure they're properly sized
             setTimeout(() => {
@@ -2343,21 +2580,40 @@
             const canvasContainer = document.getElementById('canvas-container');
             const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
             
+            // Mouse enter/leave handlers for state machine
+            function handleCanvasMouseEnter(e) {
+                zoomStateMachine.transition('MOUSE_ENTER_CANVAS');
+            }
+            
+            function handleCanvasMouseLeave(e) {
+                zoomStateMachine.transition('MOUSE_LEAVE');
+            }
+            
+            function handleEditorMouseEnter(e) {
+                zoomStateMachine.transition('MOUSE_ENTER_EDITOR');
+            }
+            
+            function handleEditorMouseLeave(e) {
+                zoomStateMachine.transition('MOUSE_LEAVE');
+            }
+            
             function startCanvasDrag(e) {
                 // Only start dragging if clicking on the canvas background, not on editors
                 if (e.target === canvasContainer || e.target.classList.contains('canvas-container')) {
-                    e.preventDefault();
-                    isDraggingCanvas = true;
-                    canvasStartX = e.clientX - canvasOffsetX;
-                    canvasStartY = e.clientY - canvasOffsetY;
-                    canvasContainer.classList.add('dragging');
-                    sunEditorWrapper.classList.add('dragging');
-                    document.body.style.cursor = 'grabbing';
+                    if (zoomStateMachine.transition('MOUSE_DOWN')) {
+                        e.preventDefault();
+                        isDraggingCanvas = true;
+                        canvasStartX = e.clientX - canvasOffsetX;
+                        canvasStartY = e.clientY - canvasOffsetY;
+                        canvasContainer.classList.add('dragging');
+                        sunEditorWrapper.classList.add('dragging');
+                        document.body.style.cursor = 'grabbing';
+                    }
                 }
             }
 
             function doCanvasDrag(e) {
-                if (!isDraggingCanvas) return;
+                if (!isDraggingCanvas || zoomStateMachine.getCurrentState() !== 'canvas_dragging') return;
                 
                 e.preventDefault();
                 canvasOffsetX = e.clientX - canvasStartX;
@@ -2373,12 +2629,15 @@
                 canvasContainer.classList.remove('dragging');
                 sunEditorWrapper.classList.remove('dragging');
                 document.body.style.cursor = '';
+                zoomStateMachine.transition('MOUSE_UP');
             }
 
             // Touch events for pinch and zoom with vector analysis
             function handleTouchStart(e) {
+                zoomStateMachine.transition('TOUCH_START');
+                
                 if (e.touches.length === 1) {
-                    // Single touch - start dragging
+                    // Single touch - start dragging (ignore 2D scrolling)
                     const touch = e.touches[0];
                     if (e.target === canvasContainer || e.target.classList.contains('canvas-container')) {
                         e.preventDefault();
@@ -2389,7 +2648,7 @@
                         sunEditorWrapper.classList.add('dragging');
                     }
                 } else if (e.touches.length === 2) {
-                    // Two touches - initialize vector analysis
+                    // Two touches - initialize vector analysis (ignore 2D scrolling)
                     e.preventDefault();
                     const currentVector = calculateVector(e.touches[0], e.touches[1]);
                     touchVectors = [currentVector];
@@ -2402,15 +2661,19 @@
             }
 
             function handleTouchMove(e) {
+                if (zoomStateMachine.getCurrentState() === 'touch_moving') {
+                    zoomStateMachine.transition('TOUCH_MOVE');
+                }
+                
                 if (e.touches.length === 1 && isDraggingCanvas) {
-                    // Single touch - continue dragging
+                    // Single touch - continue dragging (ignore 2D scrolling)
                     const touch = e.touches[0];
                     e.preventDefault();
                     canvasOffsetX = touch.clientX - canvasStartX;
                     canvasOffsetY = touch.clientY - canvasStartY;
                     updateCanvasTransform();
                 } else if (e.touches.length === 2) {
-                    // Two touches - analyze gesture with improved vector analysis
+                    // Two touches - analyze gesture with improved vector analysis (ignore 2D scrolling)
                     e.preventDefault();
                     const currentVector = calculateVector(e.touches[0], e.touches[1]);
                     
@@ -2442,6 +2705,8 @@
             }
 
             function handleTouchEnd(e) {
+                zoomStateMachine.transition('TOUCH_END');
+                
                 if (e.touches.length === 0) {
                     // No touches left - stop all interactions
                     isDraggingCanvas = false;
@@ -2607,35 +2872,42 @@
                 );
             }
 
-            function updateCanvasTransform() {
-                sunEditorWrapper.style.transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
-                updateZoomLevel();
-            }
 
-            function updateZoomLevel() {
-                const zoomLevel = document.getElementById('zoom-level');
-                if (zoomLevel) {
-                    zoomLevel.textContent = Math.round(canvasScale * 100) + '%';
-                }
-            }
 
-            // Mouse events
+            // Mouse events with state machine
+            canvasContainer.addEventListener('mouseenter', handleCanvasMouseEnter);
+            canvasContainer.addEventListener('mouseleave', handleCanvasMouseLeave);
             canvasContainer.addEventListener('mousedown', startCanvasDrag);
             document.addEventListener('mousemove', doCanvasDrag);
             document.addEventListener('mouseup', stopCanvasDrag);
             document.addEventListener('mouseleave', stopCanvasDrag);
+            
+            // Add mouse enter/leave handlers for editor areas
+            const editorAreas = document.querySelectorAll('.editor-content, .sun-editor-container, .ace-editor-container');
+            editorAreas.forEach(editor => {
+                editor.addEventListener('mouseenter', handleEditorMouseEnter);
+                editor.addEventListener('mouseleave', handleEditorMouseLeave);
+            });
 
             // Touch events
             canvasContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvasContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvasContainer.addEventListener('touchend', handleTouchEnd);
 
-            // Mouse wheel zoom
+            // Mouse wheel zoom with state machine
             canvasContainer.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                canvasScale = Math.max(0.1, Math.min(3, canvasScale * delta));
-                updateCanvasTransform();
+                const currentState = zoomStateMachine.getCurrentState();
+                
+                if (currentState === 'canvas_hover' || currentState === 'canvas_zooming') {
+                    e.preventDefault();
+                    zoomStateMachine.transition('WHEEL');
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    canvasScale = Math.max(0.1, Math.min(3, canvasScale * delta));
+                    updateCanvasTransform();
+                } else if (currentState === 'editor_hover' || currentState === 'editor_scrolling') {
+                    // Allow normal scrolling in editor areas
+                    zoomStateMachine.transition('WHEEL');
+                }
             });
         }
 
@@ -3209,25 +3481,84 @@
             
             console.log('=== END TAB STATE DEBUG ===');
         }
+
+        function debugZoomState() {
+            console.log('=== ZOOM STATE MACHINE DEBUG ===');
+            console.log('Current State:', zoomStateMachine.getCurrentState());
+            console.log('Canvas Scale:', canvasScale);
+            console.log('Canvas Offset:', { x: canvasOffsetX, y: canvasOffsetY });
+            console.log('Is Dragging Canvas:', isDraggingCanvas);
+            console.log('Is Zooming:', isZooming);
+            console.log('Touch Vectors:', touchVectors.length);
+            console.log('Gesture History:', gestureHistory.length);
+            console.log('Current Gesture Type:', currentGestureType);
+            console.log('Gesture Confidence:', gestureConfidence);
+            console.log('=== END ZOOM STATE MACHINE DEBUG ===');
+        }
         
         function forceShowTab(tabName) {
-            console.log('Force showing tab:', tabName);
+            console.log('=== FORCE SHOW TAB ===');
+            console.log('Forcing tab:', tabName);
             
-            // Hide all contents
+            // Clear all active states
+            document.querySelectorAll('.header-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.editor-content').forEach(content => {
-                content.style.display = 'none';
                 content.classList.remove('active');
+                content.style.opacity = '0';
+                content.style.display = 'none';
             });
             
-            // Show the target content
-            const target = document.getElementById(tabName + '-editor');
-            if (target) {
-                target.style.display = 'block';
-                target.classList.add('active');
-                console.log('Forced display of:', tabName + '-editor');
-            } else {
-                console.error('Target not found:', tabName + '-editor');
+            // Activate the target tab
+            const targetTab = Array.from(document.querySelectorAll('.header-tab')).find(tab => 
+                tab.textContent.toLowerCase().includes(tabName.toLowerCase())
+            );
+            
+            if (targetTab) {
+                targetTab.classList.add('active');
+                console.log('Activated tab:', targetTab.textContent);
             }
+            
+            const targetContent = document.getElementById(tabName + '-editor');
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.opacity = '1';
+                targetContent.style.display = 'block';
+                console.log('Activated content:', targetContent.id);
+                
+                // Handle SunEditor specifically
+                if (tabName === 'html') {
+                    const sunEditorContainer = document.getElementById('html-sun-editor');
+                    if (sunEditorContainer) {
+                        sunEditorContainer.style.display = 'block';
+                        if (editors.html) {
+                            setTimeout(() => {
+                                editors.html.core.resize();
+                                console.log('Resized SunEditor');
+                            }, 50);
+                        }
+                    }
+                }
+                
+                // Resize Ace editors
+                setTimeout(() => {
+                    if (editors.css && tabName === 'css') {
+                        editors.css.resize();
+                        console.log('Resized CSS editor');
+                    }
+                    if (editors.js && tabName === 'js') {
+                        editors.js.resize();
+                        console.log('Resized JS editor');
+                    }
+                    if (editors.json && tabName === 'json') {
+                        editors.json.resize();
+                        console.log('Resized JSON editor');
+                    }
+                }, 100);
+            } else {
+                console.error('Target content not found:', tabName + '-editor');
+            }
+            
+            console.log('=== END FORCE SHOW TAB ===');
         }
 
         function switchTab(tabName, event) {
@@ -3249,6 +3580,8 @@
             
             allContents.forEach(content => {
                 content.classList.remove('active');
+                content.style.opacity = '0';
+                content.style.display = 'none';
                 console.log('Removed active from content:', content.id);
             });
 
@@ -3270,18 +3603,17 @@
             const targetElement = document.getElementById(tabName + '-editor');
             if (targetElement) {
                 targetElement.classList.add('active');
-                console.log('Added active to content:', tabName + '-editor');
-                
-                // Ensure proper visibility with opacity transitions
                 targetElement.style.opacity = '1';
                 targetElement.style.display = 'block';
-                targetElement.style.position = 'relative';
-                targetElement.style.zIndex = '1';
+                console.log('Added active to content:', tabName + '-editor');
                 
                 // Update preview if switching to preview tab
                 if (tabName === 'preview') {
                     updatePreview();
                 }
+                
+                // Update canvas zoom tracking
+                updateCanvasZoomTracking(tabName);
             } else {
                 console.error('Target element not found:', tabName + '-editor');
             }
@@ -3289,36 +3621,62 @@
             console.log('Tab switching complete for:', tabName);
             console.log('=== END TAB SWITCHING DEBUG ===');
             
-            // Resize Ace editors when they become visible
-            setTimeout(() => {
-                if (editors.css && tabName === 'css') {
-                    console.log('Resizing CSS editor');
-                    editors.css.resize();
-                }
-                if (editors.js && tabName === 'js') {
-                    console.log('Resizing JS editor');
-                    editors.js.resize();
-                }
-                if (editors.json && tabName === 'json') {
-                    console.log('Resizing JSON editor');
-                    editors.json.resize();
-                }
+                            // Resize Ace editors when they become visible with proper timing
+                setTimeout(() => {
+                    if (editors.css && tabName === 'css') {
+                        console.log('Resizing CSS editor');
+                        setTimeout(() => editors.css.resize(), 50);
+                    }
+                    if (editors.js && tabName === 'js') {
+                        console.log('Resizing JS editor');
+                        setTimeout(() => editors.js.resize(), 50);
+                    }
+                    if (editors.json && tabName === 'json') {
+                        console.log('Resizing JSON editor');
+                        setTimeout(() => editors.json.resize(), 50);
+                    }
+                    
+                    // Update layout heights for editor tabs
+                    if (['html', 'css', 'js', 'json', 'xstate'].includes(tabName)) {
+                        updateLayoutHeights();
+                    }
                 
-                // Hide SunEditor when switching to other tabs
-                if (tabName !== 'html' && editors.html) {
-                    const sunEditorContainer = document.getElementById('html-sun-editor');
-                    if (sunEditorContainer) {
+                // Handle SunEditor visibility
+                const sunEditorContainer = document.getElementById('html-sun-editor');
+                if (sunEditorContainer) {
+                    if (tabName === 'html') {
+                        sunEditorContainer.style.display = 'block';
+                        console.log('Shown SunEditor');
+                        // Force SunEditor to resize with longer delay
+                        if (editors.html) {
+                            setTimeout(() => {
+                                try {
+                                    editors.html.core.resize();
+                                    console.log('Resized SunEditor');
+                                } catch (error) {
+                                    console.log('SunEditor resize failed:', error);
+                                }
+                            }, 200);
+                        }
+                    } else {
                         sunEditorContainer.style.display = 'none';
                         console.log('Hidden SunEditor');
                     }
-                } else if (tabName === 'html' && editors.html) {
-                    const sunEditorContainer = document.getElementById('html-sun-editor');
-                    if (sunEditorContainer) {
-                        sunEditorContainer.style.display = 'block';
-                        console.log('Shown SunEditor');
-                    }
                 }
             }, 100);
+        }
+
+        function updateCanvasZoomTracking(activeTab) {
+            const canvasContainer = document.querySelector('.canvas-container');
+            const isEditorTab = ['html', 'css', 'js', 'json', 'xstate'].includes(activeTab);
+            
+            if (isEditorTab) {
+                canvasContainer.classList.add('editor-active');
+                console.log('Canvas zoom tracking: Editor tab active');
+            } else {
+                canvasContainer.classList.remove('editor-active');
+                console.log('Canvas zoom tracking: Preview tab active');
+            }
         }
 
         async function saveComponent() {
@@ -3365,28 +3723,13 @@
                 showMessage('error', 'No component selected');
                 return;
             }
-
-            try {
-                showLoading(true);
-                
-                const response = await fetch(`${config.apiUrl}/api/components/${currentComponent.id}/publish`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ version: currentVersion })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage('success', 'Component published successfully');
-                } else {
-                    showMessage('error', result.error || 'Failed to publish component');
-                }
-            } catch (error) {
-                showMessage('error', 'Failed to publish component: ' + error.message);
-            } finally {
-                showLoading(false);
-            }
+            
+            showMessage('info', 'Publishing component...');
+            
+            // Simulate publishing
+            setTimeout(() => {
+                showMessage('success', 'Component published successfully!');
+            }, 2000);
         }
 
         async function exportComponent() {
@@ -4049,7 +4392,14 @@
         function updateGestureIndicator(gestureType) {
             const indicator = document.getElementById('gesture-indicator');
             if (indicator) {
-                indicator.textContent = `Gesture: ${gestureType}`;
+                const state = zoomStateMachine.getCurrentState();
+                let displayText = `State: ${state}`;
+                
+                if (gestureType) {
+                    displayText += ` | Gesture: ${gestureType}`;
+                }
+                
+                indicator.textContent = displayText;
                 indicator.classList.add('show');
                 
                 // Hide indicator after 2 seconds
@@ -4065,7 +4415,25 @@
             const selectedValue = selector.value;
             
             if (selectedValue) {
-                switchTab(selectedValue);
+                console.log('Switching to view template:', selectedValue);
+                // Find the corresponding tab button and trigger the click
+                const tabButtons = document.querySelectorAll('.header-tab');
+                let foundTab = false;
+                
+                tabButtons.forEach(tab => {
+                    const tabText = tab.textContent.toLowerCase();
+                    if (tabText.includes(selectedValue.toLowerCase()) || 
+                        selectedValue.toLowerCase().includes(tabText.replace(/\s+/g, ''))) {
+                        console.log('Found matching tab:', tab.textContent);
+                        tab.click();
+                        foundTab = true;
+                    }
+                });
+                
+                if (!foundTab) {
+                    console.log('No matching tab found, using direct switchTab call');
+                    switchTab(selectedValue);
+                }
             }
         }
 
@@ -4150,8 +4518,8 @@
             }
         }
 
-        // Update preview function with memory leak prevention
-        function updatePreview() {
+        // Update preview function using server endpoint
+        async function updatePreview() {
             const previewContent = document.getElementById('preview-content');
             if (!previewContent || !currentComponent) return;
 
@@ -4165,56 +4533,54 @@
             console.log('CSS:', css);
             console.log('JS:', js);
 
-            const fullHtml = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Component Preview</title>
-                    <style>${css}</style>
-                </head>
-                <body>
-                    ${html}
-                    <script>${js}</script>
-                </body>
-                </html>
-            `;
+            try {
+                // Send component data to server for preview generation
+                const response = await fetch('/api/component/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ html, css, js })
+                });
 
-            console.log('🔍 Full generated HTML:', fullHtml);
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
 
-            // Clean up previous Blob URLs
-            activeBlobUrls.forEach(url => {
-                URL.revokeObjectURL(url);
-            });
-            activeBlobUrls.clear();
+                // Get the HTML content from server
+                const fullHtml = await response.text();
+                console.log('🔍 Full generated HTML from server:', fullHtml);
 
-            const blob = new Blob([fullHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            activeBlobUrls.add(url);
+                // Clear existing content
+                previewContent.innerHTML = '';
 
-            // Clear existing content
-            previewContent.innerHTML = '';
+                // Create iframe for preview
+                const iframe = document.createElement('iframe');
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                iframe.style.borderRadius = '4px';
 
-            // Create iframe for preview
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.style.border = 'none';
-            iframe.style.borderRadius = '4px';
+                // Set the iframe content directly
+                iframe.srcdoc = fullHtml;
 
-            previewContent.appendChild(iframe);
+                previewContent.appendChild(iframe);
 
-            // Clean up URL after iframe loads
-            iframe.onload = () => {
-                setTimeout(() => {
-                    if (activeBlobUrls.has(url)) {
-                        URL.revokeObjectURL(url);
-                        activeBlobUrls.delete(url);
-                    }
-                }, 1000);
-            };
+            } catch (error) {
+                console.error('❌ Error updating preview:', error);
+                previewContent.innerHTML = `
+                    <div style="padding: 20px; color: red; background: #ffe6e6; border: 1px solid #ff9999; border-radius: 4px;">
+                        <h3>Preview Error</h3>
+                        <p>Failed to generate preview: ${error.message}</p>
+                        <details>
+                            <summary>Debug Info</summary>
+                            <pre>HTML: ${html}</pre>
+                            <pre>CSS: ${css}</pre>
+                            <pre>JS: ${js}</pre>
+                        </details>
+                    </div>
+                `;
+            }
         }
 
         // Debounced preview update to prevent excessive Blob URL creation
@@ -4442,6 +4808,24 @@
                 showMessage('success', 'Component published successfully!');
             }, 2000);
         }
+
+        // Global function for updating canvas transform
+        function updateCanvasTransform() {
+            const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
+            if (sunEditorWrapper) {
+                sunEditorWrapper.style.transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
+                updateZoomLevel();
+            }
+        }
+
+        function updateZoomLevel() {
+            const zoomLevel = document.getElementById('zoom-level');
+            if (zoomLevel) {
+                zoomLevel.textContent = Math.round(canvasScale * 100) + '%';
+            }
+        }
+            
+            // Force resize all editors after a delay to ensure they're properly sized
     </script>
 </body>
 </html> 

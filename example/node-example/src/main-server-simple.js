@@ -452,6 +452,34 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Component Preview endpoint - serves component HTML as static file
+app.post('/api/component/preview', (req, res) => {
+  const { html, css, js } = req.body;
+  
+  if (!html && !css && !js) {
+    return res.status(400).json({ error: 'No component content provided' });
+  }
+
+  const fullHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Preview</title>
+    <style>${css || ''}</style>
+</head>
+<body>
+    ${html || ''}
+    <script>${js || ''}</script>
+</body>
+</html>`;
+
+  // Set content type to HTML
+  res.setHeader('Content-Type', 'text/html');
+  res.send(fullHtml);
+});
+
 // API endpoints
 app.get('/api/fish-burger/status', (req, res) => {
   res.json({
