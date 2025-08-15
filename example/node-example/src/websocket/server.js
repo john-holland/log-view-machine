@@ -1,3 +1,4 @@
+import { WebSocketServer } from 'ws';
 import { useServer } from 'graphql-ws/use/ws';
 
 // Setup WebSocket server for GraphQL subscriptions

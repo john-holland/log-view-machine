@@ -6,6 +6,7 @@
  */
 
 import { createViewStateMachine } from '../../../../../../log-view-machine/src/core/ViewStateMachine.tsx';
+import CartTemplate from './cart-template.js';
 
 // Base Generic Editor Template
 const GenericEditorTemplate = {
@@ -481,7 +482,8 @@ export {
   CSSEditorTemplate,
   JavaScriptEditorTemplate,
   XStateEditorTemplate,
-  ComponentLibraryTemplate
+  ComponentLibraryTemplate,
+  CartTemplate
 };
 
 // Template registry
@@ -491,7 +493,8 @@ export const templates = {
   'css-editor': CSSEditorTemplate,
   'javascript-editor': JavaScriptEditorTemplate,
   'xstate-editor': XStateEditorTemplate,
-  'component-library': ComponentLibraryTemplate
+  'component-library': ComponentLibraryTemplate,
+  'cart-template': CartTemplate
 };
 
 // Helper function to create template instances
@@ -502,7 +505,8 @@ export function createTemplate(templateId, config = {}) {
     'css-editor': CSSEditorTemplate,
     'javascript-editor': JavaScriptEditorTemplate,
     'xstate-editor': XStateEditorTemplate,
-    'component-library': ComponentLibraryTemplate
+    'component-library': ComponentLibraryTemplate,
+    'cart-template': CartTemplate
   };
   
   const template = templates[templateId];
@@ -520,6 +524,7 @@ export function getAvailableTemplates() {
     'css-editor': CSSEditorTemplate,
     'javascript-editor': JavaScriptEditorTemplate,
     'xstate-editor': XStateEditorTemplate,
-    'component-library': ComponentLibraryTemplate
+    'component-library': ComponentLibraryTemplate,
+    'cart-template': CartTemplate
   });
 } 

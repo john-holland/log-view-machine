@@ -20,7 +20,8 @@ import { createStateMachines } from './machines/state-machines.js';
 import { setupWebSocketServer } from './websocket/server.js';
 import { setupMiddleware } from './middleware/index.js';
 import { setupRoutes } from './routes/index.js';
-import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
+// import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
+import { createPactTestProxy } from './machines/pact-test-proxy.js';
 
 // Load environment variables
 dotenv.config();
@@ -108,6 +109,13 @@ const stateMachines = await createStateMachines(db, robotCopy);
 // Create proxy machines
 const proxyMachines = await createProxyMachines(db, robotCopy);
 
+// Create pact test proxy for testing cart components
+const pactTestProxy = await createPactTestProxy(robotCopy, {
+  testMode: 'happy_path',
+  responseDelay: { min: 100, max: 1000 },
+  errorProbability: 0.05
+});
+
 // Create GraphQL schema
 const schema = createGraphQLSchema(stateMachines, proxyMachines, db);
 
@@ -120,6 +128,7 @@ const apolloServer = new ApolloServer({
     stateMachines,
     proxyMachines,
     robotCopy,
+    pactTestProxy,
     logger
   }),
   plugins: [
@@ -148,26 +157,1038 @@ const apolloServer = new ApolloServer({
 await apolloServer.start();
 apolloServer.applyMiddleware({ app, path: '/graphql' });
 
+// Root route with navigation
+app.get('/', (req, res) => {
+  try {
+    logger.info('Serving root route with navigation...');
+    
+    const navigationHTML = `
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http: https: ws: wss:;">
+        <title>Log View Machine - Node Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 3rem;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            font-size: 1.2rem;
+            margin: 0;
+            opacity: 0.9;
+        }
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .nav-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .nav-card:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .nav-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-card p {
+            margin: 0;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        .status-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .status-section h2 {
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .status-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .status-item h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .status-item .value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Log View Machine</h1>
+            <p>Node Example - Generic Editor & Component System</p>
+        </div>
+        
+        <div class="status-section">
+            <h2>📊 System Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <h4>Database</h4>
+                    <div class="value">✅ Connected</div>
+                </div>
+                <div class="status-item">
+                    <h4>State Machines</h4>
+                    <div class="value">✅ Active</div>
+                </div>
+                <div class="status-item">
+                    <h4>Proxy Machines</h4>
+                    <div class="value">✅ Running</div>
+                </div>
+                <div class="status-item">
+                    <h4>Pact Test Proxy</h4>
+                    <div class="value">✅ Ready</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-grid">
+            <a href="/generic-editor" class="nav-card">
+                <h3>🎨 Generic Editor</h3>
+                <p>Main component editor with HTML, CSS, JavaScript, and XState editing capabilities. Build and test components in real-time.</p>
+            </a>
+            
+            <a href="/fish-burger-demo" class="nav-card">
+                <h3>🍔 Fish Burger Demo</h3>
+                <p>Interactive demo showcasing our generic editor components with pact test proxy integration. Test cart functionality and state machines.</p>
+            </a>
+            
+            <a href="/graphql" class="nav-card">
+                <h3>🔍 GraphQL Playground</h3>
+                <p>Interactive GraphQL playground to explore and test our state machine and proxy machine APIs.</p>
+            </a>
+            
+            <a href="/health" class="nav-card">
+                <h3>💚 Health Check</h3>
+                <p>System health status and diagnostic information for all services and components.</p>
+            </a>
+            
+            <a href="/api/pact-test/status" class="nav-card">
+                <h3>🧪 Pact Test Status</h3>
+                <p>Current pact test proxy configuration and statistics. Monitor test scenarios and error injection.</p>
+            </a>
+            
+            <a href="/api/state-machines" class="nav-card">
+                <h3>⚙️ State Machines</h3>
+                <p>List and manage all registered state machines. View states, transitions, and send events.</p>
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>Built with ❤️ using XState, Express, and the Generic Editor Component System</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    res.send(navigationHTML);
+  } catch (error) {
+    logger.error('Failed to serve root route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to serve root route',
+      details: error.message
+    });
+  }
+});
+
 // Setup REST routes
 setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, logger);
 
-// TeleportHQ demo endpoint
-app.get('/api/teleporthq/demo', async (req, res) => {
+// TeleportHQ demo endpoint - temporarily disabled
+// app.get('/api/teleporthq/demo', async (req, res) => {
+//   try {
+//     logger.info('Running TeleportHQ demo...');
+//     await runTeleportHQDemo();
+//     res.json({
+//       success: true,
+//       message: 'TeleportHQ demo completed successfully',
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     logger.error('TeleportHQ demo failed:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//       timestamp: new Date().toISOString()
+//     });
+//   }
+// });
+
+// Fish Burger Demo with Generic Editor Components
+app.get('/fish-burger-demo', (req, res) => {
   try {
-    logger.info('Running TeleportHQ demo...');
-    await runTeleportHQDemo();
+    logger.info('Serving Fish Burger Demo with Generic Editor Components...');
+    
+    // Serve the fish burger demo HTML that uses our generic editor components
+    const demoHTML = `
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http: https: ws: wss:;">
+        <title>Fish Burger Demo - Generic Editor Components</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-header h1 {
+            color: #667eea;
+            margin: 0 0 10px 0;
+        }
+        .demo-header p {
+            color: #666;
+            margin: 0;
+        }
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .demo-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-panel h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .component-preview {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+        }
+        .component-preview:hover {
+            border-color: #667eea;
+            background: #f0f8ff;
+        }
+        .component-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .component-info h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .component-info p {
+            margin: 0 0 8px 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .demo-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected {
+            background: #28a745;
+        }
+        .status-disconnected {
+            background: #dc3545;
+        }
+        .status-connecting {
+            background: #ffc107;
+        }
+        
+        /* Connection Mode Styles */
+        .connection-mode-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .connection-mode-toggle h2 {
+            margin: 0 0 20px 0;
+            text-align: center;
+            color: white;
+        }
+        
+        .mode-options {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .mode-option:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+        
+        .mode-option input[type="radio"] {
+            transform: scale(1.2);
+        }
+        
+        .mode-option input[type="radio"]:checked + label {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .mode-option input[type="radio"]:checked {
+            accent-color: #fff;
+        }
+        
+        .live-server-config {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #28a745;
+            margin-top: 20px;
+        }
+        
+        .live-server-config h4 {
+            color: white;
+            margin: 0 0 15px 0;
+        }
+        
+        .live-server-config input,
+        .live-server-config select {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #333;
+        }
+        
+        .live-server-config label {
+            color: white;
+            font-weight: bold;
+        }
+        
+        .live-server-config small {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .connection-status {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+        
+        .status-testing {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .status-success {
+            background: #28a745;
+            color: #fff;
+        }
+        
+        .status-error {
+            background: #dc3545;
+            color: #fff;
+        }
+        
+        .status-saved {
+            background: #17a2b8;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <h1>🍔 Fish Burger Demo</h1>
+        <p>Built with Generic Editor Components - Edit and Design in Real-Time</p>
+    </div>
+
+    <div class="demo-container">
+        <!-- Cart Component Panel -->
+        <div class="demo-panel">
+            <h2>🛒 Cart Component</h2>
+            <div class="component-preview" id="cart-preview">
+                <div style="text-align: center;">
+                    <h3>Cart Component</h3>
+                    <p>Interactive cart with burger builder</p>
+                    <div class="status-indicator status-disconnected"></div>
+                    <span>Not Connected</span>
+                </div>
+            </div>
+            <div class="component-info">
+                <h4>Features</h4>
+                <p>• Burger ingredient selection</p>
+                <p>• Real-time cart updates</p>
+                <p>• Checkout flow</p>
+                <p>• Local storage persistence</p>
+                <h4>Component Type</h4>
+                <p>XState-driven cart with HTML/CSS/JS</p>
+            </div>
+            <div class="demo-actions">
+                <button class="btn btn-primary" onclick="loadCartComponent()">Load Cart Component</button>
+                <button class="btn btn-secondary" onclick="editCartComponent()">Edit in Generic Editor</button>
+                <button class="btn btn-success" onclick="testCartFlow()">Test Cart Flow</button>
+            </div>
+        </div>
+
+        <!-- Generic Editor Panel -->
+        <div class="demo-panel">
+            <h2>🎨 Generic Editor</h2>
+            <div class="component-preview" id="editor-preview">
+                <div style="text-align: center;">
+                    <h3>Generic Editor</h3>
+                    <p>Component editing and design system</p>
+                    <div class="status-indicator status-disconnected"></div>
+                    <span>Not Connected</span>
+                </div>
+            </div>
+            <div class="component-info">
+                <h4>Features</h4>
+                <p>• Multi-editor support (HTML, CSS, JS, XState)</p>
+                <p>• Real-time preview</p>
+                <p>• Component library</p>
+                <p>• Version management</p>
+                <h4>Integration</h4>
+                <p>Cart component runs within editor</p>
+            </div>
+            <div class="demo-actions">
+                <button class="btn btn-primary" onclick="openGenericEditor()">Open Generic Editor</button>
+                <button class="btn btn-secondary" onclick="loadComponentLibrary()">Load Component Library</button>
+                <button class="btn btn-success" onclick="createNewComponent()">Create New Component</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Connection Mode Selection -->
+    <div class="connection-mode-toggle" style="grid-column: 1 / -1; margin-top: 20px;">
+      <h2>🔌 Connection Mode</h2>
+      <div class="mode-options">
+        <div class="mode-option">
+          <input type="radio" id="pact-mode" name="connection-mode" value="pact" checked onchange="switchConnectionMode()">
+          <label for="pact-mode">🧪 Pact Test Mode</label>
+          <span style="color: rgba(255,255,255,0.8); font-size: 14px;">- Controlled testing with simulated responses</span>
+        </div>
+        <div class="mode-option">
+          <input type="radio" id="live-mode" name="connection-mode" value="live" onchange="switchConnectionMode()">
+          <label for="live-mode">🚀 Live Server Mode</label>
+          <span style="color: rgba(255,255,255,0.8); font-size: 14px;">- Connect to real backend services</span>
+        </div>
+      </div>
+      
+      <!-- Live Server Configuration (hidden by default) -->
+      <div id="live-server-config" class="live-server-config" style="display: none;">
+        <h4>🌐 Live Server Configuration</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+          <div>
+            <label><strong>API Base URL:</strong></label>
+            <input type="text" id="live-api-url" value="http://localhost:3001" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            <small>Base URL for your live backend API</small>
+          </div>
+          <div>
+            <label><strong>Authentication:</strong></label>
+            <select id="live-auth-type" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+              <option value="none">No Authentication</option>
+              <option value="bearer">Bearer Token</option>
+              <option value="api-key">API Key</option>
+              <option value="basic">Basic Auth</option>
+            </select>
+            <input type="text" id="live-auth-value" placeholder="Token/Key/Password" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; display: none;">
+          </div>
+        </div>
+        <div style="margin-top: 15px;">
+          <button class="btn btn-success" onclick="testLiveConnection()">Test Connection</button>
+          <button class="btn btn-primary" onclick="saveLiveConfig()">Save Configuration</button>
+          <span id="live-connection-status" class="connection-status"></span>
+        </div>
+      </div>
+    </div>
+
+        <!-- Pact Test Proxy Controls -->
+    <div class="demo-panel" style="grid-column: 1 / -1; margin-top: 20px;">
+      <h2>🧪 Pact Test Proxy Controls</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <h4>Test Configuration</h4>
+          <div style="margin-bottom: 15px;">
+            <label>Test Mode:</label>
+            <select id="test-mode" onchange="updatePactConfig()">
+              <option value="happy_path">Happy Path</option>
+              <option value="error_scenarios">Error Scenarios</option>
+              <option value="edge_cases">Edge Cases</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label>Error Probability: <span id="error-probability-value">5%</span></label>
+            <input type="range" id="error-probability" min="0" max="100" value="5" onchange="updatePactConfig()" />
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label>Response Delay: <span id="response-delay-value">100-1000ms</span></label>
+            <input type="range" id="response-delay" min="0" max="5000" value="1000" onchange="updatePactConfig()" />
+          </div>
+          <button class="btn btn-primary" onclick="updatePactConfig()">Update Config</button>
+          <button class="btn btn-secondary" onclick="resetPactStats()">Reset Stats</button>
+        </div>
+        <div>
+          <h4>Test Statistics</h4>
+          <div id="pact-stats" style="padding: 15px; background: #f8f9fa; border-radius: 4px;">
+            <p><strong>Request Count:</strong> <span id="request-count">0</span></p>
+            <p><strong>Error Count:</strong> <span id="error-count">0</span></p>
+            <p><strong>Last Request:</strong> <span id="last-request">None</span></p>
+            <p><strong>Current Mode:</strong> <span id="current-mode">Happy Path</span></p>
+          </div>
+          <button class="btn btn-success" onclick="refreshPactStats()">Refresh Stats</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Integration Status -->
+    <div class="demo-panel" style="grid-column: 1 / -1; margin-top: 20px;">
+      <h2>🔗 Integration Status</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div style="padding: 15px; background: #f8f9fa; border-radius: 4px;">
+          <h4>Cart Component</h4>
+          <div class="status-indicator status-disconnected"></div>
+          <span>Status: Not Loaded</span>
+        </div>
+        <div style="padding: 15px; background: #f8f9fa; border-radius: 4px;">
+          <h4>Generic Editor</h4>
+          <div class="status-indicator status-disconnected"></div>
+          <span>Status: Not Loaded</span>
+        </div>
+        <div style="padding: 15px; background: #f8f9fa; border-radius: 4px;">
+          <h4>XState Integration</h4>
+          <div class="status-indicator status-disconnected"></div>
+          <span>Status: Not Connected</span>
+        </div>
+        <div style="padding: 15px; background: #f8f9fa; border-radius: 4px;">
+          <h4>Pact Test Proxy</h4>
+          <div class="status-indicator status-connected"></div>
+          <span>Status: Active</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        function loadCartComponent() {
+            console.log('Loading cart component...');
+            // This would load the cart component from our generic editor system
+            updateStatus('cart-preview', 'connected', 'Cart Component Loaded');
+        }
+
+        function editCartComponent() {
+            console.log('Opening cart component in generic editor...');
+            // This would open the generic editor with the cart component
+            window.open('/generic-editor?component=cart', '_blank');
+        }
+
+        function testCartFlow() {
+            console.log('Testing cart flow...');
+            // This would run a test of the cart functionality
+            alert('Cart flow test would run here - testing burger building, cart updates, and checkout');
+        }
+
+        function openGenericEditor() {
+            console.log('Opening generic editor...');
+            // This would open the generic editor interface
+            window.open('/generic-editor', '_blank');
+        }
+
+        function loadComponentLibrary() {
+            console.log('Loading component library...');
+            // This would load the component library
+            alert('Component library would load here - showing available components');
+        }
+
+        function createNewComponent() {
+            console.log('Creating new component...');
+            // This would create a new blank component
+            alert('New component creation would start here');
+        }
+
+        function updateStatus(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const statusIndicator = element.querySelector('.status-indicator');
+                const statusText = element.querySelector('span');
+                
+                if (statusIndicator) {
+                    statusIndicator.className = \`status-indicator status-\${status}\`;
+                }
+                if (statusText) {
+                    statusText.textContent = message;
+                }
+            }
+        }
+
+        // Connection Mode Functions
+        function switchConnectionMode() {
+            const pactMode = document.getElementById('pact-mode');
+            const liveMode = document.getElementById('live-mode');
+            const pactControls = document.querySelector('.demo-panel:nth-child(4)'); // Pact Test Proxy Controls
+            const liveConfig = document.getElementById('live-server-config');
+            
+            if (pactMode.checked) {
+                // Switch to Pact Test Mode
+                pactControls.style.display = 'block';
+                liveConfig.style.display = 'none';
+                console.log('Switched to Pact Test Mode');
+                
+                // Update UI to show pact mode is active
+                document.body.classList.remove('live-mode-active');
+                document.body.classList.add('pact-mode-active');
+                
+                // Update status indicators
+                updateConnectionStatus('pact');
+            } else if (liveMode.checked) {
+                // Switch to Live Server Mode
+                pactControls.style.display = 'none';
+                liveConfig.style.display = 'block';
+                console.log('Switched to Live Server Mode');
+                
+                // Update UI to show live mode is active
+                document.body.classList.remove('pact-mode-active');
+                document.body.classList.add('live-mode-active');
+                
+                // Update status indicators
+                updateConnectionStatus('live');
+            }
+        }
+        
+        function updateConnectionStatus(mode) {
+            const statusElements = document.querySelectorAll('.status-indicator');
+            statusElements.forEach(function(element) {
+                if (mode === 'pact') {
+                    element.className = 'status-indicator status-connected';
+                    element.nextElementSibling.textContent = 'Pact Test Mode';
+                } else if (mode === 'live') {
+                    element.className = 'status-indicator status-connecting';
+                    element.nextElementSibling.textContent = 'Live Server Mode';
+                }
+            });
+        }
+        
+        // Live Server Functions
+        async function testLiveConnection() {
+            const apiUrl = document.getElementById('live-api-url').value;
+            const authType = document.getElementById('live-auth-type').value;
+            const authValue = document.getElementById('live-auth-value').value;
+            const statusSpan = document.getElementById('live-connection-status');
+            
+            try {
+                statusSpan.textContent = 'Testing connection...';
+                statusSpan.style.background = '#ffc107';
+                statusSpan.style.color = '#000';
+                
+                // Build headers based on auth type
+                const headers = { 'Content-Type': 'application/json' };
+                if (authType === 'bearer' && authValue) {
+                    headers['Authorization'] = 'Bearer ' + authValue;
+                } else if (authType === 'api-key' && authValue) {
+                    headers['X-API-Key'] = authValue;
+                } else if (authType === 'basic' && authValue) {
+                    headers['Authorization'] = 'Basic ' + btoa(authValue);
+                }
+                
+                // Test connection with a simple GET request
+                const response = await fetch(apiUrl + '/health', { 
+                    method: 'GET',
+                    headers: headers
+                });
+                
+                if (response.ok) {
+                    statusSpan.textContent = '✅ Connected successfully!';
+                    statusSpan.style.background = '#28a745';
+                    statusSpan.style.color = '#fff';
+                    console.log('Live server connection successful');
+                } else {
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                }
+            } catch (error) {
+                statusSpan.textContent = '❌ Connection failed: ' + error.message;
+                statusSpan.style.background = '#dc3545';
+                statusSpan.style.color = '#fff';
+                console.error('Live server connection failed:', error);
+            }
+        }
+        
+        async function saveLiveConfig() {
+            const apiUrl = document.getElementById('live-api-url').value;
+            const authType = document.getElementById('live-auth-type').value;
+            const authValue = document.getElementById('live-auth-value').value;
+            
+            const config = {
+                apiUrl,
+                authType,
+                authValue,
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                // Save to localStorage
+                localStorage.setItem('liveServerConfig', JSON.stringify(config));
+                console.log('Live server configuration saved');
+                
+                // Show success message
+                const statusSpan = document.getElementById('live-connection-status');
+                statusSpan.textContent = '✅ Configuration saved!';
+                statusSpan.style.background = '#28a745';
+                statusSpan.style.color = '#fff';
+                
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    statusSpan.textContent = '';
+                    statusSpan.style.background = '';
+                    statusSpan.style.color = '';
+                }, 3000);
+            } catch (error) {
+                console.error('Failed to save live server config:', error);
+            }
+        }
+        
+        // Handle auth type changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const authTypeSelect = document.getElementById('live-auth-type');
+            const authValueInput = document.getElementById('live-auth-value');
+            
+            authTypeSelect.addEventListener('change', function() {
+                if (this.value === 'none') {
+                    authValueInput.style.display = 'none';
+                } else {
+                    authValueInput.style.display = 'block';
+                }
+            });
+            
+            // Load saved configuration
+            const savedConfig = localStorage.getItem('liveServerConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('live-api-url').value = config.apiUrl || 'http://localhost:3001';
+                    document.getElementById('live-auth-type').value = config.authType || 'none';
+                    document.getElementById('live-auth-value').value = config.authValue || '';
+                    
+                    // Show/hide auth value input based on saved type
+                    if (config.authType === 'none') {
+                        authValueInput.style.display = 'none';
+                    } else {
+                        authValueInput.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Failed to load saved config:', error);
+                }
+            }
+        });
+
+        // Pact Test Proxy Functions
+        async function updatePactConfig() {
+            const testMode = document.getElementById('test-mode').value;
+            const errorProbability = parseInt(document.getElementById('error-probability').value) / 100;
+            const responseDelay = parseInt(document.getElementById('response-delay').value);
+            
+            try {
+                const response = await fetch('/api/pact-test/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        testMode,
+                        errorProbability,
+                        responseDelay: { min: 100, max: responseDelay }
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Pact test configuration updated');
+                    refreshPactStats();
+                }
+            } catch (error) {
+                console.error('Failed to update pact test config:', error);
+            }
+        }
+        
+        async function resetPactStats() {
+            try {
+                const response = await fetch('/api/pact-test/reset', { method: 'POST' });
+                if (response.ok) {
+                    console.log('Pact test statistics reset');
+                    refreshPactStats();
+                }
+            } catch (error) {
+                console.error('Failed to reset pact test stats:', error);
+            }
+        }
+        
+        async function refreshPactStats() {
+            try {
+                const response = await fetch('/api/pact-test/status');
+                if (response.ok) {
+                    const stats = await response.json();
+                    
+                    document.getElementById('request-count').textContent = stats.requestCount;
+                    document.getElementById('error-count').textContent = stats.errorCount;
+                    document.getElementById('last-request').textContent = stats.lastRequest ? 'Recent' : 'None';
+                    document.getElementById('current-mode').textContent = stats.testMode.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    // Update UI elements
+                    document.getElementById('test-mode').value = stats.testMode;
+                    document.getElementById('error-probability').value = Math.round(stats.config.errorProbability * 100);
+                    document.getElementById('error-probability-value').textContent = Math.round(stats.config.errorProbability * 100) + '%';
+                    document.getElementById('response-delay').value = stats.config.responseDelay.max;
+                    document.getElementById('response-delay-value').textContent = stats.config.responseDelay.min + '-' + stats.config.responseDelay.max + 'ms';
+                }
+            } catch (error) {
+                console.error('Failed to refresh pact test stats:', error);
+            }
+        }
+        
+        // Initialize demo
+        console.log('Fish Burger Demo initialized with Generic Editor Components');
+        console.log('Available actions: loadCartComponent, editCartComponent, testCartFlow, openGenericEditor');
+        
+        // Initialize pact test proxy controls
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshPactStats();
+        });
+    </script>
+</body>
+</html>`;
+
+    res.send(demoHTML);
+  } catch (error) {
+    logger.error('Fish Burger Demo failed:', error);
+    res.status(500).send(`
+      <h1>Error Loading Fish Burger Demo</h1>
+      <p>${error.message}</p>
+      <pre>${error.stack}</pre>
+    `);
+  }
+});
+
+// Pact Test Proxy Control Endpoints
+app.get('/api/pact-test/status', (req, res) => {
+  try {
+    const stats = pactTestProxy.getSnapshot().context;
     res.json({
       success: true,
-      message: 'TeleportHQ demo completed successfully',
-      timestamp: new Date().toISOString()
+      status: 'active',
+      testMode: stats.testMode,
+      requestCount: stats.requestCount,
+      errorCount: stats.errorCount,
+      lastRequest: stats.lastRequest,
+      config: {
+        responseDelay: stats.responseDelay,
+        errorProbability: stats.errorProbability
+      }
     });
   } catch (error) {
-    logger.error('TeleportHQ demo failed:', error);
+    logger.error('Failed to get pact test status:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
+      error: error.message
     });
+  }
+});
+
+app.post('/api/pact-test/config', (req, res) => {
+  try {
+    const { testMode, responseDelay, errorProbability } = req.body;
+    
+    pactTestProxy.send('UPDATE_CONFIG', {
+      newConfig: { testMode, responseDelay, errorProbability }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Pact test configuration updated',
+      config: { testMode, responseDelay, errorProbability }
+    });
+  } catch (error) {
+    logger.error('Failed to update pact test config:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/pact-test/reset', (req, res) => {
+  try {
+    pactTestProxy.send('RESET_STATS');
+    
+    res.json({
+      success: true,
+      message: 'Pact test statistics reset'
+    });
+  } catch (error) {
+    logger.error('Failed to reset pact test stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Generic Editor Interface
+app.get('/generic-editor', async (req, res) => {
+  try {
+    logger.info('Serving Generic Editor Interface...');
+    
+    // Read and serve the generic editor HTML file
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    const editorPath = path.join(__dirname, 'component-middleware', 'generic-editor', 'index.html');
+    let editorHTML = await fs.readFile(editorPath, 'utf8');
+    
+    // Add CSP meta tag to the generic editor HTML
+    const cspMetaTag = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: https:; connect-src \'self\' http: https: ws: wss:;">';
+    
+    // Insert CSP meta tag after the first meta tag
+    editorHTML = editorHTML.replace(
+      /<meta charset="UTF-8">/,
+      '<meta charset="UTF-8">\n    ' + cspMetaTag
+    );
+    
+    res.send(editorHTML);
+  } catch (error) {
+    logger.error('Generic Editor failed to load:', error);
+    res.status(500).send(`
+      <h1>Error Loading Generic Editor</h1>
+      <p>${error.message}</p>
+      <pre>${error.stack}</pre>
+    `);
   }
 });
 

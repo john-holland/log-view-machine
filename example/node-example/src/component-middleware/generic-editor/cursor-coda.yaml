@@ -49,6 +49,12 @@
         "I'll implement the layout using modern CSS techniques",
         "Let me start with flexbox for the side panels",
         "I'll ensure responsive design works across devices"
+      ],
+      "meta_flow_documentation": [
+        "I'll create beautiful meta-flow documentation for this component",
+        "Let me start with the business logic and user flows",
+        "I'll include visual diagrams and code examples",
+        "I'll document pact test scenarios and error handling"
       ]
     },
     "sections": {
@@ -86,6 +92,29 @@
           "Is the state machine in a consistent state?"
         ],
         "preface": "The zoom/pan state machine manages complex user interactions. States include idle, canvas_hover, editor_hover, canvas_dragging, canvas_zooming, editor_scrolling, touch_started, and touch_moving."
+      },
+      "meta_flow_documentation": {
+        "development_style": [
+          "Always document state machines with meta-flow",
+          "Use beautiful typography and visual hierarchy",
+          "Include code examples and state diagrams",
+          "Document pact test scenarios clearly",
+          "Show component integration points",
+          "Explain business logic in human terms",
+          "Include error handling and recovery paths",
+          "Document version changes and migrations"
+        ],
+        "title": "Meta-Flow Documentation Standards",
+        "key_questions": [
+          "What does this state machine do in business terms?",
+          "How do users interact with this component?",
+          "What are the expected behaviors and edge cases?",
+          "How does this integrate with other components?",
+          "What pact test scenarios should we document?",
+          "How do we handle errors and recovery?",
+          "What are the performance considerations?"
+        ],
+        "preface": "Meta-flow documentation makes complex state machines beautiful and readable. Every component should have clear, visual documentation that explains both technical implementation and business logic. This helps designers, developers, QA teams, and stakeholders understand the system."
       },
       "layout_system": {
         "development_style": [

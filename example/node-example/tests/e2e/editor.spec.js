@@ -82,7 +82,7 @@ test.describe('Generic Editor - Core Functionality', () => {
     await page.click('.component-item:has-text("Sample Button")');
     
     // Check if component is selected
-    await expect(page.locator('.component-item:has-text("Sample Button")).toHaveClass(/selected/);
+    await expect(page.locator('.component-item:has-text("Sample Button")')).toHaveClass(/selected/);
     
     // Check if component info is displayed
     await expect(page.locator('#current-component-info')).toContainText('Sample Button');

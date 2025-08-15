@@ -1,6 +1,6 @@
-const { createMachine, interpret } = require('xstate');
-const { trace, SpanStatusCode } = require('@opentelemetry/api');
-const { v4: uuidv4 } = require('uuid');
+import { createMachine, interpret } from 'xstate';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { v4 as uuidv4 } from 'uuid';
 
 class CompleteOrderStateMachine {
   constructor() {
@@ -410,4 +410,4 @@ class CompleteOrderStateMachine {
   }
 }
 
-module.exports = { CompleteOrderStateMachine }; 
+export { CompleteOrderStateMachine }; 

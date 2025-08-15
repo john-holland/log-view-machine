@@ -1,9 +1,13 @@
-const express = require('express');
-const { createMachine, interpret } = require('xstate');
-const { trace, SpanStatusCode } = require('@opentelemetry/api');
-const { v4: uuidv4 } = require('uuid');
-const path = require('path');
-const { CompleteOrderStateMachine } = require('./CompleteOrderStateMachine');
+import express from 'express';
+import { createMachine, interpret } from 'xstate';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { CompleteOrderStateMachine } from './CompleteOrderStateMachine.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Tome server for SSR
 class TomeServer {
@@ -66,7 +70,7 @@ class TomeServer {
       }
     });
 
-    // Client-side cart page (static)
+    // Client-side cart page (static template)
     this.app.get('/cart', (req, res) => {
       const { traceId } = req.traceContext;
       const span = this.tracer.startSpan('cart_page_client');
@@ -78,12 +82,12 @@ class TomeServer {
           'ssr.enabled': false,
         });
 
-        const html = this.renderCartPage(traceId);
-        res.setHeader('Content-Type', 'text/html');
-        res.send(html);
+        // Serve the static burger cart template
+        const templatePath = path.join(__dirname, 'component-middleware/generic-editor/templates/burger-cart-component/template.html');
+        res.sendFile(templatePath);
       } catch (error) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).send('Error rendering cart page');
+        res.status(500).send('Error serving cart template');
       } finally {
         span.end();
       }
@@ -103,11 +107,23 @@ class TomeServer {
 
       try {
         // Simulate cart addition
-        const result = { success: true, item, messageId: uuidv4() };
+        const result = {
+          success: true,
+          message: 'Item added to cart',
+          item: item,
+          timestamp: new Date().toISOString(),
+          traceId: traceId
+        };
+
+        span.setAttributes({
+          'cart.operation': 'add',
+          'cart.item_count': 1,
+        });
+
         res.json(result);
       } catch (error) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Failed to add item to cart' });
       } finally {
         span.end();
       }
@@ -115,7 +131,7 @@ class TomeServer {
 
     this.app.post('/api/cart/remove', async (req, res) => {
       const { itemId } = req.body;
-      const { traceId } = req.traceContext;
+      const { traceId, spanId } = req.traceContext;
       
       const span = this.tracer.startSpan('remove_from_cart');
       span.setAttributes({
@@ -124,584 +140,311 @@ class TomeServer {
       });
 
       try {
-        const result = { success: true, itemId, messageId: uuidv4() };
+        // Simulate cart removal
+        const result = {
+          success: true,
+          message: 'Item removed from cart',
+          itemId: itemId,
+          timestamp: new Date().toISOString(),
+          traceId: traceId
+        };
+
+        span.setAttributes({
+          'cart.operation': 'remove',
+          'cart.item_removed': true,
+        });
+
         res.json(result);
       } catch (error) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Failed to remove item from cart' });
       } finally {
         span.end();
       }
     });
 
-    // Checkout API (server-side processing)
-    this.app.post('/api/checkout/process', async (req, res) => {
-      const { orderData } = req.body;
-      const { traceId, spanId } = req.traceContext;
-      
-      const span = this.tracer.startSpan('process_checkout');
-      span.setAttributes({
-        'order.id': orderData?.orderId,
-        'trace.id': traceId,
-      });
-
-      try {
-        // Use CompleteOrderStateMachine for server-side processing
-        const completeOrderMachine = new CompleteOrderStateMachine();
-        const result = await completeOrderMachine.processOrder(orderData, traceId, spanId);
-        
-        span.setAttributes({
-          'state.machine.state': result.state,
-          'checkout.status': result.status,
-          'order.success': result.success,
-        });
-
-        res.json({
-          success: result.success,
-          orderId: result.orderId,
-          status: result.status,
-          state: result.state,
-          messageId: uuidv4(),
-          traceId,
-        });
-      } catch (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).json({ error: error.message });
-      } finally {
-        span.end();
-      }
-    });
-
-    // CompleteOrderStateMachine API endpoints
-    this.app.post('/api/order/retry', async (req, res) => {
-      const { orderId } = req.body;
-      const { traceId } = req.traceContext;
-      
-      const span = this.tracer.startSpan('retry_order');
-      span.setAttributes({
-        'order.id': orderId,
-        'trace.id': traceId,
-      });
-
-      try {
-        const completeOrderMachine = new CompleteOrderStateMachine();
-        const result = await completeOrderMachine.retryOrder(orderId, traceId);
-        
-        span.setAttributes({
-          'state.machine.state': result.state,
-          'order.status': result.status,
-        });
-
-        res.json({
-          success: result.success,
-          orderId: result.orderId,
-          status: result.status,
-          state: result.state,
-          traceId,
-        });
-      } catch (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).json({ error: error.message });
-      } finally {
-        span.end();
-      }
-    });
-
-    this.app.post('/api/order/cancel', async (req, res) => {
-      const { orderId } = req.body;
-      const { traceId } = req.traceContext;
-      
-      const span = this.tracer.startSpan('cancel_order');
-      span.setAttributes({
-        'order.id': orderId,
-        'trace.id': traceId,
-      });
-
-      try {
-        const completeOrderMachine = new CompleteOrderStateMachine();
-        const result = await completeOrderMachine.cancelOrder(orderId, traceId);
-        
-        span.setAttributes({
-          'state.machine.state': result.state,
-          'order.status': result.status,
-        });
-
-        res.json({
-          success: result.success,
-          orderId: result.orderId,
-          status: result.status,
-          state: result.state,
-          traceId,
-        });
-      } catch (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        res.status(500).json({ error: error.message });
-      } finally {
-        span.end();
-      }
-    });
-
-    // Health check
+    // Health check endpoint
     this.app.get('/health', (req, res) => {
-      res.json({
-        status: 'healthy',
-        service: 'tome-server',
-        ssr: {
-          checkout: true,
-          cart: false,
-        },
-        stateMachines: {
-          completeOrder: true,
-        },
-      });
+      res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+    });
+
+    // Root endpoint
+    this.app.get('/', (req, res) => {
+      res.redirect('/cart');
     });
   }
 
   createCheckoutMachine() {
     return createMachine({
       id: 'checkout',
-      initial: 'initializing',
+      initial: 'idle',
       context: {
         items: [],
         total: 0,
-        status: 'pending',
-        orderId: null,
-        customer: null,
+        user: null,
         payment: null,
+        shipping: null,
+        traceId: null
       },
       states: {
-        initializing: {
+        idle: {
           on: {
-            INITIALIZE_CHECKOUT: {
-              target: 'ready',
-              actions: 'initializeCheckout',
-            },
-          },
+            INITIALIZE_CHECKOUT: 'loading'
+          }
+        },
+        loading: {
+          on: {
+            CHECKOUT_LOADED: 'ready',
+            LOAD_ERROR: 'error'
+          }
         },
         ready: {
           on: {
-            START_CHECKOUT: {
-              target: 'validating',
-              actions: 'startCheckout',
-            },
-          },
+            ADD_ITEM: 'adding_item',
+            REMOVE_ITEM: 'removing_item',
+            UPDATE_QUANTITY: 'updating',
+            PROCEED_TO_PAYMENT: 'payment'
+          }
         },
-        validating: {
+        adding_item: {
           on: {
-            VALIDATE_ORDER: {
-              target: 'payment',
-              actions: 'validateOrder',
-            },
-            VALIDATION_ERROR: {
-              target: 'error',
-              actions: 'handleValidationError',
-            },
-          },
+            ITEM_ADDED: 'ready',
+            ADD_ERROR: 'error'
+          }
+        },
+        removing_item: {
+          on: {
+            ITEM_REMOVED: 'ready',
+            REMOVE_ERROR: 'error'
+          }
+        },
+        updating: {
+          on: {
+            QUANTITY_UPDATED: 'ready',
+            UPDATE_ERROR: 'error'
+          }
         },
         payment: {
           on: {
-            PROCESS_PAYMENT: {
-              target: 'completed',
-              actions: 'processPayment',
-            },
-            PAYMENT_ERROR: {
-              target: 'error',
-              actions: 'handlePaymentError',
-            },
-          },
+            PAYMENT_SUCCESS: 'shipping',
+            PAYMENT_ERROR: 'error'
+          }
         },
-        completed: {
-          type: 'final',
+        shipping: {
+          on: {
+            SHIPPING_SELECTED: 'review',
+            SHIPPING_ERROR: 'error'
+          }
+        },
+        review: {
+          on: {
+            CONFIRM_ORDER: 'processing',
+            MODIFY_ORDER: 'ready'
+          }
+        },
+        processing: {
+          on: {
+            ORDER_PROCESSED: 'success',
+            PROCESSING_ERROR: 'error'
+          }
+        },
+        success: {
+          on: {
+            NEW_ORDER: 'idle'
+          }
         },
         error: {
           on: {
-            RETRY: {
-              target: 'ready',
-              actions: 'resetCheckout',
-            },
-          },
-        },
-      },
-    }, {
-      actions: {
-        initializeCheckout: (context, event) => {
-          context.status = 'initializing';
-        },
-        startCheckout: (context, event) => {
-          context.orderId = event.data?.orderId || uuidv4();
-          context.items = event.data?.items || [];
-          context.total = event.data?.total || 0;
-          context.status = 'validating';
-        },
-        validateOrder: (context, event) => {
-          context.status = 'payment';
-        },
-        processPayment: (context, event) => {
-          context.status = 'completed';
-        },
-        handleValidationError: (context, event) => {
-          context.status = 'error';
-        },
-        handlePaymentError: (context, event) => {
-          context.status = 'error';
-        },
-        resetCheckout: (context, event) => {
-          context.status = 'ready';
-        },
-      },
+            RETRY: 'idle'
+          }
+        }
+      }
     });
   }
 
   renderCheckoutPage(state, traceId) {
     return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Fish Burger</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .checkout-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .checkout-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .checkout-status {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .order-summary {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        .trace-info {
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="checkout-container">
-        <div class="checkout-header">
-            <h1>🐟 Fish Burger Checkout</h1>
-            <p>Server-Side Rendered</p>
-        </div>
-
-        <div class="checkout-status">
-            <h3>Checkout Status: ${state.context.status}</h3>
-            <p>Order ID: ${state.context.orderId || 'Pending'}</p>
-        </div>
-
-        <div class="order-summary">
-            <h3>Order Summary</h3>
-            <p>Items: ${state.context.items?.length || 0}</p>
-            <p>Total: $${state.context.total || 0}</p>
-        </div>
-
-        <form id="checkout-form">
-            <div class="form-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-
-            <div class="form-group">
-                <label for="address">Delivery Address</label>
-                <input type="text" id="address" name="address" required>
-            </div>
-
-            <div class="form-group">
-                <label for="payment">Payment Method</label>
-                <select id="payment" name="payment" required>
-                    <option value="">Select payment method</option>
-                    <option value="credit">Credit Card</option>
-                    <option value="debit">Debit Card</option>
-                    <option value="paypal">PayPal</option>
-                </select>
-            </div>
-
-            <button type="submit">Complete Order</button>
-        </form>
-
-        <div class="trace-info">
-            <strong>Trace ID:</strong> ${traceId}<br>
-            <strong>State:</strong> ${state.value}<br>
-            <strong>SSR:</strong> Enabled
-        </div>
-    </div>
-
-    <script>
-        // Client-side JavaScript for form submission
-        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const orderData = {
-                orderId: '${state.context.orderId || uuidv4()}',
-                customer: {
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    address: formData.get('address'),
-                },
-                payment: {
-                    method: formData.get('payment'),
-                },
-                items: ${JSON.stringify(state.context.items || [])},
-                total: ${state.context.total || 0},
-            };
-
-            try {
-                const response = await fetch('/api/checkout/process', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-trace-id': '${traceId}',
-                    },
-                    body: JSON.stringify({ orderData }),
-                });
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Order completed successfully!');
-                    window.location.href = '/cart';
-                } else {
-                    alert('Error processing order: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error processing order');
-            }
-        });
-    </script>
-</body>
-</html>
-    `;
-  }
-
-  renderCartPage(traceId) {
-    return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cart - Fish Burger</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .cart-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .cart-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .cart-items {
-            margin-bottom: 20px;
-        }
-        .cart-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .item-info {
-            flex: 1;
-        }
-        .item-actions {
-            display: flex;
-            gap: 10px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        .checkout-btn {
-            background: #28a745;
-            padding: 12px 24px;
-            font-size: 16px;
-            width: 100%;
-        }
-        .checkout-btn:hover {
-            background: #218838;
-        }
-        .trace-info {
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="cart-container">
-        <div class="cart-header">
-            <h1>🛒 Fish Burger Cart</h1>
-            <p>Client-Side Rendered</p>
-        </div>
-
-        <div id="cart-items" class="cart-items">
-            <p>Loading cart items...</p>
-        </div>
-
-        <div id="cart-total">
-            <h3>Total: $0.00</h3>
-        </div>
-
-        <button class="checkout-btn" onclick="proceedToCheckout()">
-            Proceed to Checkout
-        </button>
-
-        <div class="trace-info">
-            <strong>Trace ID:</strong> ${traceId}<br>
-            <strong>SSR:</strong> Disabled (Client-side)
-        </div>
-    </div>
-
-    <script>
-        // Client-side cart management
-        let cartItems = [
-            { id: 1, name: 'Fish Burger', price: 12.99, quantity: 1 },
-            { id: 2, name: 'French Fries', price: 4.99, quantity: 1 },
-            { id: 3, name: 'Soda', price: 2.99, quantity: 1 },
-        ];
-
-        function renderCart() {
-            const cartContainer = document.getElementById('cart-items');
-            const totalElement = document.getElementById('cart-total');
-            
-            if (cartItems.length === 0) {
-                cartContainer.innerHTML = '<p>Your cart is empty</p>';
-                totalElement.innerHTML = '<h3>Total: $0.00</h3>';
-                return;
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Checkout - Fish Burger</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
             }
 
-            const itemsHtml = cartItems.map(item => \`
-                <div class="cart-item">
-                    <div class="item-info">
-                        <h4>\${item.name}</h4>
-                        <p>Quantity: \${item.quantity} | Price: $\${item.price}</p>
+            .checkout-container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+
+            .checkout-header {
+                background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }
+
+            .checkout-content {
+                padding: 30px;
+            }
+
+            .order-summary {
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .order-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                border-bottom: 1px solid #e9ecef;
+            }
+
+            .order-item:last-child {
+                border-bottom: none;
+            }
+
+            .checkout-form {
+                margin-top: 30px;
+            }
+
+            .form-group {
+                margin-bottom: 20px;
+            }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 500;
+                color: #2c3e50;
+            }
+
+            .form-group input, .form-group select {
+                width: 100%;
+                padding: 12px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 16px;
+            }
+
+            .checkout-btn {
+                background: linear-gradient(135deg, #28a745, #20c997);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 15px 30px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                width: 100%;
+                transition: all 0.3s;
+            }
+
+            .checkout-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+            }
+
+            .trace-info {
+                background: #f0f0f0;
+                padding: 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="checkout-container">
+            <div class="checkout-header">
+                <h1>💳 Checkout</h1>
+                <p>Complete your order</p>
+            </div>
+
+            <div class="checkout-content">
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="order-item">
+                        <span>Fish Burger</span>
+                        <span>$12.99</span>
                     </div>
-                    <div class="item-actions">
-                        <button onclick="updateQuantity(\${item.id}, \${item.quantity + 1})">+</button>
-                        <button onclick="updateQuantity(\${item.id}, \${item.quantity - 1})">-</button>
-                        <button onclick="removeItem(\${item.id})">Remove</button>
+                    <div class="order-item">
+                        <span>French Fries</span>
+                        <span>$4.99</span>
+                    </div>
+                    <div class="order-item">
+                        <span>Soda</span>
+                        <span>$2.99</span>
+                    </div>
+                    <hr>
+                    <div class="order-item">
+                        <strong>Total</strong>
+                        <strong>$20.97</strong>
                     </div>
                 </div>
-            \`).join('');
 
-            cartContainer.innerHTML = itemsHtml;
+                <form class="checkout-form">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
 
-            const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            totalElement.innerHTML = \`<h3>Total: $\${total.toFixed(2)}</h3>\`;
-        }
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
 
-        function updateQuantity(itemId, newQuantity) {
-            if (newQuantity <= 0) {
-                removeItem(itemId);
-                return;
-            }
+                    <div class="form-group">
+                        <label for="address">Delivery Address</label>
+                        <input type="text" id="address" name="address" required>
+                    </div>
 
-            const item = cartItems.find(item => item.id === itemId);
-            if (item) {
-                item.quantity = newQuantity;
-                renderCart();
-            }
-        }
+                    <div class="form-group">
+                        <label for="payment">Payment Method</label>
+                        <select id="payment" name="payment" required>
+                            <option value="">Select payment method</option>
+                            <option value="credit">Credit Card</option>
+                            <option value="debit">Debit Card</option>
+                            <option value="paypal">PayPal</option>
+                        </select>
+                    </div>
 
-        function removeItem(itemId) {
-            cartItems = cartItems.filter(item => item.id !== itemId);
-            renderCart();
-        }
+                    <button type="submit" class="checkout-btn">
+                        Complete Order
+                    </button>
+                </form>
 
-        function proceedToCheckout() {
-            const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const orderData = {
-                items: cartItems,
-                total: total,
-            };
+                <div class="trace-info">
+                    <p>Server-Side Rendered</p>
+                    <p>Trace ID: ${traceId}</p>
+                    <p>State: ${state.value}</p>
+                </div>
+            </div>
+        </div>
 
-            // Store order data in sessionStorage for checkout page
-            sessionStorage.setItem('orderData', JSON.stringify(orderData));
-            window.location.href = '/checkout';
-        }
-
-        // Initialize cart on page load
-        renderCart();
-    </script>
-</body>
-</html>
+        <script>
+            document.querySelector('.checkout-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Order completed! (This is a demo)');
+                window.location.href = '/cart';
+            });
+        </script>
+    </body>
+    </html>
     `;
   }
 
@@ -718,4 +461,4 @@ class TomeServer {
 const tomeServer = new TomeServer();
 tomeServer.start(3002);
 
-module.exports = { TomeServer }; 
+export { TomeServer };

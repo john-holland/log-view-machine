@@ -17,8 +17,9 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import { createGenericEditorUI } from './ui.js';
-import { createFishBurgerTome } from './fish-burger-integration.js';
-import { startServer as startFishBurgerBackend } from './fish-burger-backend.js';
+// Fish Burger integration moved to tests/integration/ during organization
+// import { createFishBurgerTome } from './tests/integration/fish-burger-integration.js';
+// import { startServer as startFishBurgerBackend } from './tests/integration/fish-burger-backend.js';
 
 const execAsync = promisify(exec);
 
@@ -1012,17 +1013,6 @@ process.on('SIGINT', () => {
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
   console.error('❌ Uncaught Exception:', error);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
-// Start the server
-startServer(); 
   process.exit(1);
 });
 

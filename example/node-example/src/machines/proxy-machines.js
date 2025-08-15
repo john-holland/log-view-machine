@@ -9,6 +9,7 @@ export async function createProxyMachines(db, robotCopy) {
   // HTTP API Proxy Machine
   const httpApiProxy = createProxyRobotCopyStateMachine({
     machineId: 'http-api-proxy',
+    robotCopy: robotCopy,
     xstateConfig: {
       initial: 'idle',
       states: {
@@ -148,6 +149,7 @@ export async function createProxyMachines(db, robotCopy) {
   // GraphQL Proxy Machine with withStateGraphQL()
   const graphqlProxy = createProxyRobotCopyStateMachine({
     machineId: 'graphql-proxy',
+    robotCopy: robotCopy,
     xstateConfig: {
       initial: 'idle',
       states: {
@@ -416,6 +418,7 @@ export async function createProxyMachines(db, robotCopy) {
   // Database Proxy Machine
   const databaseProxy = createProxyRobotCopyStateMachine({
     machineId: 'database-proxy',
+    robotCopy: robotCopy,
     xstateConfig: {
       initial: 'idle',
       states: {

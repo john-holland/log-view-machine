@@ -232,45 +232,113 @@
         /* Canvas Controls */
         .canvas-controls {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
             display: flex;
+            gap: 5px;
             align-items: center;
-            gap: 10px;
             background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
+            padding: 8px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
         }
 
         .canvas-btn {
-            width: 40px;
-            height: 40px;
+            background: #007bff;
+            color: white;
             border: none;
-            border-radius: 6px;
-            background: white;
+            padding: 6px 10px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            transition: background 0.2s;
         }
 
         .canvas-btn:hover {
-            background: #f8f9fa;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            background: #0056b3;
         }
 
         .zoom-level {
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: bold;
             color: #333;
+            margin: 0 8px;
             min-width: 50px;
             text-align: center;
+        }
+
+        .zoom-unlock {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .zoom-unlock input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .zoom-unlock label {
+            font-size: 11px;
+            color: #666;
+            cursor: pointer;
+        }
+
+
+
+        /* State Machine for Canvas Grabber */
+        .canvas-grabber-state {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            z-index: 2000;
+            display: none;
+        }
+
+        .canvas-grabber-state.active {
+            display: block;
+        }
+
+        /* Enhanced dotCMS Status */
+        .dotcms-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .dotcms-status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .dotcms-status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .dotcms-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .dotcms-status.timeout {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
         }
 
         .gesture-indicator {
@@ -553,7 +621,6 @@
         .sidebar-section {
             padding: 15px;
             border-bottom: 1px solid #eee;
-            min-height: 80px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -801,8 +868,12 @@
             max-height: 90vh;
             width: 800px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            display: flex;
+            display: none;
             flex-direction: column;
+        }
+
+        .diff-modal.show {
+            display: flex;
         }
 
         .diff-modal-header {
@@ -879,6 +950,30 @@
 
         .diff-line.unchanged {
             color: #666;
+        }
+
+        .diff-view {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .diff-content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .diff-content h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .diff-content button {
+            margin-top: 20px;
+            align-self: flex-end;
         }
 
         .diff-modal-footer {
@@ -1775,12 +1870,18 @@
                 <button class="btn btn-secondary" onclick="showDiffView()">Show Diff</button>
                 <button class="btn btn-info" onclick="compareVersions()">Compare Versions</button>
                 <button class="btn btn-warning" onclick="revertChanges()">Revert Changes</button>
+                <button class="btn btn-primary" onclick="testDiffModal()">🧪 Test Diff Modal</button>
             </div>
         </aside>
 
         <!-- Panel Grabbers for Desktop -->
         <div class="panel-grabber left" id="left-grabber"></div>
         <div class="panel-grabber right" id="right-grabber"></div>
+        
+        <!-- Canvas Grabber State Indicator -->
+        <div class="canvas-grabber-state" id="canvas-grabber-state">
+            State: IDLE
+        </div>
 
         <!-- Canvas takes full screen height -->
         <div class="canvas-container" id="canvas-container">
@@ -1790,6 +1891,10 @@
                 <button class="canvas-btn" onclick="zoomIn()" title="Zoom In">🔍+</button>
                 <button class="canvas-btn" onclick="zoomOut()" title="Zoom Out">🔍-</button>
                 <span class="zoom-level" id="zoom-level">100%</span>
+                <div class="zoom-unlock">
+                    <input type="checkbox" id="zoom-unlock-checkbox" title="Unlock zoom below 50%">
+                    <label for="zoom-unlock-checkbox">🔍</label>
+                </div>
                 <button class="canvas-btn" onclick="resizeEditors()" title="Resize Editors">📏</button>
                 <button class="canvas-btn" onclick="debugTabState()" title="Debug Tabs">🐛</button>
                 <button class="canvas-btn" onclick="debugZoomState()" title="Debug Zoom State">🔍</button>
@@ -1849,6 +1954,16 @@
                 </div>
             </div>
         </div>
+
+
+
+
+
+
+
+                <!-- Rogue eggplant ingredients removed - these belong in the cart component, not the main editor -->
+
+
 
         <!-- Panels stack below canvas -->
         <div class="panels-container">
@@ -2175,7 +2290,7 @@
                     on: {
                         MOUSE_MOVE: 'canvas_dragging',
                         MOUSE_UP: 'canvas_hover',
-                        MOUSE_LEAVE: 'idle'
+                        MOUSE_LEAVE: 'canvas_dragging' // Stay in dragging state even if mouse leaves
                     }
                 },
                 canvas_zooming: {
@@ -2209,12 +2324,26 @@
                     const previousState = this.currentState;
                     this.currentState = currentState.on[event];
                     console.log(`Zoom State Machine: ${previousState} -> ${this.currentState} (${event})`);
+                    this.updateStateIndicator();
                     return true;
                 }
                 return false;
             },
             getCurrentState() {
                 return this.currentState;
+            },
+            updateStateIndicator() {
+                const indicator = document.getElementById('gesture-indicator');
+                if (indicator) {
+                    indicator.textContent = `State: ${this.currentState}`;
+                }
+                
+                // Update canvas grabber state indicator
+                const grabberStateIndicator = document.getElementById('canvas-grabber-state');
+                if (grabberStateIndicator) {
+                    grabberStateIndicator.textContent = `State: ${this.currentState.toUpperCase()}`;
+                    grabberStateIndicator.classList.toggle('active', this.currentState === 'canvas_dragging');
+                }
             }
         };
 
@@ -2237,6 +2366,8 @@
             
             // Initialize Save Component button state
             updateSaveStatus();
+            
+
             
             // Update layout heights
             updateLayoutHeights();
@@ -2688,7 +2819,9 @@
                     if (currentGestureType === 'zoom' && gestureConfidence > 0.7) {
                         // Handle zoom gesture
                         const scale = currentVector.magnitude / zoomStartDistance;
-                        canvasScale = Math.max(0.1, Math.min(3, zoomStartScale * scale));
+                        const zoomUnlockCheckbox = document.getElementById('zoom-unlock-checkbox');
+                const minZoom = zoomUnlockCheckbox && zoomUnlockCheckbox.checked ? 0.05 : 0.5;
+                canvasScale = Math.max(minZoom, Math.min(3, zoomStartScale * scale));
                         updateCanvasTransform();
                     } else if (currentGestureType === 'pan' && gestureConfidence > 0.7) {
                         // Handle pan gesture
@@ -2902,7 +3035,9 @@
                     e.preventDefault();
                     zoomStateMachine.transition('WHEEL');
                     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                    canvasScale = Math.max(0.1, Math.min(3, canvasScale * delta));
+                    const zoomUnlockCheckbox = document.getElementById('zoom-unlock-checkbox');
+                const minZoom = zoomUnlockCheckbox && zoomUnlockCheckbox.checked ? 0.05 : 0.5;
+                canvasScale = Math.max(minZoom, Math.min(3, canvasScale * delta));
                     updateCanvasTransform();
                 } else if (currentState === 'editor_hover' || currentState === 'editor_scrolling') {
                     // Allow normal scrolling in editor areas
@@ -3798,13 +3933,21 @@
 
         // Diff modal functions
         function showDiff() {
+            console.log('showDiff() called');
+            console.log('currentComponent:', currentComponent);
+            console.log('originalComponentData:', originalComponentData);
+            
             if (!currentComponent || !originalComponentData) {
                 showMessage('error', 'No component loaded or no original data available');
                 return;
             }
 
             const modal = document.getElementById('diff-modal');
+            console.log('Found modal:', modal);
+            console.log('Modal classes before:', modal.classList.toString());
             modal.classList.add('show');
+            console.log('Modal classes after:', modal.classList.toString());
+            console.log('Modal computed style display:', window.getComputedStyle(modal).display);
             
             // Generate diff content
             generateDiffContent();
@@ -3816,8 +3959,10 @@
         }
 
         function generateDiffContent() {
+            console.log('generateDiffContent() called');
             const originalContent = document.getElementById('diff-original-content');
             const currentContent = document.getElementById('diff-current-content');
+            console.log('Found content elements:', { originalContent, currentContent });
             
             // Get current editor content
             const currentData = {
@@ -3826,6 +3971,7 @@
                 script: editors.js.getValue(),
                 stateMachine: editors.json.getValue()
             };
+            console.log('Current editor data:', currentData);
             
             // Generate diff for each section
             const sections = ['template', 'styles', 'script', 'stateMachine'];
@@ -3867,6 +4013,32 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Test function to manually initialize component data for testing
+        function testDiffModal() {
+            console.log('🧪 Testing diff modal with manual data...');
+            
+            // Manually set currentComponent
+            currentComponent = {
+                id: 'test-component',
+                name: 'Test Component',
+                description: 'Test component for diff modal',
+                type: 'test'
+            };
+            
+            // Manually set originalComponentData
+            originalComponentData = {
+                template: '<div>Original template</div>',
+                styles: '/* Original styles */',
+                script: '// Original script',
+                stateMachine: '{}'
+            };
+            
+            console.log('Set test data:', { currentComponent, originalComponentData });
+            
+            // Now try to show the diff modal
+            showDiff();
         }
 
         function resetComponent() {
@@ -4377,8 +4549,11 @@
         }
 
         function zoomOut() {
-            canvasScale = Math.max(0.1, canvasScale / 1.2);
+            const zoomUnlockCheckbox = document.getElementById('zoom-unlock-checkbox');
+            const minZoom = zoomUnlockCheckbox && zoomUnlockCheckbox.checked ? 0.05 : 0.5;
+            canvasScale = Math.max(minZoom, canvasScale / 1.2);
             updateCanvasTransform();
+            console.log(`🔍 Zoom out: ${Math.round(canvasScale * 100)}% (min: ${Math.round(minZoom * 100)}%)`);
         }
 
         function resetCanvas() {
@@ -4626,33 +4801,75 @@
             }
         }
 
+
+
         // dotCMS Integration
         function connectToDotCMS() {
             console.log('Connecting to dotCMS...');
             const statusElement = document.getElementById('dotcms-status');
             const statusElementMobile = document.getElementById('dotcms-status-mobile');
             
+            // Update status to connecting
             if (statusElement) {
-                statusElement.textContent = 'Status: Connecting...';
-                statusElement.style.color = '#ffa500';
+                statusElement.className = 'dotcms-status connecting';
+                statusElement.innerHTML = '🔄 Connecting to dotCMS...';
             }
             if (statusElementMobile) {
-                statusElementMobile.textContent = 'Status: Connecting...';
-                statusElementMobile.style.color = '#ffa500';
+                statusElementMobile.className = 'dotcms-status connecting';
+                statusElementMobile.innerHTML = '🔄 Connecting to dotCMS...';
             }
             
-            // Simulate connection
-            setTimeout(() => {
+            // Set connection timeout
+            const connectionTimeout = setTimeout(() => {
                 if (statusElement) {
-                    statusElement.textContent = 'Status: Connected';
-                    statusElement.style.color = '#28a745';
+                    statusElement.className = 'dotcms-status timeout';
+                    statusElement.innerHTML = '⏰ Connection timeout';
                 }
                 if (statusElementMobile) {
-                    statusElementMobile.textContent = 'Status: Connected';
-                    statusElementMobile.style.color = '#28a745';
+                    statusElementMobile.className = 'dotcms-status timeout';
+                    statusElementMobile.innerHTML = '⏰ Connection timeout';
                 }
-                showMessage('success', 'Connected to dotCMS');
-            }, 1000);
+                showMessage('warning', 'dotCMS connection timeout');
+            }, 10000); // 10 second timeout
+            
+            // Simulate connection attempt with proper error handling
+            fetch(`${config.dotCMSUrl}/api/health`, { 
+                method: 'GET',
+                mode: 'cors',
+                timeout: 8000
+            })
+            .then(response => {
+                clearTimeout(connectionTimeout);
+                if (response.ok) {
+                    // Success state
+                    if (statusElement) {
+                        statusElement.className = 'dotcms-status connected';
+                        statusElement.innerHTML = '✅ Connected to dotCMS';
+                    }
+                    if (statusElementMobile) {
+                        statusElementMobile.className = 'dotcms-status connected';
+                        statusElementMobile.innerHTML = '✅ Connected to dotCMS';
+                    }
+                    showMessage('success', 'Successfully connected to dotCMS');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .catch(error => {
+                clearTimeout(connectionTimeout);
+                console.error('dotCMS connection failed:', error);
+                
+                // Error state
+                if (statusElement) {
+                    statusElement.className = 'dotcms-status error';
+                    statusElement.innerHTML = '❌ Connection failed';
+                }
+                if (statusElementMobile) {
+                    statusElementMobile.className = 'dotcms-status error';
+                    statusElementMobile.innerHTML = '❌ Connection failed';
+                }
+                showMessage('error', `Failed to connect to dotCMS: ${error.message}`);
+            });
         }
 
         function syncWithDotCMS() {
@@ -4730,7 +4947,35 @@
                 return;
             }
             
-            showMessage('info', 'Diff view coming soon...');
+            // Show the existing diff modal
+            const diffModal = document.getElementById('diff-modal');
+            if (diffModal) {
+                diffModal.classList.add('show');
+                
+                // Update diff content with current component data
+                const diffContent = diffModal.querySelector('.diff-content');
+                if (diffContent) {
+                    const originalData = JSON.stringify(currentComponent, null, 2);
+                    const currentData = JSON.stringify({
+                        id: currentComponent.id,
+                        name: currentComponent.name,
+                        template: editors.html ? editors.html.getContents() : '',
+                        styles: editors.css ? editors.css.getValue() : '',
+                        script: editors.js ? editors.js.getValue() : '',
+                        stateMachine: editors.json ? editors.json.getValue() : ''
+                    }, null, 2);
+                    
+                    // Update the diff sections
+                    const diffLeft = diffContent.querySelector('.diff-left pre');
+                    const diffRight = diffContent.querySelector('.diff-right pre');
+                    if (diffLeft) diffLeft.textContent = originalData;
+                    if (diffRight) diffRight.textContent = currentData;
+                }
+                
+                showMessage('info', 'Diff view opened');
+            } else {
+                showMessage('error', 'Diff modal not found');
+            }
         }
 
         function compareVersions() {
@@ -4750,6 +4995,13 @@
         }
 
         // Header action functions
+        function hideDiff() {
+            const diffModal = document.getElementById('diff-modal');
+            if (diffModal) {
+                diffModal.classList.remove('show');
+            }
+        }
+
         function showDiff() {
             if (!currentComponent) {
                 showMessage('error', 'No component to compare');

@@ -1,5 +1,5 @@
 import express from 'express';
-import { validationSchemas } from '../middleware/index.js';
+// import { validationSchemas } from '../middleware/index.js';
 import { dbUtils } from '../database/setup.js';
 
 // Setup REST routes
@@ -30,7 +30,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.post('/state-machines', validationSchemas.createStateMachine, async (req, res) => {
+  router.post('/state-machines', /* validationSchemas.createStateMachine, */ async (req, res) => {
     try {
       const { id, name, description, config } = req.body;
       await dbUtils.createStateMachine(id, name, description, config);
@@ -42,7 +42,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.put('/state-machines/:id', validationSchemas.updateStateMachine, async (req, res) => {
+  router.put('/state-machines/:id', /* validationSchemas.updateStateMachine, */ async (req, res) => {
     try {
       await dbUtils.updateStateMachine(req.params.id, req.body);
       const machine = await dbUtils.getStateMachine(req.params.id);
@@ -63,7 +63,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.post('/state-machines/:id/events', validationSchemas.sendStateMachineEvent, async (req, res) => {
+  router.post('/state-machines/:id/events', /* validationSchemas.sendStateMachineEvent, */ async (req, res) => {
     try {
       const { id } = req.params;
       const { event, data } = req.body;
@@ -134,7 +134,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.post('/proxy-machines', validationSchemas.createProxyMachine, async (req, res) => {
+  router.post('/proxy-machines', /* validationSchemas.createProxyMachine, */ async (req, res) => {
     try {
       const { id, name, description, targetUrl, config } = req.body;
       await dbUtils.createProxyMachine(id, name, description, targetUrl, config);
@@ -146,7 +146,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.put('/proxy-machines/:id', validationSchemas.updateProxyMachine, async (req, res) => {
+  router.put('/proxy-machines/:id', /* validationSchemas.updateProxyMachine, */ async (req, res) => {
     try {
       await dbUtils.updateProxyMachine(req.params.id, req.body);
       const proxy = await dbUtils.getProxyMachine(req.params.id);
@@ -167,7 +167,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.post('/proxy-machines/:id/requests', validationSchemas.sendProxyRequest, async (req, res) => {
+  router.post('/proxy-machines/:id/requests', /* validationSchemas.sendProxyRequest, */ async (req, res) => {
     try {
       const { id } = req.params;
       const { method, path, headers, body } = req.body;
@@ -277,7 +277,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.post('/users', validationSchemas.createUser, async (req, res) => {
+  router.post('/users', /* validationSchemas.createUser, */ async (req, res) => {
     try {
       const { username, email, password, role = 'user' } = req.body;
       const userId = await dbUtils.createUser(username, email, password, role);
@@ -289,7 +289,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     }
   });
 
-  router.put('/users/:id', validationSchemas.updateUser, async (req, res) => {
+  router.put('/users/:id', /* validationSchemas.updateUser, */ async (req, res) => {
     try {
       const updates = { ...req.body };
       if (req.body.password) {
@@ -321,7 +321,7 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
   });
 
   // Authentication Routes
-  router.post('/auth/login', validationSchemas.login, async (req, res) => {
+  router.post('/auth/login', /* validationSchemas.login, */ async (req, res) => {
     try {
       const { username, password } = req.body;
       const user = await dbUtils.getUserByUsername(username);

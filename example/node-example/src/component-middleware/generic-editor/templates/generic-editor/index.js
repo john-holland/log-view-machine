@@ -3,7 +3,7 @@
  * 
  * A comprehensive editor that composes HTML, CSS, JavaScript, and XState editors.
  * This template uses the log-view-model and can be used as a standalone component.
- * Now includes subView support with separate SunEditor instances.
+ * Now includes subView support with separate SunEditor instances and cart component integration.
  */
 
 const { createViewStateMachine } = require('../../../../../log-view-machine/src/core/ViewStateMachine');
@@ -15,6 +15,8 @@ const CSSEditorTemplate = require('../css-editor');
 const JavaScriptEditorTemplate = require('../javascript-editor');
 const XStateEditorTemplate = require('../xstate-editor');
 const ComponentLibraryTemplate = require('../component-library');
+// Cart component removed - will be used only in preview with pact test framework
+// const BurgerCartComponentTemplate = require('../burger-cart-component');
 
 const GenericEditorTemplate = {
   id: 'generic-editor',
@@ -29,17 +31,28 @@ const GenericEditorTemplate = {
     xstateConfig: {
       id: 'generic-editor',
       initial: 'idle',
+      context: {
+        currentTab: 'html',
+        currentComponent: null,
+        componentHistory: [],
+        canvasTransform: { x: 0, y: 0, scale: 1 },
+        isDragging: false,
+        isZooming: false,
+        developerMode: false,
+        autoSave: true,
+        lastSaved: null,
+        unsavedChanges: false,
+        error: null,
+        subViewManager: null,
+        componentLibrary: null,
+        // cartComponent: null // Removed - cart components only in preview
+      },
       states: {
         idle: {
           on: {
             LOAD_COMPONENT: 'loading',
             CREATE_NEW: 'editing',
-            OPEN_LIBRARY: 'library',
-            ADD_SUBVIEW: 'editing',
-            SWITCH_SUBVIEW: 'editing',
-            EDIT_SUBVIEW: 'editing',
-            EXPORT_SUBVIEW: 'editing',
-            DELETE_SUBVIEW: 'editing'
+            OPEN_LIBRARY: 'library'
           }
         },
         loading: {
@@ -50,24 +63,19 @@ const GenericEditorTemplate = {
         },
         editing: {
           on: {
+            SWITCH_TAB: 'editing',
             SAVE: 'saving',
             RESET: 'resetting',
-            SWITCH_TAB: 'editing',
             OPEN_LIBRARY: 'library',
-            ADD_SUBVIEW: 'editing',
-            SWITCH_SUBVIEW: 'editing',
-            EDIT_SUBVIEW: 'editing',
-            EXPORT_SUBVIEW: 'editing',
-            DELETE_SUBVIEW: 'editing',
-            ZOOM_IN: 'editing',
-            ZOOM_OUT: 'editing',
-            RESET_ZOOM: 'editing'
+            TOGGLE_DEVELOPER_MODE: 'editing',
+            CANVAS_DRAG: 'editing',
+            CANVAS_ZOOM: 'editing'
           }
         },
         library: {
           on: {
             COMPONENT_SELECTED: 'editing',
-            LIBRARY_CLOSE: 'editing'
+            LIBRARY_CLOSED: 'editing'
           }
         },
         saving: {
@@ -84,7 +92,8 @@ const GenericEditorTemplate = {
         },
         error: {
           on: {
-            RETRY: 'idle'
+            RETRY: 'idle',
+            DISMISS_ERROR: 'editing'
           }
         }
       }
@@ -96,12 +105,10 @@ const GenericEditorTemplate = {
     // Create sub-machines
     const htmlEditor = HTMLEditorTemplate.create();
     const cssEditor = CSSEditorTemplate.create();
-    const jsEditor = JavaScriptEditorTemplate.create();
+    const javascriptEditor = JavaScriptEditorTemplate.create();
     const xstateEditor = XStateEditorTemplate.create();
     const componentLibrary = ComponentLibraryTemplate.create();
-    
-    // Create subView manager
-    const subViewManager = createSubViewManager();
+    // const cartComponent = BurgerCartComponentTemplate.create(); // Removed - cart components only in preview
 
     return createViewStateMachine({
       machineId: 'generic-editor',
@@ -109,77 +116,117 @@ const GenericEditorTemplate = {
         ...GenericEditorTemplate.config.xstateConfig,
         ...config.xstateConfig
       },
-      context: {
-        activeTab: 'html',
-        subViews: [],
-        activeSubView: null,
-        canvasTransform: { x: 0, y: 0, scale: 1 },
-        zoomLevel: 1,
-        gestureType: 'Pan',
-        subViewManager,
-        ...config.context
-      },
       logStates: {
         idle: async (context) => {
           await context.log('Generic Editor is idle');
-          return context.view(
-            `<div class="generic-editor-idle">
-              <div class="editor-header">
+          return context.view(`
+            <div class="generic-editor-idle">
+              <div class="idle-content">
+                <div class="idle-icon">🛠️</div>
                 <h2>Generic Editor</h2>
-                <div class="editor-controls">
-                  <button onclick="context.send({ type: 'LOAD_COMPONENT' })">Load Component</button>
-                  <button onclick="context.send({ type: 'CREATE_NEW' })">Create New</button>
-                  <button onclick="context.send({ type: 'OPEN_LIBRARY' })">Component Library</button>
-                </div>
-              </div>
-              <div class="editor-content">
                 <p>Ready to load or create components</p>
-                <div class="welcome-message">
-                  <h3>Welcome to Generic Editor</h3>
-                  <p>Choose an option to get started:</p>
-                  <ul>
-                    <li>Load Component - Open an existing component</li>
-                    <li>Create New - Start with a blank component</li>
-                    <li>Component Library - Browse available components</li>
-                  </ul>
+                <div class="idle-actions">
+                  <button class="btn btn-primary" onclick="context.send({ type: 'CREATE_NEW' })">
+                    🆕 Create New Component
+                  </button>
+                  <button class="btn btn-secondary" onclick="context.send({ type: 'OPEN_LIBRARY' })">
+                    📚 Open Component Library
+                  </button>
                 </div>
               </div>
-            </div>`
-          );
+            </div>
+          `);
         },
+        
         loading: async (context) => {
           await context.log('Loading component...');
-          return context.view(
-            `<div class="generic-editor-loading">
-              <div class="editor-header">
+          return context.view(`
+            <div class="generic-editor-loading">
+              <div class="loading-content">
+                <div class="loading-spinner">🔄</div>
                 <h2>Loading Component</h2>
+                <p>Please wait while we load your component...</p>
+                <div class="loading-progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%"></div>
+                  </div>
+                  <span>75% Complete</span>
+                </div>
               </div>
-              <div class="loading-spinner">Loading...</div>
-            </div>`
-          );
+            </div>
+          `);
         },
+        
         editing: async (context) => {
           await context.log('Component loaded, ready for editing');
           
           // Get subView navigation data
-          const subViewData = context.model.subViewManager.getNavigationData();
+          const subViewData = context.model.subViewManager?.getNavigationData() || {};
           
-          return context.view(
-            `<div class="generic-editor-editing">
+          return context.view(`
+            <div class="generic-editor-editing">
               <div class="editor-header">
-                <h2>Editing Component</h2>
-                <div class="editor-controls">
-                  <button onclick="context.send({ type: 'SAVE' })">Save</button>
-                  <button onclick="context.send({ type: 'RESET' })">Reset</button>
-                  <button onclick="context.send({ type: 'OPEN_LIBRARY' })">Library</button>
+                <div class="header-left">
+                  <h2>Editing: ${context.model.currentComponent?.name || 'Untitled Component'}</h2>
+                  <div class="component-meta">
+                    <span class="component-type">${context.model.currentComponent?.type || 'Component'}</span>
+                    <span class="component-version">v${context.model.currentComponent?.version || '1.0.0'}</span>
+                  </div>
+                </div>
+                
+                <div class="header-center">
+                  <div class="save-status">
+                    ${context.model.unsavedChanges ? 
+                      '<span class="unsaved-indicator">⚠️ Unsaved Changes</span>' : 
+                      '<span class="saved-indicator">✓ Saved</span>'
+                    }
+                    ${context.model.lastSaved ? 
+                      `<span class="last-saved">Last saved: ${new Date(context.model.lastSaved).toLocaleTimeString()}</span>` : 
+                      ''
+                    }
+                  </div>
+                </div>
+                
+                <div class="header-right">
+                  <div class="editor-controls">
+                    <button class="btn btn-primary" onclick="context.send({ type: 'SAVE' })">
+                      💾 Save
+                    </button>
+                    <button class="btn btn-secondary" onclick="context.send({ type: 'RESET' })">
+                      🔄 Reset
+                    </button>
+                    <button class="btn btn-info" onclick="context.send({ type: 'OPEN_LIBRARY' })">
+                      📚 Library
+                    </button>
+                    <label class="developer-mode-toggle">
+                      <input type="checkbox" ${context.model.developerMode ? 'checked' : ''} 
+                             onchange="toggleDeveloperMode(this.checked)" />
+                      <span>Developer Mode</span>
+                    </label>
+                  </div>
                 </div>
               </div>
+              
               <div class="editor-tabs">
-                <button onclick="context.send({ type: 'SWITCH_TAB', tab: 'html' })">HTML</button>
-                <button onclick="context.send({ type: 'SWITCH_TAB', tab: 'css' })">CSS</button>
-                <button onclick="context.send({ type: 'SWITCH_TAB', tab: 'js' })">JavaScript</button>
-                <button onclick="context.send({ type: 'SWITCH_TAB', tab: 'xstate' })">XState</button>
+                <button class="tab-button ${context.model.currentTab === 'html' ? 'active' : ''}" 
+                        onclick="context.send({ type: 'SWITCH_TAB', tab: 'html' })">
+                  📝 HTML
+                </button>
+                <button class="tab-button ${context.model.currentTab === 'css' ? 'active' : ''}" 
+                        onclick="context.send({ type: 'SWITCH_TAB', tab: 'css' })">
+                  🎨 CSS
+                </button>
+                <button class="tab-button ${context.model.currentTab === 'js' ? 'active' : ''}" 
+                        onclick="context.send({ type: 'SWITCH_TAB', tab: 'js' })">
+                  ⚡ JavaScript
+                </button>
+                <button class="tab-button ${context.model.currentTab === 'xstate' ? 'active' : ''}" 
+                        onclick="context.send({ type: 'SWITCH_TAB', tab: 'xstate' })">
+                  🔄 XState
+                </button>
+                <!-- Cart tab removed - cart components only in preview with pact test framework -->
               </div>
+              
               <div class="editor-content">
                 <div class="left-panel">
                   <div class="panel-grabber left" id="left-grabber"></div>
@@ -187,134 +234,188 @@ const GenericEditorTemplate = {
                     ${componentLibrary.render(context.model)}
                   </div>
                 </div>
+                
                 <div class="main-editor">
                   <div class="canvas-container" id="canvas-container">
-                    <div class="sun-editor-wrapper" id="sun-editor-wrapper" style="transform: translate(${context.model.canvasTransform.x}px, ${context.model.canvasTransform.y}px) scale(${context.model.canvasTransform.scale})">
+                    <div class="canvas-controls">
+                      <button class="canvas-btn" onclick="resetCanvas()">🏠</button>
+                      <button class="canvas-btn" onclick="zoomIn()">🔍+</button>
+                      <button class="canvas-btn" onclick="zoomOut()">🔍-</button>
+                      <span class="zoom-level">${Math.round(context.model.canvasTransform.scale * 100)}%</span>
+                    </div>
+                    
+                    <div class="sun-editor-wrapper" id="sun-editor-wrapper" 
+                         style="transform: translate(${context.model.canvasTransform.x}px, ${context.model.canvasTransform.y}px) scale(${context.model.canvasTransform.scale})">
+                      
                       <!-- HTML Editor -->
-                      <div class="editor-panel" id="html-editor-panel">
+                      <div class="editor-panel ${context.model.currentTab === 'html' ? 'active' : ''}" id="html-editor-panel">
                         ${htmlEditor.render(context.model)}
                       </div>
                       
                       <!-- CSS Editor -->
-                      <div class="editor-panel" id="css-editor-panel" style="display: none;">
+                      <div class="editor-panel ${context.model.currentTab === 'css' ? 'active' : ''}" id="css-editor-panel">
                         ${cssEditor.render(context.model)}
                       </div>
                       
                       <!-- JavaScript Editor -->
-                      <div class="editor-panel" id="js-editor-panel" style="display: none;">
-                        ${jsEditor.render(context.model)}
+                      <div class="editor-panel ${context.model.currentTab === 'js' ? 'active' : ''}" id="js-editor-panel">
+                        ${javascriptEditor.render(context.model)}
                       </div>
                       
                       <!-- XState Editor -->
-                      <div class="editor-panel" id="xstate-editor-panel" style="display: none;">
+                      <div class="editor-panel ${context.model.currentTab === 'xstate' ? 'active' : ''}" id="xstate-editor-panel">
                         ${xstateEditor.render(context.model)}
                       </div>
+                      
+                      <!-- Cart Component removed - cart components only in preview with pact test framework -->
                     </div>
-                    
-                    <div class="canvas-controls">
-                      <button class="canvas-btn" onclick="context.send({ type: 'ZOOM_IN' })" title="Zoom In">+</button>
-                      <button class="canvas-btn" onclick="context.send({ type: 'ZOOM_OUT' })" title="Zoom Out">-</button>
-                      <button class="canvas-btn" onclick="context.send({ type: 'RESET_ZOOM' })" title="Reset Zoom">↺</button>
-                    </div>
-                    
-                    <div class="zoom-level">${Math.round(context.model.zoomLevel * 100)}%</div>
-                    <div class="gesture-indicator" id="gesture-indicator">Gesture: ${context.model.gestureType || 'Pan'}</div>
                   </div>
                 </div>
+                
                 <div class="right-panel">
                   <div class="panel-grabber right" id="right-grabber"></div>
-                  
-                  <!-- SubView Navigation -->
-                  <div class="subview-navigation">
-                    <div class="subview-header">
-                      <h3>SubViews</h3>
-                      <button onclick="context.send({ type: 'ADD_SUBVIEW' })" class="add-subview-btn" title="Add New SubView">➕</button>
-                    </div>
+                  <div class="component-properties-panel">
+                    <h3>Component Properties</h3>
+                    ${context.model.currentComponent ? `
+                      <div class="property-group">
+                        <label>Name:</label>
+                        <input type="text" value="${context.model.currentComponent.name}" 
+                               onchange="updateComponentProperty('name', this.value)" />
+                      </div>
+                      <div class="property-group">
+                        <label>Type:</label>
+                        <select onchange="updateComponentProperty('type', this.value)">
+                          <option value="component" ${context.model.currentComponent.type === 'component' ? 'selected' : ''}>Component</option>
+                          <option value="editor" ${context.model.currentComponent.type === 'editor' ? 'selected' : ''}>Editor</option>
+                          <option value="template" ${context.model.currentComponent.type === 'template' ? 'selected' : ''}>Template</option>
+                        </select>
+                      </div>
+                      <div class="property-group">
+                        <label>Version:</label>
+                        <input type="text" value="${context.model.currentComponent.version}" 
+                               onchange="updateComponentProperty('version', this.value)" />
+                      </div>
+                      <div class="property-group">
+                        <label>Description:</label>
+                        <textarea onchange="updateComponentProperty('description', this.value)">${context.model.currentComponent.description || ''}</textarea>
+                      </div>
+                    ` : '<p>No component selected</p>'}
                     
-                    <div class="subview-selector">
-                      <select onchange="context.send({ type: 'SWITCH_SUBVIEW', subViewId: this.value })">
-                        <option value="">Select SubView</option>
-                        ${subViewData.map(subView => `
-                          <option value="${subView.id}" ${subView.isActive ? 'selected' : ''}>
-                            ${subView.name}
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-                    
-                    <div class="subview-list">
-                      ${subViewData.map(subView => `
-                        <div class="subview-item ${subView.isActive ? 'active' : ''}">
-                          <div class="subview-info">
-                            <span class="subview-name">${subView.name}</span>
-                            <span class="subview-file">${subView.fileName}</span>
-                          </div>
-                          <div class="subview-actions">
-                            <button onclick="context.send({ type: 'EDIT_SUBVIEW', subViewId: '${subView.id}' })" title="Edit">✏️</button>
-                            <button onclick="context.send({ type: 'EXPORT_SUBVIEW', subViewId: '${subView.id}' })" title="Export">📤</button>
-                            <button onclick="context.send({ type: 'DELETE_SUBVIEW', subViewId: '${subView.id}' })" title="Delete" class="delete-btn">🗑️</button>
-                          </div>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                  
-                  <div class="preview-panel">
-                    <h3>Preview</h3>
-                    <div id="preview-content">
-                      <!-- Preview content will be rendered here -->
-                    </div>
+                    ${context.model.developerMode ? `
+                      <div class="developer-section">
+                        <h4>Developer Tools</h4>
+                        <button class="btn btn-sm btn-secondary" onclick="exportComponent()">Export</button>
+                        <button class="btn btn-sm btn-secondary" onclick="importComponent()">Import</button>
+                        <button class="btn btn-sm btn-secondary" onclick="debugComponent()">Debug</button>
+                      </div>
+                    ` : ''}
                   </div>
                 </div>
               </div>
-            </div>`
-          );
-        },
-        library: async (context) => {
-          await context.log('Component library open');
-          return context.view(
-            `<div class="generic-editor-library">
-              <div class="editor-header">
-                <h2>Component Library</h2>
-                <div class="editor-controls">
-                  <button onclick="context.send({ type: 'LIBRARY_CLOSE' })">Close</button>
+              
+              <div class="editor-footer">
+                <div class="footer-left">
+                  <span class="status-indicator">Ready</span>
                 </div>
+                <div class="footer-center">
+                  <div class="breadcrumb">
+                    ${context.model.currentComponent ? 
+                      `${context.model.currentComponent.name} > ${context.model.currentTab.toUpperCase()}` : 
+                      'No Component Selected'
+                    }
+                  </div>
+                </div>
+                <div class="footer-right">
+                  <span class="auto-save-status">
+                    ${context.model.autoSave ? 'Auto-save: ON' : 'Auto-save: OFF'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          `);
+        },
+        
+        library: async (context) => {
+          await context.log('Component library opened');
+          return context.view(`
+            <div class="generic-editor-library">
+              <div class="library-header">
+                <h2>📚 Component Library</h2>
+                <button class="btn btn-secondary" onclick="context.send({ type: 'LIBRARY_CLOSED' })">
+                  ✕ Close Library
+                </button>
               </div>
               <div class="library-content">
                 ${componentLibrary.render(context.model)}
               </div>
-            </div>`
-          );
+            </div>
+          `);
         },
+        
         saving: async (context) => {
           await context.log('Saving component...');
-          return context.view(
-            `<div class="generic-editor-saving">
-              <div class="editor-header">
+          return context.view(`
+            <div class="generic-editor-saving">
+              <div class="saving-content">
+                <div class="saving-spinner">💾</div>
                 <h2>Saving Component</h2>
+                <p>Please wait while we save your changes...</p>
+                <div class="saving-progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 90%"></div>
+                  </div>
+                  <span>90% Complete</span>
+                </div>
               </div>
-              <div class="saving-spinner">Saving...</div>
-            </div>`
-          );
+            </div>
+          `);
         },
+        
+        resetting: async (context) => {
+          await context.log('Resetting component...');
+          return context.view(`
+            <div class="generic-editor-resetting">
+              <div class="resetting-content">
+                <div class="resetting-spinner">🔄</div>
+                <h2>Resetting Component</h2>
+                <p>Please wait while we reset your component...</p>
+                <div class="resetting-progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 60%"></div>
+                  </div>
+                  <span>60% Complete</span>
+                </div>
+              </div>
+            </div>
+          `);
+        },
+        
         error: async (context) => {
           await context.log('Error occurred', { error: context.model.error });
-          return context.view(
-            `<div class="generic-editor-error">
-              <div class="editor-header">
-                <h2>Error</h2>
+          return context.view(`
+            <div class="generic-editor-error">
+              <div class="error-content">
+                <div class="error-icon">❌</div>
+                <h2>Error Occurred</h2>
+                <p>${context.model.error?.message || 'An unexpected error occurred'}</p>
+                <div class="error-details">
+                  ${context.model.error?.stack ? `<pre>${context.model.error.stack}</pre>` : ''}
+                </div>
+                <div class="error-actions">
+                  <button class="btn btn-primary" onclick="context.send({ type: 'RETRY' })">
+                    🔄 Retry
+                  </button>
+                  <button class="btn btn-secondary" onclick="context.send({ type: 'DISMISS_ERROR' })">
+                    Dismiss
+                  </button>
+                </div>
               </div>
-              <div class="error-message">
-                <p>${context.model.error?.message || 'An error occurred'}</p>
-                <button onclick="context.send({ type: 'RETRY' })">Retry</button>
-              </div>
-            </div>`
-          );
+            </div>
+          `);
         }
       }
     });
   }
 };
 
-module.exports = GenericEditorTemplate; 
 module.exports = GenericEditorTemplate; 

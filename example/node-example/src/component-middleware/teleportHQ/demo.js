@@ -10,7 +10,7 @@
  * - Advanced state management with validation
  */
 
-import { createComponentMiddlewareManager } from './index.js';
+import { createTeleportHQAdapter } from './index.js';
 
 /**
  * Enhanced TeleportHQ Demo with Advanced Features
@@ -18,7 +18,7 @@ import { createComponentMiddlewareManager } from './index.js';
 export async function runTeleportHQDemo() {
   console.log('🚀 Starting Enhanced TeleportHQ Demo...');
   
-  const componentMiddleware = createComponentMiddlewareManager({
+  const componentMiddleware = createTeleportHQAdapter({
     teleportHQ: {
       apiKey: process.env.TELEPORTHQ_API_KEY || 'demo-key',
       projectId: process.env.TELEPORTHQ_PROJECT_ID || 'demo-project',
