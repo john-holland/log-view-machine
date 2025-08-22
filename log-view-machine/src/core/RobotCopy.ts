@@ -16,6 +16,7 @@ export class RobotCopy {
   private config: RobotCopyConfig;
   private tracing: Tracing;
   private unleashToggles: Map<string, boolean> = new Map();
+  private machines: Map<string, { machine: any; config: any; registeredAt: string }> | undefined;
 
   constructor(config: RobotCopyConfig = {}) {
     this.config = {
@@ -244,6 +245,27 @@ export class RobotCopy {
     // This would be implemented to handle incoming responses
     // For now, we'll just store the handler for future use
     console.log(`Registered response handler for channel: ${channel}`);
+  }
+
+  // Machine registration for state machines
+  registerMachine(name: string, machine: any, config: any = {}): void {
+    console.log(`Registering machine: ${name}`, { config });
+    // Store the machine registration for future use
+    // This could be used for machine discovery, monitoring, etc.
+    if (!this.machines) {
+      this.machines = new Map();
+    }
+    this.machines.set(name, { machine, config, registeredAt: new Date().toISOString() });
+  }
+
+  // Get registered machines
+  getRegisteredMachines(): Map<string, any> {
+    return this.machines || new Map();
+  }
+
+  // Get a specific registered machine
+  getRegisteredMachine(name: string): any {
+    return this.machines?.get(name);
   }
 }
 
