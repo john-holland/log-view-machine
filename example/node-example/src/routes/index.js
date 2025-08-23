@@ -73,13 +73,20 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
         return res.status(404).json({ error: 'State machine not found' });
       }
 
-      const result = await machine.send(event, { data });
+      // For XState machines, we need to get the current state before sending the event
+      const previousState = machine.state?.value || 'unknown';
+      
+      // Send the event to the machine
+      const result = machine.send(event, { data });
+      
+      // Get the new state after the event
+      const currentState = machine.state?.value || 'unknown';
       
       // Record transition in database
       await dbUtils.recordStateTransition(
         id,
-        result.previousState,
-        result.currentState,
+        previousState,
+        currentState,
         event,
         data
       );
@@ -88,8 +95,8 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
         machineId: id,
         event,
         data,
-        previousState: result.previousState,
-        currentState: result.currentState,
+        previousState,
+        currentState,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -471,6 +478,130 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     } catch (error) {
       logger.error('Failed to send RobotCopy message', { error: error.message });
       res.status(500).json({ error: 'Failed to send RobotCopy message' });
+    }
+  });
+
+  // Cart API Routes
+  router.post('/cart/add', async (req, res) => {
+    try {
+      const { item } = req.body;
+      
+      if (!item || !item.id) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Item data is required' 
+        });
+      }
+
+      logger.info('Adding item to cart', { item, timestamp: new Date().toISOString() });
+
+      // Simulate cart addition
+      const result = {
+        success: true,
+        message: 'Item added to cart',
+        item: item,
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to add item to cart', { error: error.message, stack: error.stack });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to add item to cart',
+        details: error.message
+      });
+    }
+  });
+
+  router.post('/cart/remove', async (req, res) => {
+    try {
+      const { itemId } = req.body;
+      
+      if (!itemId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Item ID is required' 
+        });
+      }
+
+      logger.info('Removing item from cart', { itemId, timestamp: new Date().toISOString() });
+
+      // Simulate cart removal
+      const result = {
+        success: true,
+        message: 'Item removed from cart',
+        itemId: itemId,
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to remove item from cart', { error: error.message, stack: error.stack });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to remove item from cart',
+        details: error.message
+      });
+    }
+  });
+
+  router.post('/cart/update', async (req, res) => {
+    try {
+      const { itemId, quantity } = req.body;
+      
+      if (!itemId || quantity === undefined) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Item ID and quantity are required' 
+        });
+      }
+
+      logger.info('Updating cart item quantity', { itemId, quantity, timestamp: new Date().toISOString() });
+
+      // Simulate cart update
+      const result = {
+        success: true,
+        message: 'Cart item updated',
+        itemId: itemId,
+        quantity: quantity,
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to update cart item', { error: error.message, stack: error.stack });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to update cart item',
+        details: error.message
+      });
+    }
+  });
+
+  router.get('/cart/status', async (req, res) => {
+    try {
+      logger.info('Getting cart status', { timestamp: new Date().toISOString() });
+
+      // Simulate cart status
+      const result = {
+        success: true,
+        cart: {
+          items: [],
+          total: 0,
+          status: 'empty'
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to get cart status', { error: error.message, stack: error.stack });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to get cart status',
+        details: error.message
+      });
     }
   });
 

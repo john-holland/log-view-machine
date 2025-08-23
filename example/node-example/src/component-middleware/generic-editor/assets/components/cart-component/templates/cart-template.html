@@ -1,0 +1,137 @@
+<!-- Cart Component Template -->
+<div class="cart-component" id="cart-component">
+    <!-- Cart Header -->
+    <div class="cart-header">
+        <h2>🛒 Your Cart</h2>
+        <div class="cart-summary">
+            <span class="item-count">0 items</span>
+            <span class="cart-total">$0.00</span>
+        </div>
+    </div>
+
+    <!-- Cart Items -->
+    <div class="cart-items" id="cart-items">
+        <div class="empty-cart">
+            <p>Your cart is empty</p>
+            <p>Start building your burger! 🍔</p>
+        </div>
+    </div>
+
+    <!-- Burger Builder -->
+    <div class="burger-builder">
+        <h3>🍔 Build Your Burger</h3>
+        <div class="ingredients-grid">
+            <div class="ingredient-category">
+                <h4>Buns</h4>
+                <div class="ingredient-options">
+                    <button class="ingredient-btn" data-ingredient="bun" data-type="sesame" data-price="2.99">
+                        🥯 Sesame Bun
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="bun" data-type="brioche" data-price="3.49">
+                        🥖 Brioche Bun
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="bun" data-type="whole-wheat" data-price="2.79">
+                        🌾 Whole Wheat
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingredient-category">
+                <h4>Patties</h4>
+                <div class="ingredient-options">
+                    <button class="ingredient-btn" data-ingredient="patty" data-type="beef" data-price="4.99">
+                        🥩 Beef Patty
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="patty" data-type="chicken" data-price="4.49">
+                        🍗 Chicken Patty
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="patty" data-type="veggie" data-price="3.99">
+                        🥬 Veggie Patty
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingredient-category">
+                <h4>Cheese</h4>
+                <div class="ingredient-options">
+                    <button class="ingredient-btn" data-ingredient="cheese" data-type="cheddar" data-price="1.49">
+                        🧀 Cheddar
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="cheese" data-type="swiss" data-price="1.69">
+                        🧀 Swiss
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="cheese" data-type="pepper-jack" data-price="1.79">
+                        🧀 Pepper Jack
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingredient-category">
+                <h4>Veggies</h4>
+                <div class="ingredient-options">
+                    <button class="ingredient-btn" data-ingredient="veggie" data-type="lettuce" data-price="0.99">
+                        🥬 Lettuce
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="veggie" data-type="tomato" data-price="0.79">
+                        🍅 Tomato
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="veggie" data-type="onion" data-price="0.69">
+                        🧅 Onion
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="veggie" data-type="eggplant" data-price="1.29">
+                        🍆 Eggplant
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingredient-category">
+                <h4>Extras</h4>
+                <div class="ingredient-options">
+                    <button class="ingredient-btn" data-ingredient="extra" data-type="bacon" data-price="2.49">
+                        🥓 Bacon
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="extra" data-type="avocado" data-price="1.99">
+                        🥑 Avocado
+                    </button>
+                    <button class="ingredient-btn" data-ingredient="extra" data-type="mushrooms" data-price="1.49">
+                        🍄 Mushrooms
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Actions -->
+    <div class="cart-actions">
+        <button class="btn btn-secondary" id="clear-cart-btn">Clear Cart</button>
+        <button class="btn btn-primary" id="checkout-btn">Checkout</button>
+    </div>
+
+    <!-- Order Summary Modal -->
+    <div class="modal" id="order-summary-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📋 Order Summary</h3>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="order-items"></div>
+                <div class="order-total">
+                    <strong>Total: <span id="order-total">$0.00</span></strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-order-btn">Cancel</button>
+                <button class="btn btn-success" id="confirm-order-btn">Confirm Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="success-message" style="display: none;">
+        <div class="success-content">
+            <span class="success-icon">✅</span>
+            <span class="success-text">Order placed successfully!</span>
+        </div>
+    </div>
+</div>

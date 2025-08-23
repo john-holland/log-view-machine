@@ -6,6 +6,7 @@
     <title>Generic Editor - Component Builder</title>
     <link href="https://cdn.jsdelivr.net/npm/suneditor@latest/dist/css/suneditor.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.css" rel="stylesheet">
+    <link href="/assets/css/core/editor-base.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -2604,8 +2605,20 @@
         function updateCanvasTransform() {
             const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
             if (sunEditorWrapper) {
-                sunEditorWrapper.style.transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
+                // Ensure transform is always applied consistently
+                const transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
+                sunEditorWrapper.style.transform = transform;
+                
+                // Also update any other elements that might need the transform
+                const canvasContainer = document.getElementById('canvas-container');
+                if (canvasContainer) {
+                    canvasContainer.style.setProperty('--canvas-transform', transform);
+                }
+                
                 updateZoomLevel();
+                
+                // Log transform for debugging
+                console.log('Canvas transform updated:', { x: canvasOffsetX, y: canvasOffsetY, scale: canvasScale });
             }
         }
 
@@ -2622,7 +2635,16 @@
                 if (editors.css) editors.css.resize();
                 if (editors.js) editors.js.resize();
                 if (editors.json) editors.json.resize();
+                
+                // Ensure canvas transform consistency
+                ensureCanvasTransformConsistency();
             }, 500);
+            
+            // Set up periodic canvas transform consistency check
+            setInterval(() => {
+                ensureCanvasTransformConsistency();
+                handleCanvasTransformEdgeCases();
+            }, 1000);
         }
 
         function initializeGrabbers() {
@@ -2729,8 +2751,9 @@
             }
             
             function startCanvasDrag(e) {
-                // Only start dragging if clicking on the canvas background, not on editors
-                if (e.target === canvasContainer || e.target.classList.contains('canvas-container')) {
+                // Allow dragging from any part of the canvas container, including editors
+                if (e.target === canvasContainer || e.target.classList.contains('canvas-container') || 
+                    e.target.closest('#sun-editor-wrapper')) {
                     if (zoomStateMachine.transition('MOUSE_DOWN')) {
                         e.preventDefault();
                         isDraggingCanvas = true;
@@ -2739,6 +2762,11 @@
                         canvasContainer.classList.add('dragging');
                         sunEditorWrapper.classList.add('dragging');
                         document.body.style.cursor = 'grabbing';
+                        
+                        // Ensure we're in the right state for dragging
+                        if (zoomStateMachine.getCurrentState() !== 'canvas_dragging') {
+                            zoomStateMachine.forceState('canvas_dragging');
+                        }
                     }
                 }
             }
@@ -2770,13 +2798,19 @@
                 if (e.touches.length === 1) {
                     // Single touch - start dragging (ignore 2D scrolling)
                     const touch = e.touches[0];
-                    if (e.target === canvasContainer || e.target.classList.contains('canvas-container')) {
+                    if (e.target === canvasContainer || e.target.classList.contains('canvas-container') || 
+                        e.target.closest('#sun-editor-wrapper')) {
                         e.preventDefault();
                         isDraggingCanvas = true;
                         canvasStartX = touch.clientX - canvasOffsetX;
                         canvasStartY = touch.clientY - canvasOffsetY;
                         canvasContainer.classList.add('dragging');
                         sunEditorWrapper.classList.add('dragging');
+                        
+                        // Ensure we're in the right state for dragging
+                        if (zoomStateMachine.getCurrentState() !== 'canvas_dragging') {
+                            zoomStateMachine.forceState('canvas_dragging');
+                        }
                     }
                 } else if (e.touches.length === 2) {
                     // Two touches - initialize vector analysis (ignore 2D scrolling)
@@ -3031,13 +3065,36 @@
             canvasContainer.addEventListener('wheel', function(e) {
                 const currentState = zoomStateMachine.getCurrentState();
                 
-                if (currentState === 'canvas_hover' || currentState === 'canvas_zooming') {
+                // Allow zooming in more states for better user experience
+                if (currentState === 'canvas_hover' || currentState === 'canvas_zooming' || 
+                    currentState === 'idle' || currentState === 'canvas_dragging') {
                     e.preventDefault();
-                    zoomStateMachine.transition('WHEEL');
+                    
+                    // Transition to zooming state if not already there
+                    if (currentState !== 'canvas_zooming') {
+                        zoomStateMachine.transition('WHEEL');
+                    }
+                    
                     const delta = e.deltaY > 0 ? 0.9 : 1.1;
                     const zoomUnlockCheckbox = document.getElementById('zoom-unlock-checkbox');
-                const minZoom = zoomUnlockCheckbox && zoomUnlockCheckbox.checked ? 0.05 : 0.5;
-                canvasScale = Math.max(minZoom, Math.min(3, canvasScale * delta));
+                    const minZoom = zoomUnlockCheckbox && zoomUnlockCheckbox.checked ? 0.05 : 0.5;
+                    
+                    // Calculate zoom center point for better zoom experience
+                    const rect = canvasContainer.getBoundingClientRect();
+                    const zoomCenterX = e.clientX - rect.left;
+                    const zoomCenterY = e.clientY - rect.top;
+                    
+                    // Store current transform origin
+                    const oldScale = canvasScale;
+                    canvasScale = Math.max(minZoom, Math.min(3, canvasScale * delta));
+                    
+                    // Adjust offset to zoom towards mouse position
+                    if (canvasScale !== oldScale) {
+                        const scaleRatio = canvasScale / oldScale;
+                        canvasOffsetX = zoomCenterX - (zoomCenterX - canvasOffsetX) * scaleRatio;
+                        canvasOffsetY = zoomCenterY - (zoomCenterY - canvasOffsetY) * scaleRatio;
+                    }
+                    
                     updateCanvasTransform();
                 } else if (currentState === 'editor_hover' || currentState === 'editor_scrolling') {
                     // Allow normal scrolling in editor areas
@@ -3628,6 +3685,15 @@
             console.log('Gesture History:', gestureHistory.length);
             console.log('Current Gesture Type:', currentGestureType);
             console.log('Gesture Confidence:', gestureConfidence);
+            
+            // Check canvas transform consistency
+            const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
+            if (sunEditorWrapper) {
+                console.log('Applied Transform:', sunEditorWrapper.style.transform);
+                console.log('Expected Transform:', `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`);
+                console.log('Transform Match:', sunEditorWrapper.style.transform === `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`);
+            }
+            
             console.log('=== END ZOOM STATE MACHINE DEBUG ===');
         }
         
@@ -4561,7 +4627,52 @@
             canvasOffsetX = 0;
             canvasOffsetY = 0;
             updateCanvasTransform();
+            
+            // Reset zoom state machine to idle
+            zoomStateMachine.reset();
+            
+            // Update all indicators
+            updateGestureIndicator();
+            
             showMessage('info', 'Canvas view reset');
+        }
+        
+        // Function to ensure canvas transform consistency
+        function ensureCanvasTransformConsistency() {
+            const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
+            if (sunEditorWrapper) {
+                // Check if transform is properly applied
+                const currentTransform = sunEditorWrapper.style.transform;
+                const expectedTransform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${canvasScale})`;
+                
+                if (currentTransform !== expectedTransform) {
+                    console.log('Canvas transform inconsistency detected, fixing...');
+                    updateCanvasTransform();
+                }
+                
+                // Also check for NaN values that could break the transform
+                if (isNaN(canvasOffsetX) || isNaN(canvasOffsetY) || isNaN(canvasScale)) {
+                    console.warn('Canvas transform contains NaN values, resetting...');
+                    canvasOffsetX = canvasOffsetX || 0;
+                    canvasOffsetY = canvasOffsetY || 0;
+                    canvasScale = canvasScale || 1;
+                    updateCanvasTransform();
+                }
+            }
+        }
+        
+        // Function to handle canvas transform edge cases
+        function handleCanvasTransformEdgeCases() {
+            // Ensure scale is within bounds
+            if (canvasScale < 0.05) canvasScale = 0.05;
+            if (canvasScale > 3) canvasScale = 3;
+            
+            // Ensure offsets are reasonable (prevent extreme panning)
+            const maxOffset = 10000;
+            if (Math.abs(canvasOffsetX) > maxOffset) canvasOffsetX = Math.sign(canvasOffsetX) * maxOffset;
+            if (Math.abs(canvasOffsetY) > maxOffset) canvasOffsetY = Math.sign(canvasOffsetY) * maxOffset;
+            
+            updateCanvasTransform();
         }
 
         function updateGestureIndicator(gestureType) {
@@ -4581,6 +4692,13 @@
                 setTimeout(() => {
                     indicator.classList.remove('show');
                 }, 2000);
+            }
+            
+            // Always update canvas grabber state indicator for consistency
+            const grabberStateIndicator = document.getElementById('canvas-grabber-state');
+            if (grabberStateIndicator) {
+                grabberStateIndicator.textContent = `State: ${state.toUpperCase()}`;
+                grabberStateIndicator.classList.toggle('active', state === 'canvas_dragging');
             }
         }
 
@@ -5079,5 +5197,11 @@
             
             // Force resize all editors after a delay to ensure they're properly sized
     </script>
+    
+    <!-- External JavaScript Files -->
+    <script type="module" src="/assets/js/core/editor-core.js"></script>
+    <script type="module" src="/assets/js/core/zoom-state-machine.js"></script>
+    <script type="module" src="/assets/js/core/component-manager.js"></script>
+    <script type="module" src="/assets/js/core/main.js"></script>
 </body>
 </html> 

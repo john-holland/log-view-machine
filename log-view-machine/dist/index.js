@@ -1391,6 +1391,12 @@ class ViewStateMachine {
             writable: true,
             value: void 0
         });
+        Object.defineProperty(this, "serverStateHandlers", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
         Object.defineProperty(this, "viewStack", {
             enumerable: true,
             configurable: true,
@@ -1531,6 +1537,18 @@ class ViewStateMachine {
         }
         return this;
     }
+    withServerState(stateName, handler) {
+        // This method is not directly implemented in the original class,
+        // but the new_code suggests it should be added.
+        // For now, we'll just add a placeholder.
+        // In a real scenario, this would involve adding a new state handler type
+        // or modifying the existing ones to support server-side rendering.
+        // Since the new_code only provided the type, we'll just add a placeholder.
+        // This will likely cause a type error until the actual implementation is added.
+        // @ts-ignore // This is a placeholder, not a direct implementation
+        this.serverStateHandlers.set(stateName, handler);
+        return this;
+    }
     // Sub-machine support
     withSubMachine(machineId, config) {
         const subMachine = new ViewStateMachine(config);
@@ -1632,6 +1650,78 @@ class ViewStateMachine {
             transition: context.transition,
             subMachine: context.subMachine,
             getSubMachine: context.getSubMachine
+        };
+    }
+    // Event subscription methods for TomeConnector
+    on(eventType, handler) {
+        this.machine.on(eventType, handler);
+    }
+    // Direct send method for TomeConnector
+    send(event) {
+        this.machine.send(event);
+    }
+    async executeServerState(stateName, model) {
+        const handler = this.serverStateHandlers.get(stateName);
+        if (handler) {
+            const context = this.createServerStateContext(model);
+            await handler(context);
+            return context.renderedHtml || '';
+        }
+        return '';
+    }
+    createServerStateContext(model) {
+        return {
+            state: this.machine.initialState.value,
+            model,
+            transitions: [],
+            log: async (message, metadata) => {
+                const entry = {
+                    id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    timestamp: new Date().toISOString(),
+                    level: 'INFO',
+                    message,
+                    metadata,
+                };
+                this.logEntries.push(entry);
+            },
+            renderHtml: (html) => {
+                return html;
+            },
+            clear: () => {
+                // Server-side clear operation
+            },
+            transition: (to) => {
+                // Server-side transition
+            },
+            send: (event) => {
+                // Server-side event sending
+            },
+            on: (eventName, handler) => {
+                // Server-side event handling
+            },
+            subMachine: (machineId, config) => {
+                const subMachine = new ViewStateMachine(config);
+                this.subMachines.set(machineId, subMachine);
+                return subMachine;
+            },
+            getSubMachine: (machineId) => {
+                return this.subMachines.get(machineId);
+            },
+            graphql: {
+                query: async (query, variables) => {
+                    // Server-side GraphQL query
+                    return {};
+                },
+                mutation: async (mutation, variables) => {
+                    // Server-side GraphQL mutation
+                    return {};
+                },
+                subscription: async (subscription, variables) => {
+                    // Server-side GraphQL subscription
+                    return {};
+                },
+            },
+            renderedHtml: '',
         };
     }
     // Compose with other ViewStateMachines
@@ -1759,390 +1849,579 @@ function createViewStateMachine(config) {
     return new ViewStateMachine(config);
 }
 
-class RobotCopy {
+class Tracing {
     constructor() {
-        Object.defineProperty(this, "machines", {
+        Object.defineProperty(this, "messageHistory", {
             enumerable: true,
             configurable: true,
             writable: true,
             value: new Map()
         });
-        Object.defineProperty(this, "configs", {
+        Object.defineProperty(this, "traceMap", {
             enumerable: true,
             configurable: true,
             writable: true,
             value: new Map()
         });
-        Object.defineProperty(this, "messageBrokers", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: new Map()
-        });
-        Object.defineProperty(this, "messageQueue", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: []
-        });
-        Object.defineProperty(this, "responseHandlers", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: new Map()
-        });
-        this.initializeDefaultBrokers();
-    }
-    initializeDefaultBrokers() {
-        // Initialize default message brokers
-        this.registerMessageBroker('window-intercom', new WindowIntercomBroker());
-        this.registerMessageBroker('chrome-message', new ChromeMessageBroker());
-        this.registerMessageBroker('http-api', new HttpApiBroker());
-        this.registerMessageBroker('graphql', new GraphQLBroker());
-    }
-    // Register a machine with RobotCopy
-    registerMachine(machineId, machine, config) {
-        this.machines.set(machineId, machine);
-        this.configs.set(machineId, config);
-        // Set up message brokers for this machine
-        config.messageBrokers.forEach(brokerConfig => {
-            const broker = this.messageBrokers.get(brokerConfig.type);
-            if (broker) {
-                broker.configure(brokerConfig.config);
-            }
-        });
-    }
-    // Register a custom message broker
-    registerMessageBroker(type, broker) {
-        this.messageBrokers.set(type, broker);
-    }
-    // Send a message through the appropriate broker
-    async sendMessage(message) {
-        const fullMessage = {
-            ...message,
-            id: this.generateMessageId(),
-            timestamp: new Date()
-        };
-        // Add to queue
-        this.messageQueue.push(fullMessage);
-        // Find the appropriate broker
-        const broker = this.messageBrokers.get(message.broker);
-        if (!broker) {
-            throw new Error(`No message broker found for type: ${message.broker}`);
-        }
-        try {
-            const response = await broker.send(fullMessage);
-            this.handleResponse(response);
-            return response;
-        }
-        catch (error) {
-            const errorResponse = {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date(),
-                messageId: fullMessage.id
-            };
-            this.handleResponse(errorResponse);
-            return errorResponse;
-        }
-    }
-    // Post message to window (intercom)
-    async postToWindow(message, targetOrigin = '*') {
-        return this.sendMessage({
-            type: 'window-post',
-            payload: message,
-            source: 'robotcopy',
-            target: 'window',
-            broker: 'window-intercom'
-        });
-    }
-    // Post message to Chrome extension
-    async postToChrome(message, extensionId) {
-        return this.sendMessage({
-            type: 'chrome-post',
-            payload: message,
-            source: 'robotcopy',
-            target: extensionId || 'chrome-extension',
-            broker: 'chrome-message'
-        });
-    }
-    // Post to HTTP API
-    async postToHttp(message, endpoint) {
-        return this.sendMessage({
-            type: 'http-post',
-            payload: message,
-            source: 'robotcopy',
-            target: endpoint,
-            broker: 'http-api'
-        });
-    }
-    // Post to GraphQL
-    async postToGraphQL(query, variables) {
-        return this.sendMessage({
-            type: 'graphql-query',
-            payload: { query, variables },
-            source: 'robotcopy',
-            target: 'graphql-endpoint',
-            broker: 'graphql'
-        });
-    }
-    // Discover all registered machines and their capabilities
-    discover() {
-        const discovery = {
-            machines: new Map(),
-            messageBrokers: Array.from(this.messageBrokers.keys()),
-            configurations: new Map(),
-            capabilities: new Map()
-        };
-        this.machines.forEach((machine, machineId) => {
-            discovery.machines.set(machineId, machine);
-            const config = this.configs.get(machineId);
-            if (config) {
-                discovery.configurations.set(machineId, config);
-                // Analyze machine capabilities
-                const capabilities = this.analyzeMachineCapabilities(machine, config);
-                discovery.capabilities.set(machineId, capabilities);
-            }
-        });
-        return discovery;
-    }
-    analyzeMachineCapabilities(machine, config) {
-        return {
-            supportedBrokers: config.messageBrokers.map(b => b.type),
-            autoDiscovery: config.autoDiscovery || false,
-            clientSpecification: config.clientSpecification,
-            messageTypes: ['state-change', 'event-send', 'log-entry', 'view-update'],
-            graphQLStates: this.extractGraphQLStates(machine)
-        };
-    }
-    extractGraphQLStates(machine) {
-        // This would analyze the machine for GraphQL states
-        // For now, return a basic structure
-        return [
-            {
-                name: 'query',
-                operation: 'query',
-                query: 'query GetBurger($id: ID!) { burger(id: $id) { id ingredients } }',
-                variables: { id: 'string' }
-            },
-            {
-                name: 'mutation',
-                operation: 'mutation',
-                query: 'mutation CreateBurger($input: BurgerInput!) { createBurger(input: $input) { id } }',
-                variables: { input: 'BurgerInput' }
-            }
-        ];
     }
     generateMessageId() {
         return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
-    handleResponse(response) {
-        const handler = this.responseHandlers.get(response.messageId);
-        if (handler) {
-            handler(response);
-            this.responseHandlers.delete(response.messageId);
+    generateTraceId() {
+        return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    generateSpanId() {
+        return `span_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    trackMessage(messageId, traceId, spanId, metadata) {
+        const message = {
+            messageId,
+            traceId,
+            spanId,
+            timestamp: new Date().toISOString(),
+            backend: metadata.backend || 'node',
+            action: metadata.action || 'unknown',
+            data: metadata.data,
+        };
+        this.messageHistory.set(messageId, message);
+        if (!this.traceMap.has(traceId)) {
+            this.traceMap.set(traceId, []);
         }
+        this.traceMap.get(traceId).push(messageId);
+        return message;
     }
-    // Set up response handler for async operations
-    onResponse(messageId, handler) {
-        this.responseHandlers.set(messageId, handler);
+    getMessage(messageId) {
+        return this.messageHistory.get(messageId);
     }
-    // Get message queue
-    getMessageQueue() {
-        return [...this.messageQueue];
+    getTraceMessages(traceId) {
+        const messageIds = this.traceMap.get(traceId) || [];
+        return messageIds.map(id => this.messageHistory.get(id)).filter(Boolean);
     }
-    // Clear message queue
-    clearMessageQueue() {
-        this.messageQueue = [];
+    getFullTrace(traceId) {
+        const messages = this.getTraceMessages(traceId);
+        return {
+            traceId,
+            messages,
+            startTime: messages[0]?.timestamp,
+            endTime: messages[messages.length - 1]?.timestamp,
+            backend: messages[0]?.backend,
+        };
+    }
+    getMessageHistory() {
+        return Array.from(this.messageHistory.values());
+    }
+    getTraceIds() {
+        return Array.from(this.traceMap.keys());
+    }
+    clearHistory() {
+        this.messageHistory.clear();
+        this.traceMap.clear();
+    }
+    // Create tracing headers for HTTP requests
+    createTracingHeaders(traceId, spanId, messageId, enableDataDog = false) {
+        const headers = {
+            'x-trace-id': traceId,
+            'x-span-id': spanId,
+            'x-message-id': messageId,
+        };
+        if (enableDataDog) {
+            headers['x-datadog-trace-id'] = traceId;
+            headers['x-datadog-parent-id'] = spanId;
+            headers['x-datadog-sampling-priority'] = '1';
+        }
+        return headers;
     }
 }
-// Window Intercom Broker
-class WindowIntercomBroker {
-    constructor() {
-        Object.defineProperty(this, "config", {
+function createTracing() {
+    return new Tracing();
+}
+
+class TomeConnector {
+    constructor(robotCopy) {
+        Object.defineProperty(this, "connections", {
             enumerable: true,
             configurable: true,
             writable: true,
-            value: null
+            value: new Map()
         });
-    }
-    configure(config) {
-        this.config = config;
-    }
-    async send(message) {
-        if (!this.config) {
-            throw new Error('WindowIntercomBroker not configured');
-        }
-        return new Promise((resolve, reject) => {
-            try {
-                window.postMessage(message.payload, this.config.targetOrigin);
-                // Set up response handler
-                const responseHandler = (event) => {
-                    if (event.data && event.data.messageId === message.id) {
-                        window.removeEventListener('message', responseHandler);
-                        resolve({
-                            success: true,
-                            data: event.data,
-                            timestamp: new Date(),
-                            messageId: message.id
-                        });
-                    }
-                };
-                window.addEventListener('message', responseHandler);
-                // Timeout
-                setTimeout(() => {
-                    window.removeEventListener('message', responseHandler);
-                    reject(new Error('Window message timeout'));
-                }, this.config.timeout || 5000);
-            }
-            catch (error) {
-                reject(error);
-            }
-        });
-    }
-}
-// Chrome Message Broker
-class ChromeMessageBroker {
-    constructor() {
-        Object.defineProperty(this, "config", {
+        Object.defineProperty(this, "robotCopy", {
             enumerable: true,
             configurable: true,
             writable: true,
-            value: null
+            value: void 0
         });
+        this.robotCopy = robotCopy;
     }
-    configure(config) {
-        this.config = config;
+    // Connect two Tomes with bidirectional state and event flow
+    connect(sourceTome, targetTome, config = {}) {
+        const connectionId = `connection_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const connection = {
+            id: connectionId,
+            sourceTome,
+            targetTome,
+            eventMapping: new Map(Object.entries(config.eventMapping || {})),
+            stateMapping: new Map(Object.entries(config.stateMapping || {})),
+            bidirectional: config.bidirectional ?? true,
+            filters: config.filters,
+            transformers: config.transformers,
+        };
+        this.connections.set(connectionId, connection);
+        this.setupConnection(connection);
+        console.log(`Connected Tomes: ${sourceTome.constructor.name} <-> ${targetTome.constructor.name}`);
+        return connectionId;
     }
-    async send(message) {
-        if (!this.config) {
-            throw new Error('ChromeMessageBroker not configured');
+    setupConnection(connection) {
+        const { sourceTome, targetTome, eventMapping, stateMapping, bidirectional, filters, transformers } = connection;
+        // Forward events from source to target
+        this.setupEventForwarding(sourceTome, targetTome, eventMapping, 'forward', filters, transformers);
+        // Forward events from target to source (if bidirectional)
+        if (bidirectional) {
+            this.setupEventForwarding(targetTome, sourceTome, this.reverseMap(eventMapping), 'backward', filters, transformers);
         }
-        return new Promise((resolve, reject) => {
-            try {
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage(this.config.extensionId, message.payload, (response) => {
-                        if (chrome.runtime.lastError) {
-                            reject(new Error(chrome.runtime.lastError.message));
-                        }
-                        else {
-                            resolve({
-                                success: true,
-                                data: response,
-                                timestamp: new Date(),
-                                messageId: message.id
-                            });
-                        }
-                    });
-                }
-                else {
-                    reject(new Error('Chrome runtime not available'));
-                }
-            }
-            catch (error) {
-                reject(error);
-            }
-        });
-    }
-}
-// HTTP API Broker
-class HttpApiBroker {
-    constructor() {
-        Object.defineProperty(this, "config", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: null
-        });
-    }
-    configure(config) {
-        this.config = config;
-    }
-    async send(message) {
-        if (!this.config) {
-            throw new Error('HttpApiBroker not configured');
+        // Forward state changes
+        this.setupStateForwarding(sourceTome, targetTome, stateMapping, 'forward', filters, transformers);
+        if (bidirectional) {
+            this.setupStateForwarding(targetTome, sourceTome, this.reverseMap(stateMapping), 'backward', filters, transformers);
         }
-        try {
-            const response = await fetch(`${this.config.baseUrl}${message.target}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.config.headers
-                },
-                body: JSON.stringify(message.payload),
-                signal: AbortSignal.timeout(this.config.timeout || 10000)
+    }
+    setupEventForwarding(sourceTome, targetTome, eventMapping, direction, filters, transformers) {
+        // Subscribe to source Tome's events
+        sourceTome.on('event', (event) => {
+            // Check if event should be filtered
+            if (filters?.events && !filters.events.includes(event.type)) {
+                return;
+            }
+            // Transform event if transformer is provided
+            let transformedEvent = event;
+            if (transformers?.eventTransformer) {
+                transformedEvent = transformers.eventTransformer(event, direction);
+            }
+            // Map event type if mapping exists
+            const mappedEventType = eventMapping.get(transformedEvent.type) || transformedEvent.type;
+            // Forward to target Tome
+            targetTome.send({
+                type: mappedEventType,
+                ...transformedEvent,
+                _forwarded: true,
+                _direction: direction,
+                _source: sourceTome.constructor.name,
             });
-            const data = await response.json();
-            return {
-                success: response.ok,
-                data: data,
-                error: response.ok ? undefined : data.error || 'HTTP request failed',
-                timestamp: new Date(),
-                messageId: message.id
-            };
+        });
+    }
+    setupStateForwarding(sourceTome, targetTome, stateMapping, direction, filters, transformers) {
+        // Subscribe to source Tome's state changes
+        sourceTome.on('stateChange', (newState, oldState) => {
+            // Check if state should be filtered
+            if (filters?.states) {
+                const hasRelevantState = filters.states.some(statePath => this.getStateValue(newState, statePath) !== this.getStateValue(oldState, statePath));
+                if (!hasRelevantState) {
+                    return;
+                }
+            }
+            // Transform state if transformer is provided
+            let transformedState = newState;
+            if (transformers?.stateTransformer) {
+                transformedState = transformers.stateTransformer(newState, direction);
+            }
+            // Map state paths and update target Tome's context
+            const stateUpdates = {};
+            stateMapping.forEach((targetPath, sourcePath) => {
+                const sourceValue = this.getStateValue(transformedState, sourcePath);
+                if (sourceValue !== undefined) {
+                    stateUpdates[targetPath] = sourceValue;
+                }
+            });
+            // Update target Tome's context
+            if (Object.keys(stateUpdates).length > 0) {
+                targetTome.send({
+                    type: 'SYNC_STATE',
+                    updates: stateUpdates,
+                    _forwarded: true,
+                    _direction: direction,
+                    _source: sourceTome.constructor.name,
+                });
+            }
+        });
+    }
+    getStateValue(state, path) {
+        return path.split('.').reduce((obj, key) => obj?.[key], state);
+    }
+    reverseMap(map) {
+        const reversed = new Map();
+        map.forEach((value, key) => {
+            reversed.set(value, key);
+        });
+        return reversed;
+    }
+    // Disconnect Tomes
+    disconnect(connectionId) {
+        const connection = this.connections.get(connectionId);
+        if (!connection) {
+            return false;
         }
-        catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'HTTP request failed',
-                timestamp: new Date(),
-                messageId: message.id
-            };
+        // Clean up event listeners
+        // Note: In a real implementation, you'd need to store and remove specific listeners
+        this.connections.delete(connectionId);
+        console.log(`Disconnected Tomes: ${connection.sourceTome.constructor.name} <-> ${connection.targetTome.constructor.name}`);
+        return true;
+    }
+    // Get all connections
+    getConnections() {
+        return Array.from(this.connections.values());
+    }
+    // Get connections for a specific Tome
+    getConnectionsForTome(tome) {
+        return this.getConnections().filter(conn => conn.sourceTome === tome || conn.targetTome === tome);
+    }
+    // Create a network of connected Tomes
+    createNetwork(tomes, config = {}) {
+        const connectionIds = [];
+        for (let i = 0; i < tomes.length - 1; i++) {
+            const connectionId = this.connect(tomes[i], tomes[i + 1], config);
+            connectionIds.push(connectionId);
         }
+        // Connect last Tome back to first (ring topology)
+        if (tomes.length > 2) {
+            const ringConnectionId = this.connect(tomes[tomes.length - 1], tomes[0], config);
+            connectionIds.push(ringConnectionId);
+        }
+        return connectionIds;
+    }
+    // Create a hub-and-spoke network
+    createHubNetwork(hubTome, spokeTomes, config = {}) {
+        const connectionIds = [];
+        spokeTomes.forEach(spokeTome => {
+            const connectionId = this.connect(hubTome, spokeTome, config);
+            connectionIds.push(connectionId);
+        });
+        return connectionIds;
+    }
+    // Broadcast event to all connected Tomes
+    broadcastEvent(event, sourceTome) {
+        const connections = this.getConnectionsForTome(sourceTome);
+        connections.forEach(connection => {
+            const targetTome = connection.targetTome === sourceTome ? connection.sourceTome : connection.targetTome;
+            targetTome.send({
+                ...event,
+                _broadcasted: true,
+                _source: sourceTome.constructor.name,
+            });
+        });
+    }
+    // Get network topology
+    getNetworkTopology() {
+        const topology = {
+            nodes: new Set(),
+            edges: [],
+        };
+        this.getConnections().forEach(connection => {
+            topology.nodes.add(connection.sourceTome.constructor.name);
+            topology.nodes.add(connection.targetTome.constructor.name);
+            topology.edges.push({
+                from: connection.sourceTome.constructor.name,
+                to: connection.targetTome.constructor.name,
+                bidirectional: connection.bidirectional,
+                id: connection.id,
+            });
+        });
+        return {
+            nodes: Array.from(topology.nodes),
+            edges: topology.edges,
+        };
+    }
+    // Validate network for potential issues (Turing completeness risks)
+    validateNetwork() {
+        const warnings = [];
+        const errors = [];
+        const topology = this.getNetworkTopology();
+        // Check for circular dependencies
+        const visited = new Set();
+        const recursionStack = new Set();
+        const hasCycle = (node, parent) => {
+            if (recursionStack.has(node)) {
+                return true;
+            }
+            if (visited.has(node)) {
+                return false;
+            }
+            visited.add(node);
+            recursionStack.add(node);
+            const edges = topology.edges.filter(edge => edge.from === node || (edge.bidirectional && edge.to === node));
+            for (const edge of edges) {
+                const nextNode = edge.from === node ? edge.to : edge.from;
+                if (nextNode !== parent && hasCycle(nextNode, node)) {
+                    return true;
+                }
+            }
+            recursionStack.delete(node);
+            return false;
+        };
+        // Check each node for cycles
+        topology.nodes.forEach(node => {
+            if (hasCycle(node)) {
+                errors.push(`Circular dependency detected involving node: ${node}`);
+            }
+        });
+        // Check for high fan-out (potential performance issues)
+        const fanOutCounts = new Map();
+        topology.edges.forEach(edge => {
+            fanOutCounts.set(edge.from, (fanOutCounts.get(edge.from) || 0) + 1);
+            if (edge.bidirectional) {
+                fanOutCounts.set(edge.to, (fanOutCounts.get(edge.to) || 0) + 1);
+            }
+        });
+        fanOutCounts.forEach((count, node) => {
+            if (count > 10) {
+                warnings.push(`High fan-out detected for node ${node}: ${count} connections`);
+            }
+        });
+        // Check for event amplification (potential infinite loops)
+        const eventCounts = new Map();
+        this.getConnections().forEach(connection => {
+            connection.eventMapping.forEach((targetEvent, sourceEvent) => {
+                const key = `${sourceEvent}->${targetEvent}`;
+                eventCounts.set(key, (eventCounts.get(key) || 0) + 1);
+            });
+        });
+        eventCounts.forEach((count, eventPair) => {
+            if (count > 5) {
+                warnings.push(`Potential event amplification detected: ${eventPair} appears ${count} times`);
+            }
+        });
+        return { warnings, errors };
     }
 }
-// GraphQL Broker
-class GraphQLBroker {
-    constructor() {
+function createTomeConnector(robotCopy) {
+    return new TomeConnector(robotCopy);
+}
+
+class RobotCopy {
+    constructor(config = {}) {
         Object.defineProperty(this, "config", {
             enumerable: true,
             configurable: true,
             writable: true,
-            value: null
+            value: void 0
         });
+        Object.defineProperty(this, "tracing", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        Object.defineProperty(this, "unleashToggles", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
+        Object.defineProperty(this, "machines", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        this.config = {
+            unleashUrl: 'http://localhost:4242/api',
+            unleashClientKey: 'default:development.unleash-insecure-api-token',
+            unleashAppName: 'fish-burger-frontend',
+            unleashEnvironment: 'development',
+            kotlinBackendUrl: 'http://localhost:8080',
+            nodeBackendUrl: 'http://localhost:3001',
+            enableTracing: true,
+            enableDataDog: true,
+            ...config,
+        };
+        this.tracing = createTracing();
+        this.initializeUnleashToggles();
     }
-    configure(config) {
-        this.config = config;
+    async initializeUnleashToggles() {
+        // Simulate Unleash toggle initialization
+        // In real implementation, this would fetch from Unleash API
+        this.unleashToggles.set('fish-burger-kotlin-backend', false);
+        this.unleashToggles.set('fish-burger-node-backend', true);
+        this.unleashToggles.set('enable-tracing', true);
+        this.unleashToggles.set('enable-datadog', true);
     }
-    async send(message) {
-        if (!this.config) {
-            throw new Error('GraphQLBroker not configured');
-        }
+    async isEnabled(toggleName, context = {}) {
+        return this.unleashToggles.get(toggleName) || false;
+    }
+    async getBackendUrl() {
+        const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+        return useKotlin ? this.config.kotlinBackendUrl : this.config.nodeBackendUrl;
+    }
+    async getBackendType() {
+        const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+        return useKotlin ? 'kotlin' : 'node';
+    }
+    generateMessageId() {
+        return this.tracing.generateMessageId();
+    }
+    generateTraceId() {
+        return this.tracing.generateTraceId();
+    }
+    generateSpanId() {
+        return this.tracing.generateSpanId();
+    }
+    trackMessage(messageId, traceId, spanId, metadata) {
+        return this.tracing.trackMessage(messageId, traceId, spanId, metadata);
+    }
+    getMessage(messageId) {
+        return this.tracing.getMessage(messageId);
+    }
+    getTraceMessages(traceId) {
+        return this.tracing.getTraceMessages(traceId);
+    }
+    getFullTrace(traceId) {
+        return this.tracing.getFullTrace(traceId);
+    }
+    async sendMessage(action, data = {}) {
+        const messageId = this.generateMessageId();
+        const traceId = this.generateTraceId();
+        const spanId = this.generateSpanId();
+        const backend = await this.getBackendType();
+        const backendUrl = await this.getBackendUrl();
+        // Track the message
+        this.trackMessage(messageId, traceId, spanId, {
+            backend,
+            action,
+            data,
+        });
+        // Prepare headers for tracing
+        const headers = {
+            'Content-Type': 'application/json',
+            ...this.tracing.createTracingHeaders(traceId, spanId, messageId, await this.isEnabled('enable-datadog')),
+        };
         try {
-            const response = await fetch(this.config.endpoint, {
+            const response = await fetch(`${backendUrl}/api/fish-burger/${action}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.config.headers
-                },
+                headers,
                 body: JSON.stringify({
-                    query: message.payload.query,
-                    variables: message.payload.variables
+                    ...data,
+                    messageId,
+                    traceId,
+                    spanId,
                 }),
-                signal: AbortSignal.timeout(this.config.timeout || 10000)
             });
-            const data = await response.json();
-            return {
-                success: !data.errors,
-                data: data.data,
-                error: data.errors ? data.errors[0].message : undefined,
-                timestamp: new Date(),
-                messageId: message.id
-            };
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const result = await response.json();
+            // Track the response
+            this.trackMessage(`${messageId}_response`, traceId, spanId, {
+                backend,
+                action: `${action}_response`,
+                data: result,
+            });
+            return result;
         }
         catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'GraphQL request failed',
-                timestamp: new Date(),
-                messageId: message.id
-            };
+            // Track the error
+            this.trackMessage(`${messageId}_error`, traceId, spanId, {
+                backend,
+                action: `${action}_error`,
+                data: { error: error instanceof Error ? error.message : String(error) },
+            });
+            throw error;
         }
     }
+    async startCooking(orderId, ingredients) {
+        return this.sendMessage('start', { orderId, ingredients });
+    }
+    async updateProgress(orderId, cookingTime, temperature) {
+        return this.sendMessage('progress', { orderId, cookingTime, temperature });
+    }
+    async completeCooking(orderId) {
+        return this.sendMessage('complete', { orderId });
+    }
+    // Integration with ViewStateMachine
+    integrateWithViewStateMachine(viewStateMachine) {
+        // Register message handlers for ViewStateMachine
+        viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message) => {
+            return this.startCooking(message.orderId, message.ingredients);
+        });
+        viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message) => {
+            return this.updateProgress(message.orderId, message.cookingTime, message.temperature);
+        });
+        viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message) => {
+            return this.completeCooking(message.orderId);
+        });
+        return this;
+    }
+    async getTrace(traceId) {
+        await this.getBackendType();
+        const backendUrl = await this.getBackendUrl();
+        try {
+            const response = await fetch(`${backendUrl}/api/trace/${traceId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return await response.json();
+        }
+        catch (error) {
+            console.error(`Failed to get trace ${traceId}:`, error);
+            return this.getFullTrace(traceId);
+        }
+    }
+    async getMessageFromBackend(messageId) {
+        await this.getBackendType();
+        const backendUrl = await this.getBackendUrl();
+        try {
+            const response = await fetch(`${backendUrl}/api/message/${messageId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return await response.json();
+        }
+        catch (error) {
+            console.error(`Failed to get message ${messageId}:`, error);
+            return this.getMessage(messageId);
+        }
+    }
+    // Debugging and monitoring methods
+    getMessageHistory() {
+        return this.tracing.getMessageHistory();
+    }
+    getTraceIds() {
+        return this.tracing.getTraceIds();
+    }
+    clearHistory() {
+        this.tracing.clearHistory();
+    }
+    // Configuration methods
+    updateConfig(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+    }
+    getConfig() {
+        return { ...this.config };
+    }
+    // Response handling
+    onResponse(channel, handler) {
+        // This would be implemented to handle incoming responses
+        // For now, we'll just store the handler for future use
+        console.log(`Registered response handler for channel: ${channel}`);
+    }
+    // Machine registration for state machines
+    registerMachine(name, machine, config = {}) {
+        console.log(`Registering machine: ${name}`, { config });
+        // Store the machine registration for future use
+        // This could be used for machine discovery, monitoring, etc.
+        if (!this.machines) {
+            this.machines = new Map();
+        }
+        this.machines.set(name, { machine, config, registeredAt: new Date().toISOString() });
+    }
+    // Get registered machines
+    getRegisteredMachines() {
+        return this.machines || new Map();
+    }
+    // Get a specific registered machine
+    getRegisteredMachine(name) {
+        return this.machines?.get(name);
+    }
 }
-// Helper function to create RobotCopy
-function createRobotCopy() {
-    return new RobotCopy();
+function createRobotCopy(config) {
+    return new RobotCopy(config);
 }
 
 class ClientGenerator {
@@ -2420,15 +2699,15 @@ function createClientGenerator() {
     return new ClientGenerator();
 }
 
-exports.ChromeMessageBroker = ChromeMessageBroker;
 exports.ClientGenerator = ClientGenerator;
-exports.GraphQLBroker = GraphQLBroker;
-exports.HttpApiBroker = HttpApiBroker;
 exports.RobotCopy = RobotCopy;
+exports.TomeConnector = TomeConnector;
+exports.Tracing = Tracing;
 exports.ViewStateMachine = ViewStateMachine;
-exports.WindowIntercomBroker = WindowIntercomBroker;
 exports.createClientGenerator = createClientGenerator;
 exports.createProxyRobotCopyStateMachine = createProxyRobotCopyStateMachine;
 exports.createRobotCopy = createRobotCopy;
+exports.createTomeConnector = createTomeConnector;
+exports.createTracing = createTracing;
 exports.createViewStateMachine = createViewStateMachine;
 //# sourceMappingURL=index.js.map

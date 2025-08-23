@@ -1,0 +1,124 @@
+{
+  "id": "cart-component",
+  "name": "Cart Component",
+  "description": "Interactive cart component with burger builder functionality, ingredient selection, and checkout flow",
+  "version": "1.0.0",
+  "author": "Generic Editor Team",
+  "createdAt": "2025-08-15T17:00:00Z",
+  "updatedAt": "2025-08-15T17:00:00Z",
+  "category": "ecommerce",
+  "tags": ["cart", "burger", "ingredients", "checkout", "ecommerce", "interactive"],
+  "dependencies": {
+    "core": ["editor-core"],
+    "external": []
+  },
+  "features": [
+    "Interactive ingredient selection",
+    "Real-time cart updates",
+    "Quantity management",
+    "Checkout flow",
+    "Local storage persistence",
+    "Responsive design",
+    "Modal dialogs",
+    "Success notifications"
+  ],
+  "configuration": {
+    "defaultCurrency": "USD",
+    "currencySymbol": "$",
+    "maxQuantity": 99,
+    "autoSave": true,
+    "checkoutConfirmation": true
+  },
+  "files": {
+    "template": "templates/cart-template.html",
+    "styles": "styles/cart-styles.css",
+    "behaviors": [
+      "behaviors/cart-behavior.js"
+    ]
+  },
+  "ingredients": {
+    "buns": [
+      { "type": "sesame", "price": 2.99, "emoji": "🥯", "name": "Sesame Bun" },
+      { "type": "brioche", "price": 3.49, "emoji": "🥖", "name": "Brioche Bun" },
+      { "type": "whole-wheat", "price": 2.79, "emoji": "🌾", "name": "Whole Wheat" }
+    ],
+    "patties": [
+      { "type": "beef", "price": 4.99, "emoji": "🥩", "name": "Beef Patty" },
+      { "type": "chicken", "price": 4.49, "emoji": "🍗", "name": "Chicken Patty" },
+      { "type": "veggie", "price": 3.99, "emoji": "🥬", "name": "Veggie Patty" }
+    ],
+    "cheese": [
+      { "type": "cheddar", "price": 1.49, "emoji": "🧀", "name": "Cheddar" },
+      { "type": "swiss", "price": 1.69, "emoji": "🧀", "name": "Swiss" },
+      { "type": "pepper-jack", "price": 1.79, "emoji": "🧀", "name": "Pepper Jack" }
+    ],
+    "veggies": [
+      { "type": "lettuce", "price": 0.99, "emoji": "🥬", "name": "Lettuce" },
+      { "type": "tomato", "price": 0.79, "emoji": "🍅", "name": "Tomato" },
+      { "type": "onion", "price": 0.69, "emoji": "🧅", "name": "Onion" },
+      { "type": "eggplant", "price": 1.29, "emoji": "🍆", "name": "Eggplant" }
+    ],
+    "extras": [
+      { "type": "bacon", "price": 2.49, "emoji": "🥓", "name": "Bacon" },
+      { "type": "avocado", "price": 1.99, "emoji": "🥑", "name": "Avocado" },
+      { "type": "mushrooms", "price": 1.49, "emoji": "🍄", "name": "Mushrooms" }
+    ]
+  },
+  "integration": {
+    "genericEditor": {
+      "supported": true,
+      "componentType": "interactive",
+      "editableSections": ["template", "styles", "behaviors"],
+      "previewMode": "live"
+    },
+    "pactTestProxy": {
+      "supported": true,
+      "endpoints": [
+        "/api/cart/add",
+        "/api/cart/remove",
+        "/api/cart/update",
+        "/api/cart/checkout"
+      ]
+    }
+  },
+  "documentation": {
+    "overview": "The Cart Component provides a complete e-commerce cart experience with interactive ingredient selection, real-time updates, and a streamlined checkout process.",
+    "usage": "Use this component to create interactive shopping experiences where users can build custom products by selecting ingredients and managing their cart.",
+    "examples": [
+      "Burger builder with ingredient selection",
+      "Shopping cart with quantity controls",
+      "Checkout flow with order summary",
+      "Local storage persistence"
+    ],
+    "api": {
+      "methods": [
+        "addIngredient(ingredient, type, price, name)",
+        "removeIngredient(ingredientId)",
+        "updateIngredientQuantity(ingredientId, quantity)",
+        "getCart()",
+        "getCartTotal()",
+        "clearCart()",
+        "showCheckout()"
+      ],
+      "events": [
+        "ingredientSelected",
+        "cartUpdated",
+        "checkoutStarted",
+        "orderConfirmed"
+      ]
+    }
+  },
+  "accessibility": {
+    "ariaLabels": true,
+    "keyboardNavigation": true,
+    "screenReaderSupport": true,
+    "highContrastSupport": true,
+    "reducedMotionSupport": true
+  },
+  "performance": {
+    "lazyLoading": false,
+    "debouncedUpdates": true,
+    "localStorageOptimization": true,
+    "eventDelegation": true
+  }
+}

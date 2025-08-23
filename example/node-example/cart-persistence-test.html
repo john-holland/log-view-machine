@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Persistence Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .cart-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛒 Cart Persistence Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <p>This test demonstrates the cart persistence functionality:</p>
+        <ol>
+            <li>Add items to cart using the buttons below</li>
+            <li>Check that items appear in the cart display</li>
+            <li>Refresh the page (F5 or Cmd+R)</li>
+            <li>Verify that cart items are restored from localStorage</li>
+            <li>Check that ingredient buttons show correct selected state</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Add Items to Cart</h2>
+        <button class="button" onclick="addItem('bun', 'sesame', 2.99, '🥯 Sesame Bun')">Add Sesame Bun</button>
+        <button class="button" onclick="addItem('patty', 'beef', 4.99, '🥩 Beef Patty')">Add Beef Patty</button>
+        <button class="button" onclick="addItem('cheese', 'cheddar', 1.49, '🧀 Cheddar')">Add Cheddar</button>
+        <button class="button" onclick="addItem('veggie', 'lettuce', 0.99, '🥬 Lettuce')">Add Lettuce</button>
+        <button class="button" onclick="addItem('extra', 'bacon', 2.49, '🥓 Bacon')">Add Bacon</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Cart Management</h2>
+        <button class="button" onclick="clearCart()">Clear Cart</button>
+        <button class="button" onclick="loadCartFromStorage()">Load from Storage</button>
+        <button class="button" onclick="saveCartToStorage()">Save to Storage</button>
+        <button class="button" onclick="showCartData()">Show Cart Data</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Cart Display</h2>
+        <div id="cart-display">
+            <p>Cart is empty</p>
+        </div>
+        <div id="cart-total">Total: $0.00</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Ingredient Button States</h2>
+        <div id="ingredient-states">
+            <p>No ingredients selected</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Status Log</h2>
+        <div id="status-log"></div>
+    </div>
+
+    <script>
+        // Cart state
+        let cart = [];
+        
+        // Initialize cart from localStorage on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCartFromStorage();
+            updateDisplay();
+            logStatus('Page loaded, cart restored from localStorage', 'info');
+        });
+
+        // Add item to cart
+        function addItem(ingredient, type, price, name) {
+            const itemId = `${ingredient}-${type}`;
+            
+            // Check if item already exists
+            const existingItem = cart.find(item => item.id === itemId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+                logStatus(`Increased quantity for ${name}`, 'success');
+            } else {
+                cart.push({
+                    id: itemId,
+                    ingredient: ingredient,
+                    type: type,
+                    price: price,
+                    name: name,
+                    quantity: 1
+                });
+                logStatus(`Added ${name} to cart`, 'success');
+            }
+            
+            saveCartToStorage();
+            updateDisplay();
+        }
+
+        // Remove item from cart
+        function removeItem(itemId) {
+            cart = cart.filter(item => item.id !== itemId);
+            saveCartToStorage();
+            updateDisplay();
+            logStatus('Item removed from cart', 'info');
+        }
+
+        // Update item quantity
+        function updateQuantity(itemId, delta) {
+            const item = cart.find(item => item.id === itemId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    removeItem(itemId);
+                } else {
+                    saveCartToStorage();
+                    updateDisplay();
+                    logStatus(`Updated quantity for ${item.name}`, 'info');
+                }
+            }
+        }
+
+        // Clear cart
+        function clearCart() {
+            cart = [];
+            saveCartToStorage();
+            updateDisplay();
+            logStatus('Cart cleared', 'info');
+        }
+
+        // Save cart to localStorage
+        function saveCartToStorage() {
+            try {
+                localStorage.setItem('fish-burger-cart', JSON.stringify(cart));
+                logStatus('Cart saved to localStorage', 'success');
+            } catch (error) {
+                logStatus('Error saving cart: ' + error.message, 'error');
+            }
+        }
+
+        // Load cart from localStorage
+        function loadCartFromStorage() {
+            try {
+                const savedCart = localStorage.getItem('fish-burger-cart');
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                    logStatus('Cart loaded from localStorage', 'success');
+                } else {
+                    cart = [];
+                    logStatus('No saved cart found in localStorage', 'info');
+                }
+                updateDisplay();
+            } catch (error) {
+                logStatus('Error loading cart: ' + error.message, 'error');
+                cart = [];
+            }
+        }
+
+        // Update display
+        function updateDisplay() {
+            // Update cart display
+            const cartDisplay = document.getElementById('cart-display');
+            if (cart.length === 0) {
+                cartDisplay.innerHTML = '<p>Cart is empty</p>';
+            } else {
+                cartDisplay.innerHTML = cart.map(item => `
+                    <div class="cart-item">
+                        <strong>${item.name}</strong> x${item.quantity} - $${(item.price * item.quantity).toFixed(2)}
+                        <button class="button" onclick="updateQuantity('${item.id}', -1)">-</button>
+                        <button class="button" onclick="updateQuantity('${item.id}', 1)">+</button>
+                        <button class="button" onclick="removeItem('${item.id}')">Remove</button>
+                    </div>
+                `).join('');
+            }
+
+            // Update total
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cart-total').textContent = `Total: $${total.toFixed(2)}`;
+
+            // Update ingredient button states
+            updateIngredientButtonStates();
+        }
+
+        // Update ingredient button states
+        function updateIngredientButtonStates() {
+            const ingredientStates = document.getElementById('ingredient-states');
+            
+            if (cart.length === 0) {
+                ingredientStates.innerHTML = '<p>No ingredients selected</p>';
+                return;
+            }
+
+            const states = cart.map(item => 
+                `<strong>${item.ingredient}-${item.type}</strong>: ${item.name} (x${item.quantity})`
+            ).join('<br>');
+            
+            ingredientStates.innerHTML = states;
+        }
+
+        // Show cart data
+        function showCartData() {
+            logStatus('Cart data: ' + JSON.stringify(cart, null, 2), 'info');
+        }
+
+        // Log status
+        function logStatus(message, type = 'info') {
+            const statusLog = document.getElementById('status-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `[${timestamp}] ${message}`;
+            statusLog.appendChild(statusDiv);
+            statusLog.scrollTop = statusLog.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    </script>
+</body>
+</html>
+
+

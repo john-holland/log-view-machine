@@ -1,2 +1,43 @@
-<testsuites id="" name="" tests="0" failures="0" skipped="0" errors="0" time="8.056027">
+<testsuites id="" name="" tests="1" failures="1" skipped="0" errors="0" time="15.074561">
+<testsuite name="editor.spec.js" timestamp="2025-08-19T15:44:33.822Z" hostname="chromium" tests="1" failures="1" skipped="0" time="11.376" errors="0">
+<testcase name="Generic Editor - Canvas and Interaction › should display canvas controls" classname="editor.spec.js" time="11.376">
+<failure message="editor.spec.js:226:3 should display canvas controls" type="FAILURE">
+<![CDATA[  [chromium] › editor.spec.js:226:3 › Generic Editor - Canvas and Interaction › should display canvas controls 
+
+    TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('.container') to be visible
+
+
+      220 |   test.beforeEach(async ({ page }) => {
+      221 |     await page.goto('/src/component-middleware/generic-editor/index.html');
+    > 222 |     await page.waitForSelector('.container', { timeout: 10000 });
+          |                ^
+      223 |     await page.waitForTimeout(2000);
+      224 |   });
+      225 |
+        at /Users/johnholland/Developers/log-view-machine/example/node-example/tests/e2e/editor.spec.js:222:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../test-results/editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../test-results/editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/video.webm]]
+
+[[ATTACHMENT|editor-Generic-Editor---Ca-ed0c2-uld-display-canvas-controls-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
 </testsuites>

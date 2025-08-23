@@ -15,8 +15,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine } from 'log-view-machine';
-import { createTomeManager } from 'log-view-machine/src/core/TomeManager.js';
-import { FishBurgerTomeConfig, EditorTomeConfig } from 'log-view-machine/src/core/TomeConfig.js';
+// Note: TomeManager and TomeConfig are not exported from the main package
+// We'll need to create these locally or import from the correct location
 import { setupDatabase } from './database/setup.js';
 import { createGraphQLSchema } from './graphql/schema.js';
 import { createProxyMachines } from './machines/proxy-machines.js';
@@ -24,7 +24,7 @@ import { createStateMachines } from './machines/state-machines.js';
 import { setupWebSocketServer } from './websocket/server.js';
 import { setupMiddleware } from './middleware/index.js';
 import { setupRoutes } from './routes/index.js';
-import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
+// import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
 
 // Load environment variables
 dotenv.config();
@@ -84,8 +84,11 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      fontSrc: ["'self'", "https:", "data:"],
     },
   },
 }));
@@ -106,12 +109,12 @@ const db = await setupDatabase();
 // Create RobotCopy instance
 const robotCopy = createRobotCopy();
 
-// Create TomeManager
-const tomeManager = createTomeManager(app);
+// Create TomeManager (commented out - not available in current package)
+// const tomeManager = createTomeManager(app);
 
-// Register tomes
-await tomeManager.registerTome(FishBurgerTomeConfig);
-await tomeManager.registerTome(EditorTomeConfig);
+// Register tomes (commented out - not available in current package)
+// await tomeManager.registerTome(FishBurgerTomeConfig);
+// await tomeManager.registerTome(EditorTomeConfig);
 
 // Create state machines
 const stateMachines = await createStateMachines(db, robotCopy);
@@ -231,6 +234,17 @@ app.get('/api/teleporthq/demo', async (req, res) => {
 
 // Serve static files
 app.use(express.static(path.join(process.cwd(), 'public')));
+
+// Serve cart component assets
+app.use('/assets', express.static(path.join(process.cwd(), 'src/component-middleware/generic-editor/assets'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
+}));
 
 // Home page - Fish Burger Example
 app.get('/', (req, res) => {
@@ -577,6 +591,21 @@ app.get('/editor', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
 
+// Cart Component Test Page
+app.get('/cart-test', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-test.html'));
+});
+
+// Cart Component Integration Test Page
+app.get('/cart-integration-test', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-integration-test.html'));
+});
+
+// Cart Component Demo Page
+app.get('/cart-demo', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-demo.html'));
+});
+
 // Create HTTP server
 const server = createServer(app);
 
@@ -602,6 +631,9 @@ server.listen(port, () => {
   logger.info(`📈 Health check: http://localhost:${port}/health`);
   logger.info(`🏠 Home page: http://localhost:${port}/`);
   logger.info(`✏️ Editor: http://localhost:${port}/editor`);
+  logger.info(`🛒 Cart Test: http://localhost:${port}/cart-test`);
+  logger.info(`🔧 Cart Integration Test: http://localhost:${port}/cart-integration-test`);
+  logger.info(`🎯 Cart Demo: http://localhost:${port}/cart-demo`);
   logger.info(`🍔 Fish Burger Demo: http://localhost:${port}/fish-burger-demo`);
 });
 

@@ -1,0 +1,72 @@
+{
+  "id": "fish-burger-demo",
+  "name": "Fish Burger Demo",
+  "description": "Interactive demo showcasing generic editor components with cart functionality and connection mode switching",
+  "version": "1.0.0",
+  "author": "Generic Editor Team",
+  "createdAt": "2025-08-15T17:00:00Z",
+  "updatedAt": "2025-08-15T17:00:00Z",
+  "category": "demo",
+  "tags": ["demo", "cart", "pact-test", "generic-editor", "xstate"],
+  "dependencies": {
+    "core": ["editor-core", "component-manager"],
+    "external": ["ace-editor", "suneditor"]
+  },
+  "features": [
+    "Connection mode switching (Pact Test vs Live Server)",
+    "Cart component integration",
+    "Pact test proxy controls",
+    "Real-time statistics",
+    "Configuration management",
+    "Responsive design"
+  ],
+  "configuration": {
+    "defaultConnectionMode": "pact",
+    "pactTestProxy": {
+      "enabled": true,
+      "defaultTestMode": "happy_path",
+      "defaultErrorProbability": 0.05,
+      "defaultResponseDelay": {
+        "min": 100,
+        "max": 1000
+      }
+    },
+    "liveServer": {
+      "defaultApiUrl": "http://localhost:3000",
+      "supportedAuthTypes": ["none", "bearer", "api-key", "basic"]
+    }
+  },
+  "files": {
+    "template": "templates/demo-template.html",
+    "styles": "styles/demo-styles.css",
+    "behaviors": [
+      "behaviors/demo-controller.js",
+      "behaviors/main.js"
+    ]
+  },
+  "integration": {
+    "genericEditor": {
+      "supported": true,
+      "componentType": "demo",
+      "editableSections": ["template", "styles", "behaviors"]
+    },
+    "pactTestProxy": {
+      "supported": true,
+      "endpoints": [
+        "/api/pact-test/status",
+        "/api/pact-test/config",
+        "/api/pact-test/reset"
+      ]
+    }
+  },
+  "documentation": {
+    "overview": "The Fish Burger Demo showcases the generic editor's capabilities by providing an interactive interface for testing cart components with both pact test proxy and live server connections.",
+    "usage": "Use this demo to test cart functionality, switch between testing modes, and see how components integrate with the generic editor system.",
+    "examples": [
+      "Switching between Pact Test and Live Server modes",
+      "Configuring pact test proxy parameters",
+      "Testing cart component functionality",
+      "Viewing real-time statistics"
+    ]
+  }
+}

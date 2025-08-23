@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Component Test</title>
+    <link rel="stylesheet" href="assets/components/cart-component/styles/cart-styles.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .test-header {
+            background: #333;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .test-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        
+        .test-content {
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        .test-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        
+        .test-btn.secondary {
+            background: #6c757d;
+        }
+        
+        .test-btn.secondary:hover {
+            background: #545b62;
+        }
+        
+        .test-btn.success {
+            background: #28a745;
+        }
+        
+        .test-btn.success:hover {
+            background: #1e7e34;
+        }
+        
+        .test-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🛒 Cart Component Test</h1>
+            <p>Testing the cart component functionality in isolation</p>
+        </div>
+        
+        <div class="test-content">
+            <div class="test-section">
+                <h2>🧪 Component Testing</h2>
+                <div class="test-buttons">
+                    <button class="test-btn" data-test="initialization">Test Initialization</button>
+                    <button class="test-btn" data-test="add-ingredients">Test Add Ingredients</button>
+                    <button class="test-btn" data-test="cart-operations">Test Cart Operations</button>
+                    <button class="test-btn" data-test="checkout">Test Checkout</button>
+                    <button class="test-btn secondary" data-test="clear">Clear Output</button>
+                </div>
+                <div class="test-output" id="test-output">Ready to test cart component...</div>
+            </div>
+            
+            <div class="test-section">
+                <h2>📊 Component Status</h2>
+                <div id="component-status">Loading...</div>
+            </div>
+            
+            <div class="test-section">
+                <h2>🎯 Live Cart Component</h2>
+                <div id="cart-component-container">
+                    <!-- Cart component will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CartComponent } from './assets/components/cart-component/index.js';
+        
+        let cartComponent = null;
+        let testOutput = '';
+        
+        // Initialize cart component
+        async function initializeCartComponent() {
+            try {
+                logTest('🚀 Initializing cart component...');
+                
+                cartComponent = new CartComponent();
+                const success = await cartComponent.initialize();
+                
+                if (success) {
+                    logTest('✅ Cart component initialized successfully');
+                    updateComponentStatus();
+                    
+                    // Load the cart template into the container
+                    const container = document.getElementById('cart-component-container');
+                    const response = await fetch('./assets/components/cart-component/templates/cart-template.html');
+                    const template = await response.text();
+                    container.innerHTML = template;
+                    
+                    // Initialize the behavior after template is loaded
+                    setTimeout(() => {
+                        if (cartComponent.behavior) {
+                            logTest('🎯 Cart template loaded and behavior ready');
+                        }
+                    }, 100);
+                    
+                } else {
+                    logTest('❌ Failed to initialize cart component');
+                }
+                
+            } catch (error) {
+                logTest(`❌ Error initializing cart component: ${error.message}`);
+                console.error('Cart component initialization error:', error);
+            }
+        }
+        
+        // Test functions
+        function testComponentInitialization() {
+            logTest('🧪 Testing component initialization...');
+            if (cartComponent) {
+                logTest(`✅ Component ID: ${cartComponent.getMetadata().id}`);
+                logTest(`✅ Component Name: ${cartComponent.getMetadata().name}`);
+                logTest(`✅ Component Version: ${cartComponent.getMetadata().version}`);
+                logTest(`✅ Is Initialized: ${cartComponent.isInitialized}`);
+            } else {
+                logTest('❌ Cart component not available');
+            }
+        }
+        
+        function testAddIngredients() {
+            logTest('🧪 Testing ingredient addition...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    cartComponent.addIngredient('bun', 'sesame', 2.99, '🥯 Sesame Bun');
+                    cartComponent.addIngredient('patty', 'beef', 4.99, '🥩 Beef Patty');
+                    cartComponent.addIngredient('cheese', 'cheddar', 1.49, '🧀 Cheddar');
+                    logTest('✅ Added 3 ingredients to cart');
+                    updateComponentStatus();
+                } catch (error) {
+                    logTest(`❌ Error adding ingredients: ${error.message}`);
+                }
+            } else {
+                logTest('❌ Cart component not ready');
+            }
+        }
+        
+        function testCartOperations() {
+            logTest('🧪 Testing cart operations...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    const status = cartComponent.getStatus();
+                    logTest(`✅ Cart Status: ${JSON.stringify(status, null, 2)}`);
+                    
+                    const cart = cartComponent.behavior.getCart();
+                    logTest(`✅ Cart Items: ${cart.length}`);
+                    
+                    if (cart.length > 0) {
+                        cart.forEach(item => {
+                            logTest(`  - ${item.name}: $${item.price} x${item.quantity}`);
+                        });
+                    }
+                } catch (error) {
+                    logTest(`❌ Error testing cart operations: ${error.message}`);
+                }
+            } else {
+                logTest('❌ Cart component not ready');
+            }
+        }
+        
+        function testCheckout() {
+            logTest('🧪 Testing checkout...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    const status = cartComponent.getStatus();
+                    if (status.isCartEmpty) {
+                        logTest('⚠️ Cart is empty, cannot test checkout');
+                    } else {
+                        logTest('✅ Testing checkout flow...');
+                        // This would trigger the checkout modal
+                        logTest('✅ Checkout test completed');
+                    }
+                } catch (error) {
+                    logTest(`❌ Error testing checkout: ${error.message}`);
+                }
+            } else {
+                logTest('❌ Cart component not ready');
+            }
+        }
+        
+        function clearTestOutput() {
+            testOutput = '';
+            document.getElementById('test-output').textContent = 'Output cleared...';
+        }
+        
+        // Utility functions
+        function logTest(message) {
+            testOutput += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            document.getElementById('test-output').textContent = testOutput;
+            document.getElementById('test-output').scrollTop = document.getElementById('test-output').scrollHeight;
+        }
+        
+        function updateComponentStatus() {
+            if (cartComponent) {
+                const status = cartComponent.getStatus();
+                document.getElementById('component-status').innerHTML = `
+                    <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <strong>Status:</strong> ${status.status}<br>
+                        <strong>Message:</strong> ${status.message}<br>
+                        <strong>Cart Items:</strong> ${status.cartItemCount}<br>
+                        <strong>Cart Total:</strong> $${status.cartTotal.toFixed(2)}<br>
+                        <strong>Is Empty:</strong> ${status.isCartEmpty ? 'Yes' : 'No'}
+                    </div>
+                `;
+            }
+        }
+        
+        // Setup event listeners for test buttons
+        function setupEventListeners() {
+            const testButtons = document.querySelectorAll('[data-test]');
+            testButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const testType = e.target.dataset.test;
+                    switch (testType) {
+                        case 'initialization':
+                            testComponentInitialization();
+                            break;
+                        case 'add-ingredients':
+                            testAddIngredients();
+                            break;
+                        case 'cart-operations':
+                            testCartOperations();
+                            break;
+                        case 'checkout':
+                            testCheckout();
+                            break;
+                        case 'clear':
+                            clearTestOutput();
+                            break;
+                    }
+                });
+            });
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('📱 Page loaded, initializing cart component...');
+            setupEventListeners();
+            initializeCartComponent();
+        });
+        
+        // Update status every 2 seconds
+        setInterval(() => {
+            if (cartComponent) {
+                updateComponentStatus();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

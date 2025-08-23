@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Component Demo</title>
+    <link rel="stylesheet" href="assets/components/cart-component/styles/cart-styles.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .demo-header {
+            background: #333;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .demo-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .demo-header p {
+            margin: 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .demo-content {
+            padding: 30px;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+        }
+        
+        .demo-section h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .demo-description {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .demo-description h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .demo-description p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .feature-card h4 {
+            margin-top: 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .feature-card p {
+            margin: 10px 0;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .demo-actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .demo-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 0 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            background: #0056b3;
+        }
+        
+        .demo-btn.secondary {
+            background: #6c757d;
+        }
+        
+        .demo-btn.secondary:hover {
+            background: #545b62;
+        }
+        
+        .demo-btn.success {
+            background: #28a745;
+        }
+        
+        .demo-btn.success:hover {
+            background: #1e7e34;
+        }
+        
+        .cart-demo-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        
+        .cart-demo-section h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .demo-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .demo-footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        .demo-footer p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🛒 Cart Component Demo</h1>
+            <p>A fully functional cart component integrated with the Generic Editor system</p>
+        </div>
+        
+        <div class="demo-content">
+            <div class="demo-section">
+                <h2>🚀 What You'll See</h2>
+                
+                <div class="demo-description">
+                    <h3>🎯 Live Cart Component</h3>
+                    <p>Below you'll find a fully functional cart component that demonstrates:</p>
+                    <ul>
+                        <li><strong>Ingredient Selection:</strong> Click on different burger ingredients to add them to your cart</li>
+                        <li><strong>Real-time Updates:</strong> Cart total and item count update automatically</li>
+                        <li><strong>Quantity Management:</strong> Increase/decrease quantities or remove items</li>
+                        <li><strong>Checkout Flow:</strong> Complete the ordering process with a summary modal</li>
+                        <li><strong>Persistent Storage:</strong> Your cart is saved locally and persists between sessions</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-features">
+                    <div class="feature-card">
+                        <h4>🎨 <span>Modern UI</span></h4>
+                        <p>Clean, responsive design with smooth animations and intuitive interactions. Built with modern CSS and follows accessibility best practices.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⚡ <span>Real-time Updates</span></h4>
+                        <p>Cart updates happen instantly as you interact with ingredients. No page refreshes needed - everything updates dynamically.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔧 <span>Component Architecture</span></h4>
+                        <p>Built using a modular component system with separate behavior, template, and style layers. Easy to extend and customize.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💾 <span>Data Persistence</span></h4>
+                        <p>Your cart data is automatically saved to localStorage and restored when you return. No data loss between sessions.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎭 <span>State Management</span></h4>
+                        <p>Integrated with the Generic Editor's state machine system for consistent behavior and predictable state transitions.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🧪 <span>Testable Design</span></h4>
+                        <p>Component is designed with testing in mind. Separate test pages available for unit testing and integration testing.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-actions">
+                <a href="/cart-test" class="demo-btn">🧪 Test Component</a>
+                <a href="/cart-integration-test" class="demo-btn secondary">🔧 Integration Tests</a>
+                <a href="/editor" class="demo-btn success">✏️ Open Editor</a>
+            </div>
+            
+            <div class="cart-demo-section">
+                <h3>🎯 Live Cart Component</h3>
+                <p style="text-align: center; margin-bottom: 20px; color: #666;">
+                    Try adding ingredients to your cart! Click on any ingredient button below to see the cart in action.
+                </p>
+                
+                <div id="cart-component-container">
+                    <!-- Cart component will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>🔍 How It Works</h2>
+                
+                <div class="demo-description">
+                    <h3>🏗️ Component Architecture</h3>
+                    <p>The cart component follows a clean separation of concerns:</p>
+                    <ul>
+                        <li><strong>CartComponent:</strong> Main component class that manages lifecycle and provides public API</li>
+                        <li><strong>CartBehavior:</strong> Handles all cart logic, event handling, and DOM manipulation</li>
+                        <li><strong>Template:</strong> HTML structure with semantic markup and accessibility features</li>
+                        <li><strong>Styles:</strong> Modern CSS with responsive design and smooth animations</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-description">
+                    <h3>🔄 State Management</h3>
+                    <p>The component maintains several key states:</p>
+                    <ul>
+                        <li><strong>Cart Items:</strong> Array of selected ingredients with quantities and prices</li>
+                        <li><strong>Selected Ingredients:</strong> Map of currently selected ingredients by category</li>
+                        <li><strong>UI State:</strong> Modal visibility, button states, and form validation</li>
+                        <li><strong>Persistence:</strong> Local storage synchronization and error handling</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-description">
+                    <h3>🎯 Event Handling</h3>
+                    <p>Comprehensive event system handles user interactions:</p>
+                    <ul>
+                        <li><strong>Ingredient Selection:</strong> Click events on ingredient buttons with category management</li>
+                        <li><strong>Quantity Controls:</strong> Increase/decrease buttons with automatic cart updates</li>
+                        <li><strong>Cart Actions:</strong> Clear cart, checkout, and order confirmation</li>
+                        <li><strong>Modal Management:</strong> Show/hide checkout modal with proper focus management</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>🚀 Integration Points</h2>
+                
+                <div class="demo-description">
+                    <h3>🔗 Generic Editor Integration</h3>
+                    <p>This cart component is designed to work seamlessly with the Generic Editor system:</p>
+                    <ul>
+                        <li><strong>Component Registry:</strong> Can be registered as a reusable component in the editor</li>
+                        <li><strong>State Machine Integration:</strong> Works with XState state machines for complex workflows</li>
+                        <li><strong>Template System:</strong> Integrates with the editor's template management system</li>
+                        <li><strong>Persistence Layer:</strong> Uses the editor's persistence manager for data storage</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-description">
+                    <h3>🌐 Backend Integration</h3>
+                    <p>Ready for backend integration with various services:</p>
+                    <ul>
+                        <li><strong>REST API:</strong> Can send cart data to backend services for order processing</li>
+                        <li><strong>GraphQL:</strong> Integrates with the Log View Machine's GraphQL schema</li>
+                        <li><strong>WebSocket:</strong> Real-time updates and collaboration features</li>
+                        <li><strong>Database:</strong> Persistent storage with SQLite or other databases</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>📚 Next Steps</h2>
+                
+                <div class="demo-description">
+                    <h3>🎯 What to Try Next</h3>
+                    <p>Now that you've seen the cart component in action:</p>
+                    <ul>
+                        <li><strong>Test the Component:</strong> Visit the test page to run comprehensive tests</li>
+                        <li><strong>Integration Testing:</strong> Check how it integrates with the Generic Editor</li>
+                        <li><strong>Customize:</strong> Modify the component to add new features or styling</li>
+                        <li><strong>Extend:</strong> Add new ingredient categories or payment methods</li>
+                        <li><strong>Integrate:</strong> Connect it to your backend services</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-footer">
+            <p><strong>Cart Component Demo</strong> - Part of the Generic Editor System</p>
+            <p>Built with modern web technologies and best practices</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CartComponent } from './assets/components/cart-component/index.js';
+        
+        let cartComponent = null;
+        
+        // Initialize cart component
+        async function initializeCartComponent() {
+            try {
+                console.log('🚀 Initializing cart component for demo...');
+                
+                cartComponent = new CartComponent();
+                const success = await cartComponent.initialize();
+                
+                if (success) {
+                    console.log('✅ Cart component initialized successfully for demo');
+                    
+                    // Load the cart template into the container
+                    const container = document.getElementById('cart-component-container');
+                    const response = await fetch('./assets/components/cart-component/templates/cart-template.html');
+                    const template = await response.text();
+                    container.innerHTML = template;
+                    
+                    // Initialize the behavior after template is loaded
+                    setTimeout(() => {
+                        if (cartComponent.behavior) {
+                            console.log('🎯 Cart template loaded and behavior ready for demo');
+                            
+                            // Force sync cart state to restore from localStorage
+                            cartComponent.syncCartState();
+                            
+                            // Add some demo ingredients to show the component working
+                            setTimeout(() => {
+                                addDemoIngredients();
+                            }, 500);
+                        }
+                    }, 100);
+                    
+                } else {
+                    console.error('❌ Failed to initialize cart component for demo');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error initializing cart component for demo:', error);
+            }
+        }
+        
+        // Add some demo ingredients to show the component working
+        function addDemoIngredients() {
+            if (cartComponent && cartComponent.behavior) {
+                try {
+                    // Add a few ingredients to demonstrate the component
+                    cartComponent.addIngredient('bun', 'sesame', 2.99, '🥯 Sesame Bun');
+                    cartComponent.addIngredient('patty', 'beef', 4.99, '🥩 Beef Patty');
+                    cartComponent.addIngredient('cheese', 'cheddar', 1.49, '🧀 Cheddar');
+                    
+                    console.log('✅ Demo ingredients added to cart');
+                } catch (error) {
+                    console.error('❌ Error adding demo ingredients:', error);
+                }
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📱 Demo page loaded, initializing cart component...');
+            initializeCartComponent();
+        });
+    </script>
+</body>
+</html>
+

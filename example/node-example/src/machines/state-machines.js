@@ -1,4 +1,5 @@
 import { createViewStateMachine } from 'log-view-machine';
+import { createMachine, interpret } from 'xstate';
 import { dbUtils } from '../database/setup.js';
 
 // Create state machines for the backend
@@ -468,10 +469,90 @@ export async function createStateMachines(db, robotCopy) {
     ]
   });
 
+  // Fish Burger State Machine
+  const fishBurgerMachine = createMachine({
+    id: 'fish-burger',
+    initial: 'idle',
+    context: {
+      order: [],
+      progress: 0,
+      message: 'Ready to take your fish burger order!'
+    },
+    states: {
+      idle: {
+        on: {
+          START_ORDER: 'ordering',
+          VIEW_MENU: 'viewing_menu',
+          START_COOKING: 'cooking'
+        }
+      },
+      ordering: {
+        on: {
+          ADD_INGREDIENT: 'adding_ingredient',
+          REMOVE_INGREDIENT: 'removing_ingredient',
+          COMPLETE_ORDER: 'order_complete',
+          CANCEL_ORDER: 'idle',
+          START_COOKING: 'cooking'
+        }
+      },
+      adding_ingredient: {
+        on: {
+          INGREDIENT_ADDED: 'ordering',
+          ERROR: 'ordering'
+        }
+      },
+      removing_ingredient: {
+        on: {
+          INGREDIENT_REMOVED: 'ordering',
+          ERROR: 'ordering'
+        }
+      },
+      viewing_menu: {
+        on: {
+          BACK_TO_ORDER: 'ordering',
+          CLOSE_MENU: 'idle'
+        }
+      },
+      cooking: {
+        on: {
+          UPDATE_PROGRESS: 'cooking',
+          COOKING_COMPLETE: 'order_complete',
+          PAUSE_COOKING: 'paused'
+        }
+      },
+      paused: {
+        on: {
+          RESUME_COOKING: 'cooking',
+          CANCEL_COOKING: 'idle'
+        }
+      },
+      order_complete: {
+        on: {
+          NEW_ORDER: 'idle',
+          VIEW_ORDER: 'viewing_order'
+        }
+      },
+      viewing_order: {
+        on: {
+          NEW_ORDER: 'idle',
+          BACK_TO_ORDERING: 'ordering'
+        }
+      }
+    }
+  });
+
+  // Create an interpreted service for the fish burger machine
+  const fishBurgerService = interpret(fishBurgerMachine)
+    .onTransition((state) => {
+      console.log(`Fish Burger State: ${state.value}`, state.context);
+    })
+    .start();
+
   // Store machines in Map
   stateMachines.set('user-management', userManagementMachine);
   stateMachines.set('api-key-management', apiKeyManagementMachine);
   stateMachines.set('system-health', systemHealthMachine);
+  stateMachines.set('fish-burger', fishBurgerService);
 
   // Initialize state machines in database
   await initializeStateMachinesInDatabase(db);
@@ -533,6 +614,25 @@ async function initializeStateMachinesInDatabase(db) {
           checking: { on: { HEALTHY: 'healthy', WARNING: 'warning', CRITICAL: 'critical' } },
           warning: { on: { RECOVER: 'healthy', ESCALATE: 'critical', CHECK_HEALTH: 'checking' } },
           critical: { on: { RECOVER: 'healthy', CHECK_HEALTH: 'checking' } }
+        }
+      }
+    },
+    {
+      id: 'fish-burger',
+      name: 'Fish Burger Order Management',
+      description: 'Manages fish burger order workflow and ingredient selection',
+      config: {
+        initial: 'idle',
+        states: {
+          idle: { on: { START_ORDER: 'ordering', VIEW_MENU: 'viewing_menu', START_COOKING: 'cooking' } },
+          ordering: { on: { ADD_INGREDIENT: 'adding_ingredient', REMOVE_INGREDIENT: 'removing_ingredient', COMPLETE_ORDER: 'order_complete', CANCEL_ORDER: 'idle', START_COOKING: 'cooking' } },
+          adding_ingredient: { on: { INGREDIENT_ADDED: 'ordering', ERROR: 'ordering' } },
+          removing_ingredient: { on: { INGREDIENT_REMOVED: 'ordering', ERROR: 'ordering' } },
+          viewing_menu: { on: { BACK_TO_ORDER: 'ordering', CLOSE_MENU: 'idle' } },
+          cooking: { on: { UPDATE_PROGRESS: 'cooking', COOKING_COMPLETE: 'order_complete', PAUSE_COOKING: 'paused' } },
+          paused: { on: { RESUME_COOKING: 'cooking', CANCEL_COOKING: 'idle' } },
+          order_complete: { on: { NEW_ORDER: 'idle', VIEW_ORDER: 'viewing_order' } },
+          viewing_order: { on: { NEW_ORDER: 'idle', BACK_TO_ORDERING: 'ordering' } }
         }
       }
     }

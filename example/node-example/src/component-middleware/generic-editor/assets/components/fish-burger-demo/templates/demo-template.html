@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http: https: ws: wss:;">
+    <title>Fish Burger Demo - Generic Editor Components</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/assets/css/fish-burger-demo/demo-styles.css">
+</head>
+<body>
+    <div class="fish-burger-demo">
+        <div class="demo-header">
+            <h1>🍔 Fish Burger Demo</h1>
+            <p>Built with Generic Editor Components - Edit and Design in Real-Time</p>
+        </div>
+
+        <div class="demo-container">
+            <!-- Cart Component Panel -->
+            <div class="demo-panel">
+                <h2>🛒 Cart Component</h2>
+                <div class="component-preview" id="cart-preview">
+                    <div style="text-align: center;">
+                        <h3>Cart Component</h3>
+                        <p>Interactive cart with burger builder</p>
+                        <div class="status-indicator status-disconnected"></div>
+                        <span>Not Connected</span>
+                    </div>
+                </div>
+                <div class="component-info">
+                    <h4>Features</h4>
+                    <p>• Burger ingredient selection</p>
+                    <p>• Real-time cart updates</p>
+                    <p>• Checkout flow</p>
+                    <p>• Local storage persistence</p>
+                    <h4>Component Type</h4>
+                    <p>XState-driven cart with HTML/CSS/JS</p>
+                </div>
+                <div class="demo-actions">
+                    <button class="btn btn-primary" id="load-cart-btn">Load Cart Component</button>
+                    <button class="btn btn-secondary" id="edit-cart-btn">Edit in Generic Editor</button>
+                    <button class="btn btn-success" id="test-cart-btn">Test Cart Flow</button>
+                </div>
+            </div>
+
+            <!-- Generic Editor Panel -->
+            <div class="demo-panel">
+                <h2>🎨 Generic Editor</h2>
+                <div class="component-preview" id="editor-preview">
+                    <div style="text-align: center;">
+                        <h3>Generic Editor</h3>
+                        <p>Component editing and design system</p>
+                        <div class="status-indicator status-disconnected"></div>
+                        <span>Not Connected</span>
+                    </div>
+                </div>
+                <div class="component-info">
+                    <h4>Features</h4>
+                    <p>• Multi-editor support (HTML, CSS, JS, XState)</p>
+                    <p>• Real-time preview</p>
+                    <p>• Component library</p>
+                    <p>• Version management</p>
+                    <h4>Integration</h4>
+                    <p>Cart component runs within editor</p>
+                </div>
+                <div class="demo-actions">
+                    <button class="btn btn-primary" id="open-editor-btn">Open Generic Editor</button>
+                    <button class="btn btn-secondary" id="load-library-btn">Load Component Library</button>
+                    <button class="btn btn-success" id="create-component-btn">Create New Component</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Mode Selection -->
+        <div class="connection-mode-toggle">
+            <h2>🔌 Connection Mode</h2>
+            <div class="mode-options">
+                <div class="mode-option">
+                    <input type="radio" id="pact-mode" name="connection-mode" value="pact" checked>
+                    <label for="pact-mode">🧪 Pact Test Mode</label>
+                    <span class="mode-description">- Controlled testing with simulated responses</span>
+                </div>
+                <div class="mode-option">
+                    <input type="radio" id="live-mode" name="connection-mode" value="live">
+                    <label for="live-mode">🚀 Live Server Mode</label>
+                    <span class="mode-description">- Connect to real backend services</span>
+                </div>
+            </div>
+            
+            <!-- Live Server Configuration (hidden by default) -->
+            <div id="live-server-config" class="live-server-config">
+                <h3>🌐 Live Server Configuration</h3>
+                <div class="config-row">
+                    <label><strong>API Base URL:</strong></label>
+                    <input type="text" id="api-base-url" value="http://localhost:3000" placeholder="http://localhost:3000">
+                </div>
+                <div class="config-row">
+                    <label><strong>Authentication Type:</strong></label>
+                    <select id="auth-type">
+                        <option value="none">No Authentication</option>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="api-key">API Key</option>
+                        <option value="basic">Basic Auth</option>
+                    </select>
+                </div>
+                <div class="config-row">
+                    <label><strong>Authentication Value:</strong></label>
+                    <input type="text" id="auth-value" placeholder="Token/Key/Password" style="display: none;">
+                </div>
+                <button id="test-connection" class="test-connection-btn">Test Connection</button>
+                <button id="save-config" class="test-connection-btn">Save Configuration</button>
+                <div id="connection-status" class="connection-status"></div>
+            </div>
+        </div>
+
+        <!-- Pact Test Proxy Controls -->
+        <div class="pact-test-controls">
+            <h2>🧪 Pact Test Proxy Controls</h2>
+            <div class="control-group">
+                <label>Test Mode:</label>
+                <select id="test-mode">
+                    <option value="happy_path">Happy Path</option>
+                    <option value="error_scenarios">Error Scenarios</option>
+                    <option value="edge_cases">Edge Cases</option>
+                    <option value="mixed">Mixed</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Error Probability: <span id="error-probability-value">5%</span></label>
+                <input type="range" id="error-probability" min="0" max="100" value="5">
+            </div>
+            <div class="control-group">
+                <label>Response Delay: <span id="response-delay-value">100-1000ms</span></label>
+                <input type="range" id="response-delay" min="0" max="5000" value="1000">
+            </div>
+            <button id="update-config" class="test-connection-btn">Update Config</button>
+            <button id="reset-stats" class="reset-stats-btn">Reset Stats</button>
+        </div>
+
+        <!-- Pact Test Statistics -->
+        <div class="pact-test-stats">
+            <h2>📊 Pact Test Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="request-count">0</div>
+                    <div class="stat-label">Requests</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="error-count">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="success-rate">100%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="current-mode">Happy Path</div>
+                    <div class="stat-label">Current Mode</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Component Display -->
+        <div class="cart-component-display">
+            <h2>🛒 Cart Component Status</h2>
+            <div id="cart-component-status" class="cart-component-status">
+                Cart Component Status: Not Loaded
+            </div>
+            <div id="cart-component-content" class="cart-component-content">
+                <p>Cart component will be loaded here...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script type="module" src="/assets/js/fish-burger-demo/main.js"></script>
+</body>
+</html>

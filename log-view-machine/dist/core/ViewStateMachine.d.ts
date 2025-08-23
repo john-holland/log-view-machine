@@ -1,5 +1,12 @@
 import React from 'react';
 import { RobotCopy } from './RobotCopy';
+export interface LogEntry {
+    id: string;
+    timestamp: string;
+    level: string;
+    message: string;
+    metadata?: any;
+}
 export type StateContext<TModel = any> = {
     state: string;
     model: TModel;
@@ -29,6 +36,7 @@ export type ViewStateMachineConfig<TModel = any> = {
 export declare class ViewStateMachine<TModel = any> {
     private machine;
     private stateHandlers;
+    private serverStateHandlers;
     private viewStack;
     private logEntries;
     private tomeConfig?;
@@ -43,6 +51,7 @@ export declare class ViewStateMachine<TModel = any> {
     handleRobotCopyMessage(message: any): void;
     withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel>;
     withStateAndMessageHandler(stateName: string, handler: StateHandler<TModel>, messageType: string, messageHandler: (message: any) => void): ViewStateMachine<TModel>;
+    withServerState(stateName: string, handler: (context: ServerStateContext<TModel>) => void): ViewStateMachine<TModel>;
     withSubMachine(machineId: string, config: ViewStateMachineConfig<any>): ViewStateMachine<TModel>;
     getSubMachine(machineId: string): ViewStateMachine<any> | undefined;
     private createStateContext;
@@ -60,10 +69,33 @@ export declare class ViewStateMachine<TModel = any> {
         subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => ViewStateMachine<any>;
         getSubMachine: (machineId: string) => ViewStateMachine<any> | undefined;
     };
+    on(eventType: string, handler: (event: any) => void): void;
+    send(event: any): void;
+    executeServerState(stateName: string, model: TModel): Promise<string>;
+    private createServerStateContext;
     compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel>;
     synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel>;
     render(model: TModel): React.ReactNode;
 }
+export type ServerStateContext<TModel = any> = {
+    state: string;
+    model: TModel;
+    transitions: any[];
+    log: (message: string, metadata?: any) => Promise<void>;
+    renderHtml: (html: string) => string;
+    clear: () => void;
+    transition: (to: string) => void;
+    send: (event: any) => void;
+    on: (eventName: string, handler: () => void) => void;
+    subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => ViewStateMachine<any>;
+    getSubMachine: (machineId: string) => ViewStateMachine<any> | undefined;
+    graphql: {
+        query: (query: string, variables?: any) => Promise<any>;
+        mutation: (mutation: string, variables?: any) => Promise<any>;
+        subscription: (subscription: string, variables?: any) => Promise<any>;
+    };
+    renderedHtml: string;
+};
 export type ProxyRobotCopyStateViewStateMachineConfig<TModel = any> = ViewStateMachineConfig<TModel> & {
     robotCopy: RobotCopy;
     incomingMessageHandlers?: Record<string, (message: any) => void>;
