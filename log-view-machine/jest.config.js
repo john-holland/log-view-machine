@@ -1,6 +1,9 @@
 export default {
-  // Test environment
-  testEnvironment: 'node',
+  // Test environment - use jsdom for React components, node for others
+  testEnvironment: 'jsdom',
+  
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   
   // Module file extensions
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx'],

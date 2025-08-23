@@ -1,22 +1,22 @@
 'use strict';
 
-var require$$0$3 = require('react');
+var React = require('react');
 var react = require('@xstate/react');
 var xstate = require('xstate');
-var require$$0$4 = require('path');
-var require$$0$5 = require('tty');
+var require$$0$3 = require('path');
+var require$$0$4 = require('tty');
 var require$$1$1 = require('util');
 var require$$3$1 = require('fs');
 var require$$4$1 = require('net');
-var require$$0$6 = require('events');
+var require$$0$5 = require('events');
 var require$$1$2 = require('stream');
 var require$$3$2 = require('zlib');
-var require$$0$7 = require('buffer');
+var require$$0$6 = require('buffer');
 var require$$1$3 = require('string_decoder');
 var require$$8 = require('querystring');
-var require$$0$8 = require('url');
-var require$$0$9 = require('http');
-var require$$0$a = require('crypto');
+var require$$0$7 = require('url');
+var require$$0$8 = require('http');
+var require$$0$9 = require('crypto');
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -43,7 +43,7 @@ var hasRequiredReactJsxRuntime_production_min;
 function requireReactJsxRuntime_production_min () {
 	if (hasRequiredReactJsxRuntime_production_min) return reactJsxRuntime_production_min;
 	hasRequiredReactJsxRuntime_production_min = 1;
-var f=require$$0$3,k=Symbol.for("react.element"),l=Symbol.for("react.fragment"),m=Object.prototype.hasOwnProperty,n=f.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,p={key:!0,ref:!0,__self:!0,__source:!0};
+var f=React,k=Symbol.for("react.element"),l=Symbol.for("react.fragment"),m=Object.prototype.hasOwnProperty,n=f.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,p={key:!0,ref:!0,__self:!0,__source:!0};
 	function q(c,a,g){var b,d={},e=null,h=null;void 0!==g&&(e=""+g);void 0!==a.key&&(e=""+a.key);void 0!==a.ref&&(h=a.ref);for(b in a)m.call(a,b)&&!p.hasOwnProperty(b)&&(d[b]=a[b]);if(c&&c.defaultProps)for(b in a=c.defaultProps,a)void 0===d[b]&&(d[b]=a[b]);return {$$typeof:k,type:c,key:e,ref:h,props:d,_owner:n.current}}reactJsxRuntime_production_min.Fragment=l;reactJsxRuntime_production_min.jsx=q;reactJsxRuntime_production_min.jsxs=q;
 	return reactJsxRuntime_production_min;
 }
@@ -69,7 +69,7 @@ function requireReactJsxRuntime_development () {
 	if (process.env.NODE_ENV !== "production") {
 	  (function() {
 
-	var React = require$$0$3;
+	var React$1 = React;
 
 	// ATTENTION
 	// When adding new symbols to this file,
@@ -104,7 +104,7 @@ function requireReactJsxRuntime_development () {
 	  return null;
 	}
 
-	var ReactSharedInternals = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+	var ReactSharedInternals = React$1.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 
 	function error(format) {
 	  {
@@ -1652,7 +1652,7 @@ class ViewStateMachine {
         const [state, send] = react.useMachine(this.machine);
         const context = this.createStateContext(state, initialModel);
         // Execute state handler if exists
-        require$$0$3.useEffect(() => {
+        React.useEffect(() => {
             const handler = this.stateHandlers.get(state.value);
             if (handler) {
                 handler(context);
@@ -2753,7 +2753,7 @@ var bodyParser = {exports: {}};
  * Module dependencies.
  */
 
-var relative = require$$0$4.relative;
+var relative = require$$0$3.relative;
 
 /**
  * Module exports.
@@ -4877,7 +4877,7 @@ function requireNode$3 () {
 	if (hasRequiredNode$3) return node$3.exports;
 	hasRequiredNode$3 = 1;
 	(function (module, exports) {
-		var tty = require$$0$5;
+		var tty = require$$0$4;
 		var util = require$$1$1;
 
 		/**
@@ -5155,7 +5155,7 @@ function requireSrc () {
  * @private
  */
 
-var EventEmitter = require$$0$6.EventEmitter;
+var EventEmitter = require$$0$5.EventEmitter;
 var ReadStream = require$$3$1.ReadStream;
 var Stream$1 = require$$1$2;
 var Zlib = require$$3$2;
@@ -5362,7 +5362,7 @@ function requireSafer () {
 	if (hasRequiredSafer) return safer_1;
 	hasRequiredSafer = 1;
 
-	var buffer = require$$0$7;
+	var buffer = require$$0$6;
 	var Buffer = buffer.Buffer;
 
 	var safer = {};
@@ -15954,7 +15954,7 @@ function requireStreams () {
 	if (hasRequiredStreams) return streams;
 	hasRequiredStreams = 1;
 
-	var Buffer = require$$0$7.Buffer,
+	var Buffer = require$$0$6.Buffer,
 	    Transform = require$$1$2.Transform;
 
 
@@ -16081,7 +16081,7 @@ var hasRequiredExtendNode;
 function requireExtendNode () {
 	if (hasRequiredExtendNode) return extendNode;
 	hasRequiredExtendNode = 1;
-	var Buffer = require$$0$7.Buffer;
+	var Buffer = require$$0$6.Buffer;
 	// Note: not polyfilled with safer-buffer on a purpose, as overrides Buffer
 
 	// == Extend Node primitives to use iconv-lite =================================
@@ -16114,7 +16114,7 @@ function requireExtendNode () {
 	        };
 
 	        // -- SlowBuffer -----------------------------------------------------------
-	        var SlowBuffer = require$$0$7.SlowBuffer;
+	        var SlowBuffer = require$$0$6.SlowBuffer;
 
 	        original.SlowBufferToString = SlowBuffer.prototype.toString;
 	        SlowBuffer.prototype.toString = function(encoding, start, end) {
@@ -16277,7 +16277,7 @@ function requireExtendNode () {
 
 	        delete Buffer.isNativeEncoding;
 
-	        var SlowBuffer = require$$0$7.SlowBuffer;
+	        var SlowBuffer = require$$0$6.SlowBuffer;
 
 	        SlowBuffer.prototype.toString = original.SlowBufferToString;
 	        SlowBuffer.prototype.write = original.SlowBufferWrite;
@@ -28422,7 +28422,7 @@ var mimeDb = require$$0;
 	 */
 
 	var db = mimeDb;
-	var extname = require$$0$4.extname;
+	var extname = require$$0$3.extname;
 
 	/**
 	 * Module variables.
@@ -33097,7 +33097,7 @@ function requireNode$2 () {
 	if (hasRequiredNode$2) return node$2.exports;
 	hasRequiredNode$2 = 1;
 	(function (module, exports) {
-		var tty = require$$0$5;
+		var tty = require$$0$4;
 		var util = require$$1$1;
 
 		/**
@@ -33508,7 +33508,7 @@ var parseurl$1 = {exports: {}};
  * @private
  */
 
-var url = require$$0$8;
+var url = require$$0$7;
 var parse$6 = url.parse;
 var Url = url.Url;
 
@@ -34580,7 +34580,7 @@ function requireNode$1 () {
 	if (hasRequiredNode$1) return node$1.exports;
 	hasRequiredNode$1 = 1;
 	(function (module, exports) {
-		var tty = require$$0$5;
+		var tty = require$$0$4;
 		var util = require$$1$1;
 
 		/**
@@ -35253,7 +35253,7 @@ function decode_param(val) {
  * @private
  */
 
-var http$2 = require$$0$9;
+var http$2 = require$$0$8;
 
 /**
  * Module exports.
@@ -35340,7 +35340,7 @@ var toString$2 = Object.prototype.toString;
  * @public
  */
 
-var route = Route$1;
+var route = Route$2;
 
 /**
  * Initialize `Route` with the given `path`,
@@ -35349,7 +35349,7 @@ var route = Route$1;
  * @public
  */
 
-function Route$1(path) {
+function Route$2(path) {
   this.path = path;
   this.stack = [];
 
@@ -35364,7 +35364,7 @@ function Route$1(path) {
  * @private
  */
 
-Route$1.prototype._handles_method = function _handles_method(method) {
+Route$2.prototype._handles_method = function _handles_method(method) {
   if (this.methods._all) {
     return true;
   }
@@ -35386,7 +35386,7 @@ Route$1.prototype._handles_method = function _handles_method(method) {
  * @private
  */
 
-Route$1.prototype._options = function _options() {
+Route$2.prototype._options = function _options() {
   var methods = Object.keys(this.methods);
 
   // append automatic head
@@ -35407,7 +35407,7 @@ Route$1.prototype._options = function _options() {
  * @private
  */
 
-Route$1.prototype.dispatch = function dispatch(req, res, done) {
+Route$2.prototype.dispatch = function dispatch(req, res, done) {
   var idx = 0;
   var stack = this.stack;
   var sync = 0;
@@ -35490,7 +35490,7 @@ Route$1.prototype.dispatch = function dispatch(req, res, done) {
  * @api public
  */
 
-Route$1.prototype.all = function all() {
+Route$2.prototype.all = function all() {
   var handles = flatten$1(slice$1.call(arguments));
 
   for (var i = 0; i < handles.length; i++) {
@@ -35513,7 +35513,7 @@ Route$1.prototype.all = function all() {
 };
 
 methods$1.forEach(function(method){
-  Route$1.prototype[method] = function(){
+  Route$2.prototype[method] = function(){
     var handles = flatten$1(slice$1.call(arguments));
 
     for (var i = 0; i < handles.length; i++) {
@@ -35581,7 +35581,7 @@ var utilsMergeExports = utilsMerge.exports;
  * @private
  */
 
-var Route = route;
+var Route$1 = route;
 var Layer = layer;
 var methods = methods$2;
 var mixin = utilsMergeExports;
@@ -36068,7 +36068,7 @@ proto.use = function use(fn) {
  */
 
 proto.route = function route(path) {
-  var route = new Route(path);
+  var route = new Route$1(path);
 
   var layer = new Layer(path, {
     sensitive: this.caseSensitive,
@@ -36358,7 +36358,7 @@ function commonjsRequire(path) {
  */
 
 var debug$2 = srcExports$1('express:view');
-var path$2 = require$$0$4;
+var path$2 = require$$0$3;
 var fs$2 = require$$3$1;
 
 /**
@@ -36533,7 +36533,7 @@ var safeBuffer = {exports: {}};
 
 (function (module, exports) {
 	/* eslint-disable node/no-deprecated-api */
-	var buffer = require$$0$7;
+	var buffer = require$$0$6;
 	var Buffer = buffer.Buffer;
 
 	// alternative to using Object.keys for old browsers
@@ -36621,7 +36621,7 @@ contentDisposition$2.exports.parse = parse$5;
  * @private
  */
 
-var basename = require$$0$4.basename;
+var basename = require$$0$3.basename;
 var Buffer$2 = safeBufferExports.Buffer;
 
 /**
@@ -37648,7 +37648,7 @@ function requireNode () {
 	if (hasRequiredNode) return node.exports;
 	hasRequiredNode = 1;
 	(function (module, exports) {
-		var tty = require$$0$5;
+		var tty = require$$0$4;
 		var util = require$$1$1;
 
 		/**
@@ -37986,7 +37986,7 @@ var etag_1 = etag$1;
  * @private
  */
 
-var crypto = require$$0$a;
+var crypto = require$$0$9;
 var Stats = require$$3$1.Stats;
 
 /**
@@ -41451,7 +41451,7 @@ var mime$2 = mime_1;
 var ms = ms$1;
 var onFinished$1 = onFinishedExports;
 var parseRange$1 = rangeParser_1;
-var path$1 = require$$0$4;
+var path$1 = require$$0$3;
 var statuses$1 = statuses$3;
 var Stream = require$$1$2;
 var util = require$$1$1;
@@ -43989,14 +43989,14 @@ var proxyAddrExports = proxyAddr.exports;
 	var query = requireQuery();
 	var debug = srcExports$1('express:application');
 	var View = view;
-	var http = require$$0$9;
+	var http = require$$0$8;
 	var compileETag = utils.compileETag;
 	var compileQueryParser = utils.compileQueryParser;
 	var compileTrust = utils.compileTrust;
 	var deprecate = depd_1('express');
 	var flatten = arrayFlatten_1;
 	var merge = utilsMergeExports;
-	var resolve = require$$0$4.resolve;
+	var resolve = require$$0$3.resolve;
 	var setPrototypeOf = setprototypeof;
 
 	/**
@@ -45807,7 +45807,7 @@ var accepts = accepts$1;
 var deprecate$1 = depd_1('express');
 var isIP = require$$4$1.isIP;
 var typeis = typeIsExports;
-var http$1 = require$$0$9;
+var http$1 = require$$0$8;
 var fresh = fresh_1;
 var parseRange = rangeParser_1;
 var parse$2 = parseurlExports;
@@ -46321,7 +46321,7 @@ var cookieSignature = {};
  */
 
 (function (exports) {
-	var crypto = require$$0$a;
+	var crypto = require$$0$9;
 
 	/**
 	 * Sign the given `val` with `secret`.
@@ -46875,10 +46875,10 @@ var createError = httpErrorsExports;
 var deprecate = depd_1('express');
 var encodeUrl = encodeurl$1;
 var escapeHtml = escapeHtml_1;
-var http = require$$0$9;
+var http = require$$0$8;
 var isAbsolute = utils.isAbsolute;
 var onFinished = onFinishedExports;
-var path = require$$0$4;
+var path = require$$0$3;
 var statuses = statuses$3;
 var merge = utilsMergeExports;
 var sign = cookieSignature.sign;
@@ -48059,9 +48059,9 @@ function requireServeStatic () {
 	var encodeUrl = encodeurl$1;
 	var escapeHtml = escapeHtml_1;
 	var parseUrl = parseurlExports;
-	var resolve = require$$0$4.resolve;
+	var resolve = require$$0$3.resolve;
 	var send = sendExports;
-	var url = require$$0$8;
+	var url = require$$0$7;
 
 	/**
 	 * Module exports.
@@ -48268,7 +48268,7 @@ function requireServeStatic () {
 	 */
 
 	var bodyParser = bodyParserExports;
-	var EventEmitter = require$$0$6.EventEmitter;
+	var EventEmitter = require$$0$5.EventEmitter;
 	var mixin = mergeDescriptors;
 	var proto = applicationExports;
 	var Route = route;
@@ -48853,10 +48853,729 @@ const EditorTomeConfig = createTomeConfig({
     }
 });
 
+// Structural system class
+class StructuralSystem {
+    constructor(config) {
+        Object.defineProperty(this, "config", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        Object.defineProperty(this, "machines", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
+        Object.defineProperty(this, "componentCache", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
+        this.config = config;
+    }
+    // Get the complete application structure
+    getAppStructure() {
+        return this.config.AppStructure;
+    }
+    // Get component-tome mapping
+    getComponentTomeMapping() {
+        return this.config.ComponentTomeMapping;
+    }
+    // Get routing configuration
+    getRoutingConfig() {
+        return this.config.RoutingConfig;
+    }
+    // Get tome configuration
+    getTomeConfig() {
+        return this.config.TomeConfig;
+    }
+    // Create a machine for a specific component
+    createMachine(componentName, initialModel) {
+        const mapping = this.config.ComponentTomeMapping[componentName];
+        const tomeConfig = this.config.TomeConfig.tomes[`${componentName}-tome`];
+        if (!mapping || !tomeConfig) {
+            console.warn(`No configuration found for component: ${componentName}`);
+            return null;
+        }
+        try {
+            // Create machine configuration
+            const machineConfig = {
+                machineId: tomeConfig.machineId,
+                xstateConfig: {
+                    id: tomeConfig.machineId,
+                    initial: 'idle',
+                    context: {
+                        model: initialModel || {},
+                        componentName,
+                        tomePath: mapping.tomePath,
+                        templatePath: mapping.templatePath
+                    },
+                    states: this.createStatesFromTome(tomeConfig),
+                    on: this.createEventsFromTome(tomeConfig)
+                },
+                tomeConfig: {
+                    ...tomeConfig,
+                    componentMapping: mapping
+                }
+            };
+            const machine = new ViewStateMachine(machineConfig);
+            this.machines.set(componentName, machine);
+            return machine;
+        }
+        catch (error) {
+            console.error(`Failed to create machine for ${componentName}:`, error);
+            return null;
+        }
+    }
+    // Get an existing machine
+    getMachine(componentName) {
+        return this.machines.get(componentName);
+    }
+    // Get all machines
+    getAllMachines() {
+        return this.machines;
+    }
+    // Find route by path
+    findRoute(path) {
+        const findRouteRecursive = (routes, targetPath) => {
+            for (const route of routes) {
+                if (route.path === targetPath) {
+                    return route;
+                }
+                if (route.children) {
+                    const found = findRouteRecursive(route.children, targetPath);
+                    if (found)
+                        return found;
+                }
+            }
+            return null;
+        };
+        return findRouteRecursive(this.config.RoutingConfig.routes, path);
+    }
+    // Get navigation breadcrumbs for a path
+    getBreadcrumbs(path) {
+        const breadcrumbs = [];
+        const pathParts = path.split('/').filter(Boolean);
+        let currentPath = '';
+        for (const part of pathParts) {
+            currentPath += `/${part}`;
+            const route = this.findRoute(currentPath);
+            if (route && route.component) {
+                const navItem = this.findNavigationItem(currentPath);
+                if (navItem) {
+                    breadcrumbs.push(navItem);
+                }
+            }
+        }
+        return breadcrumbs;
+    }
+    // Find navigation item by path
+    findNavigationItem(path) {
+        const findInNavigation = (items, targetPath) => {
+            for (const item of items) {
+                if (item.path === targetPath) {
+                    return item;
+                }
+                if (item.children) {
+                    const found = findInNavigation(item.children, targetPath);
+                    if (found)
+                        return found;
+                }
+            }
+            return null;
+        };
+        const primary = findInNavigation(this.config.RoutingConfig.navigation.primary, path);
+        if (primary)
+            return primary;
+        if (this.config.RoutingConfig.navigation.secondary) {
+            return findInNavigation(this.config.RoutingConfig.navigation.secondary, path);
+        }
+        return null;
+    }
+    // Validate the structural configuration
+    validate() {
+        const errors = [];
+        // Validate component-tome mappings
+        for (const [componentName, mapping] of Object.entries(this.config.ComponentTomeMapping)) {
+            if (!this.config.TomeConfig.tomes[`${componentName}-tome`]) {
+                errors.push(`Component ${componentName} has no corresponding tome configuration`);
+            }
+        }
+        // Validate routing
+        for (const route of this.config.RoutingConfig.routes) {
+            if (route.component && !this.config.ComponentTomeMapping[route.component]) {
+                errors.push(`Route ${route.path} references unknown component: ${route.component}`);
+            }
+        }
+        // Validate navigation
+        const validateNavigation = (items) => {
+            for (const item of items) {
+                if (!this.findRoute(item.path)) {
+                    errors.push(`Navigation item ${item.id} references unknown route: ${item.path}`);
+                }
+                if (item.children) {
+                    validateNavigation(item.children);
+                }
+            }
+        };
+        validateNavigation(this.config.RoutingConfig.navigation.primary);
+        if (this.config.RoutingConfig.navigation.secondary) {
+            validateNavigation(this.config.RoutingConfig.navigation.secondary);
+        }
+        return {
+            isValid: errors.length === 0,
+            errors
+        };
+    }
+    // Create XState states from tome configuration
+    createStatesFromTome(tomeConfig) {
+        const states = {};
+        for (const state of tomeConfig.states) {
+            states[state] = {
+                on: {}
+            };
+        }
+        return states;
+    }
+    // Create XState events from tome configuration
+    createEventsFromTome(tomeConfig) {
+        const events = {};
+        for (const event of tomeConfig.events) {
+            events[event] = {
+                actions: xstate.assign((context, event) => ({
+                    lastEvent: event.type,
+                    lastEventPayload: event.payload
+                }))
+            };
+        }
+        return events;
+    }
+}
+// React hook for using the structural system
+function useStructuralSystem(config) {
+    const [system] = React.useState(() => new StructuralSystem(config));
+    React.useEffect(() => {
+        const validation = system.validate();
+        if (!validation.isValid) {
+            console.warn('Structural system validation errors:', validation.errors);
+        }
+    }, [system]);
+    return system;
+}
+// Utility function to create a structural system
+function createStructuralSystem(config) {
+    return new StructuralSystem(config);
+}
+
+const RouterContext = React.createContext(null);
+// Router hook
+function useRouter() {
+    const context = React.useContext(RouterContext);
+    if (!context) {
+        throw new Error('useRouter must be used within a StructuralRouter');
+    }
+    return context;
+}
+// Main router component
+const StructuralRouter = ({ config, initialRoute = '/', onRouteChange, children }) => {
+    const [currentRoute, setCurrentRoute] = React.useState(initialRoute);
+    const [routeHistory, setRouteHistory] = React.useState([initialRoute]);
+    const [structuralSystem] = React.useState(() => new StructuralSystem(config));
+    // Handle route changes
+    const navigate = (path) => {
+        const route = structuralSystem.findRoute(path);
+        if (route) {
+            setCurrentRoute(path);
+            setRouteHistory(prev => [...prev, path]);
+            onRouteChange?.(path);
+        }
+        else {
+            console.warn(`Route not found: ${path}`);
+        }
+    };
+    // Handle back navigation
+    const goBack = () => {
+        if (routeHistory.length > 1) {
+            const newHistory = routeHistory.slice(0, -1);
+            const previousRoute = newHistory[newHistory.length - 1];
+            setCurrentRoute(previousRoute);
+            setRouteHistory(newHistory);
+            onRouteChange?.(previousRoute);
+        }
+    };
+    // Get breadcrumbs for current route
+    const breadcrumbs = structuralSystem.getBreadcrumbs(currentRoute);
+    // Context value
+    const contextValue = {
+        currentRoute,
+        navigate,
+        goBack,
+        breadcrumbs,
+        structuralSystem
+    };
+    // Handle initial route validation
+    React.useEffect(() => {
+        const route = structuralSystem.findRoute(initialRoute);
+        if (!route) {
+            console.warn(`Initial route not found: ${initialRoute}`);
+            // Try to find a valid default route
+            const defaultRoute = config.RoutingConfig.routes.find(r => r.component)?.path;
+            if (defaultRoute && defaultRoute !== initialRoute) {
+                setCurrentRoute(defaultRoute);
+                setRouteHistory([defaultRoute]);
+                onRouteChange?.(defaultRoute);
+            }
+        }
+    }, [initialRoute, structuralSystem, config.RoutingConfig.routes, onRouteChange]);
+    return (jsxRuntimeExports.jsx(RouterContext.Provider, { value: contextValue, children: jsxRuntimeExports.jsxs("div", { className: "structural-router", children: [jsxRuntimeExports.jsx(RouterHeader, {}), jsxRuntimeExports.jsxs("div", { className: "router-content", children: [jsxRuntimeExports.jsx(RouterSidebar, {}), jsxRuntimeExports.jsx(RouterMain, { children: children })] })] }) }));
+};
+// Router header component
+const RouterHeader = () => {
+    const { currentRoute, breadcrumbs, goBack } = useRouter();
+    return (jsxRuntimeExports.jsxs("header", { className: "router-header", children: [jsxRuntimeExports.jsxs("div", { className: "header-content", children: [jsxRuntimeExports.jsx("h1", { className: "router-title", children: "Log View Machine" }), jsxRuntimeExports.jsx("nav", { className: "breadcrumb-nav", children: breadcrumbs.map((item, index) => (jsxRuntimeExports.jsxs("span", { className: "breadcrumb-item", children: [index > 0 && jsxRuntimeExports.jsx("span", { className: "breadcrumb-separator", children: "/" }), jsxRuntimeExports.jsx("span", { className: "breadcrumb-label", children: item.label })] }, item.id))) })] }), jsxRuntimeExports.jsx("button", { className: "back-button", onClick: goBack, disabled: breadcrumbs.length <= 1, children: "\u2190 Back" })] }));
+};
+// Router sidebar component
+const RouterSidebar = () => {
+    const { structuralSystem, navigate, currentRoute } = useRouter();
+    const config = structuralSystem.getRoutingConfig();
+    const renderNavigationItems = (items) => {
+        return items.map(item => (jsxRuntimeExports.jsxs("div", { className: "nav-item", children: [jsxRuntimeExports.jsxs("button", { className: `nav-button ${currentRoute === item.path ? 'active' : ''}`, onClick: () => navigate(item.path), children: [item.icon && jsxRuntimeExports.jsx("span", { className: "nav-icon", children: item.icon }), jsxRuntimeExports.jsx("span", { className: "nav-label", children: item.label })] }), item.children && (jsxRuntimeExports.jsx("div", { className: "nav-children", children: renderNavigationItems(item.children) }))] }, item.id)));
+    };
+    return (jsxRuntimeExports.jsxs("aside", { className: "router-sidebar", children: [jsxRuntimeExports.jsxs("nav", { className: "primary-navigation", children: [jsxRuntimeExports.jsx("h3", { className: "nav-section-title", children: "Primary" }), renderNavigationItems(config.navigation.primary)] }), config.navigation.secondary && (jsxRuntimeExports.jsxs("nav", { className: "secondary-navigation", children: [jsxRuntimeExports.jsx("h3", { className: "nav-section-title", children: "Secondary" }), renderNavigationItems(config.navigation.secondary)] }))] }));
+};
+// Router main content area
+const RouterMain = ({ children }) => {
+    return (jsxRuntimeExports.jsx("main", { className: "router-main", children: children }));
+};
+const Route = ({ path, component: Component, fallback: Fallback }) => {
+    const { currentRoute, structuralSystem } = useRouter();
+    if (currentRoute === path) {
+        return jsxRuntimeExports.jsx(Component, {});
+    }
+    if (Fallback) {
+        return jsxRuntimeExports.jsx(Fallback, {});
+    }
+    return null;
+};
+// Default fallback component
+const RouteFallback = () => {
+    const { currentRoute } = useRouter();
+    return (jsxRuntimeExports.jsxs("div", { className: "route-fallback", children: [jsxRuntimeExports.jsx("h2", { children: "Route Not Found" }), jsxRuntimeExports.jsxs("p", { children: ["The route \"", currentRoute, "\" could not be found."] })] }));
+};
+
+// Main component
+const StructuralTomeConnector = ({ componentName, structuralSystem, initialModel = {}, onStateChange, onLogEntry, onMachineCreated, children }) => {
+    const [state, setState] = React.useState({
+        machine: null,
+        currentState: 'idle',
+        model: initialModel,
+        logEntries: [],
+        isLoading: true,
+        error: null
+    });
+    const machineRef = React.useRef(null);
+    const logEntriesRef = React.useRef([]);
+    // Get tome configuration and component mapping
+    const tomeConfig = React.useMemo(() => {
+        return structuralSystem.getTomeConfig().tomes[`${componentName}-tome`];
+    }, [componentName, structuralSystem]);
+    const componentMapping = React.useMemo(() => {
+        return structuralSystem.getComponentTomeMapping()[componentName];
+    }, [componentName, structuralSystem]);
+    // Initialize the tome machine
+    React.useEffect(() => {
+        const initializeTome = async () => {
+            try {
+                setState(prev => ({ ...prev, isLoading: true, error: null }));
+                // Validate configuration
+                if (!tomeConfig) {
+                    throw new Error(`No tome configuration found for component: ${componentName}`);
+                }
+                if (!componentMapping) {
+                    throw new Error(`No component mapping found for: ${componentName}`);
+                }
+                // Create or get the machine
+                let machine = structuralSystem.getMachine(componentName);
+                if (!machine) {
+                    machine = structuralSystem.createMachine(componentName, initialModel);
+                    if (!machine) {
+                        throw new Error(`Failed to create machine for component: ${componentName}`);
+                    }
+                }
+                // Store machine reference
+                machineRef.current = machine;
+                onMachineCreated?.(machine);
+                // Set up state change listener
+                const unsubscribe = machine.subscribe((state) => {
+                    const currentState = state.value || 'idle';
+                    const model = state.context?.model || initialModel;
+                    setState(prev => ({
+                        ...prev,
+                        currentState,
+                        model,
+                        isLoading: false
+                    }));
+                    onStateChange?.(currentState, model);
+                });
+                // Set up logging
+                machine.on('LOG_ADDED', async (entry) => {
+                    const newEntry = {
+                        id: Date.now().toString(),
+                        timestamp: new Date().toISOString(),
+                        level: 'info',
+                        message: entry.message,
+                        metadata: entry.metadata
+                    };
+                    setState(prev => ({
+                        ...prev,
+                        logEntries: [...prev.logEntries, newEntry]
+                    }));
+                    logEntriesRef.current = [...logEntriesRef.current, newEntry];
+                    onLogEntry?.(newEntry);
+                });
+                // Initialize the machine
+                await machine.start();
+                setState(prev => ({
+                    ...prev,
+                    machine,
+                    isLoading: false
+                }));
+                return unsubscribe;
+            }
+            catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                setState(prev => ({
+                    ...prev,
+                    error: errorMessage,
+                    isLoading: false
+                }));
+                console.error(`Failed to initialize tome for ${componentName}:`, error);
+            }
+        };
+        initializeTome();
+    }, [componentName, structuralSystem, initialModel, onStateChange, onLogEntry, onMachineCreated]);
+    // Send event to the machine
+    const sendEvent = (event) => {
+        if (machineRef.current) {
+            machineRef.current.send(event);
+        }
+    };
+    // Update the model
+    const updateModel = (updates) => {
+        if (machineRef.current) {
+            const currentModel = machineRef.current.getState()?.context?.model || {};
+            const newModel = { ...currentModel, ...updates };
+            // Update the machine context
+            machineRef.current.send({
+                type: 'MODEL_UPDATE',
+                payload: { model: newModel }
+            });
+        }
+    };
+    // Context value for children
+    const contextValue = {
+        machine: state.machine,
+        currentState: state.currentState,
+        model: state.model,
+        logEntries: state.logEntries,
+        isLoading: state.isLoading,
+        error: state.error,
+        sendEvent,
+        updateModel,
+        componentName,
+        tomeConfig,
+        componentMapping
+    };
+    // Render children
+    if (typeof children === 'function') {
+        return jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: children(contextValue) });
+    }
+    return (jsxRuntimeExports.jsxs("div", { className: "structural-tome-connector", children: [jsxRuntimeExports.jsx(TomeHeader, { context: contextValue }), jsxRuntimeExports.jsx(TomeContent, { context: contextValue, children: children }), jsxRuntimeExports.jsx(TomeFooter, { context: contextValue })] }));
+};
+// Tome header component
+const TomeHeader = ({ context }) => {
+    const { componentName, currentState, tomeConfig, error } = context;
+    return (jsxRuntimeExports.jsxs("header", { className: "tome-header", children: [jsxRuntimeExports.jsxs("div", { className: "tome-info", children: [jsxRuntimeExports.jsx("h3", { className: "tome-title", children: componentName }), tomeConfig && (jsxRuntimeExports.jsx("p", { className: "tome-description", children: tomeConfig.description }))] }), jsxRuntimeExports.jsxs("div", { className: "tome-status", children: [jsxRuntimeExports.jsx("span", { className: `state-indicator state-${currentState}`, children: currentState }), error && (jsxRuntimeExports.jsx("span", { className: "error-indicator", title: error, children: "\u26A0\uFE0F" }))] })] }));
+};
+// Tome content component
+const TomeContent = ({ context, children }) => {
+    const { isLoading, error } = context;
+    if (isLoading) {
+        return (jsxRuntimeExports.jsx("div", { className: "tome-content loading", children: jsxRuntimeExports.jsx("div", { className: "loading-spinner", children: "Loading..." }) }));
+    }
+    if (error) {
+        return (jsxRuntimeExports.jsx("div", { className: "tome-content error", children: jsxRuntimeExports.jsxs("div", { className: "error-message", children: [jsxRuntimeExports.jsx("h4", { children: "Error" }), jsxRuntimeExports.jsx("p", { children: error })] }) }));
+    }
+    return (jsxRuntimeExports.jsx("div", { className: "tome-content", children: children }));
+};
+// Tome footer component
+const TomeFooter = ({ context }) => {
+    const { logEntries, tomeConfig } = context;
+    if (!tomeConfig || logEntries.length === 0) {
+        return null;
+    }
+    return (jsxRuntimeExports.jsx("footer", { className: "tome-footer", children: jsxRuntimeExports.jsxs("details", { className: "tome-logs", children: [jsxRuntimeExports.jsxs("summary", { children: ["Logs (", logEntries.length, ")"] }), jsxRuntimeExports.jsx("div", { className: "log-entries", children: logEntries.slice(-5).map(entry => (jsxRuntimeExports.jsxs("div", { className: `log-entry log-${entry.level}`, children: [jsxRuntimeExports.jsx("span", { className: "log-timestamp", children: new Date(entry.timestamp).toLocaleTimeString() }), jsxRuntimeExports.jsx("span", { className: "log-message", children: entry.message }), entry.metadata && (jsxRuntimeExports.jsx("span", { className: "log-metadata", children: JSON.stringify(entry.metadata) }))] }, entry.id))) })] }) }));
+};
+// Hook for using the tome connector
+function useStructuralTomeConnector(componentName, structuralSystem) {
+    const [context, setContext] = React.useState({
+        machine: null,
+        currentState: 'idle',
+        model: {},
+        logEntries: [],
+        isLoading: true,
+        error: null,
+        sendEvent: () => { },
+        updateModel: () => { },
+        componentName,
+        tomeConfig: null,
+        componentMapping: null
+    });
+    React.useEffect(() => {
+        const tomeConfig = structuralSystem.getTomeConfig().tomes[`${componentName}-tome`];
+        const componentMapping = structuralSystem.getComponentTomeMapping()[componentName];
+        setContext(prev => ({
+            ...prev,
+            tomeConfig,
+            componentMapping
+        }));
+    }, [componentName, structuralSystem]);
+    return context;
+}
+
+// Default application structure configuration
+const DefaultStructuralConfig = {
+    // Root application structure
+    AppStructure: {
+        id: 'log-view-machine-app',
+        name: 'Log View Machine Application',
+        type: 'application',
+        routing: {
+            base: '/',
+            defaultRoute: '/dashboard'
+        }
+    },
+    // Component to Tome mapping
+    ComponentTomeMapping: {
+        'dashboard': {
+            componentPath: 'src/components/Dashboard.tsx',
+            tomePath: 'src/component-middleware/dashboard/DashboardTomes.tsx',
+            templatePath: 'src/component-middleware/dashboard/templates/dashboard-component/'
+        },
+        'log-viewer': {
+            componentPath: 'src/components/LogViewer.tsx',
+            tomePath: 'src/component-middleware/log-viewer/LogViewerTomes.tsx',
+            templatePath: 'src/component-middleware/log-viewer/templates/log-viewer-component/'
+        },
+        'state-machine': {
+            componentPath: 'src/components/StateMachine.tsx',
+            tomePath: 'src/component-middleware/state-machine/StateMachineTomes.tsx',
+            templatePath: 'src/component-middleware/state-machine/templates/state-machine-component/'
+        },
+        'tome-manager': {
+            componentPath: 'src/components/TomeManager.tsx',
+            tomePath: 'src/component-middleware/tome-manager/TomeManagerTomes.tsx',
+            templatePath: 'src/component-middleware/tome-manager/templates/tome-manager-component/'
+        },
+        'settings': {
+            componentPath: 'src/components/Settings.tsx',
+            tomePath: 'src/component-middleware/settings/SettingsTomes.tsx',
+            templatePath: 'src/component-middleware/settings/templates/settings-component/'
+        }
+    },
+    // Routing configuration
+    RoutingConfig: {
+        routes: [
+            {
+                path: '/',
+                redirect: '/dashboard'
+            },
+            {
+                path: '/dashboard',
+                component: 'dashboard'
+            },
+            {
+                path: '/log-viewer',
+                component: 'log-viewer'
+            },
+            {
+                path: '/state-machine',
+                component: 'state-machine'
+            },
+            {
+                path: '/tome-manager',
+                component: 'tome-manager'
+            },
+            {
+                path: '/settings',
+                component: 'settings'
+            }
+        ],
+        navigation: {
+            primary: [
+                {
+                    id: 'dashboard',
+                    label: 'Dashboard',
+                    path: '/dashboard',
+                    icon: '📊'
+                },
+                {
+                    id: 'log-viewer',
+                    label: 'Log Viewer',
+                    path: '/log-viewer',
+                    icon: '📋'
+                },
+                {
+                    id: 'state-machine',
+                    label: 'State Machine',
+                    path: '/state-machine',
+                    icon: '⚙️'
+                },
+                {
+                    id: 'tome-manager',
+                    label: 'Tome Manager',
+                    path: '/tome-manager',
+                    icon: '📚'
+                }
+            ],
+            secondary: [
+                {
+                    id: 'settings',
+                    label: 'Settings',
+                    path: '/settings',
+                    icon: '⚙️'
+                }
+            ]
+        }
+    },
+    // Tome configuration
+    TomeConfig: {
+        tomes: {
+            'dashboard-tome': {
+                machineId: 'dashboard',
+                description: 'Main dashboard with overview and navigation',
+                states: ['idle', 'loading', 'loaded', 'error'],
+                events: ['LOAD', 'REFRESH', 'ERROR', 'CLEAR']
+            },
+            'log-viewer-tome': {
+                machineId: 'log-viewer',
+                description: 'Log viewing and analysis functionality',
+                states: ['idle', 'loading', 'viewing', 'filtering', 'exporting', 'error'],
+                events: ['LOAD_LOGS', 'FILTER', 'EXPORT', 'CLEAR', 'ERROR']
+            },
+            'state-machine-tome': {
+                machineId: 'state-machine',
+                description: 'State machine visualization and management',
+                states: ['idle', 'loading', 'visualizing', 'editing', 'saving', 'error'],
+                events: ['LOAD_MACHINE', 'VISUALIZE', 'EDIT', 'SAVE', 'ERROR']
+            },
+            'tome-manager-tome': {
+                machineId: 'tome-manager',
+                description: 'Tome lifecycle and configuration management',
+                states: ['idle', 'loading', 'managing', 'creating', 'editing', 'deleting', 'error'],
+                events: ['LOAD_TOMES', 'CREATE', 'EDIT', 'DELETE', 'SAVE', 'ERROR']
+            },
+            'settings-tome': {
+                machineId: 'settings',
+                description: 'Application settings and configuration',
+                states: ['idle', 'loading', 'editing', 'saving', 'resetting', 'error'],
+                events: ['LOAD_SETTINGS', 'EDIT', 'SAVE', 'RESET', 'ERROR']
+            }
+        },
+        machineStates: {
+            'dashboard': {
+                idle: {
+                    description: 'Dashboard is ready for interaction',
+                    actions: ['initialize', 'setupEventListeners']
+                },
+                loading: {
+                    description: 'Loading dashboard data',
+                    actions: ['fetchData', 'showLoadingState']
+                },
+                loaded: {
+                    description: 'Dashboard data is loaded and ready',
+                    actions: ['renderDashboard', 'setupInteractions']
+                },
+                error: {
+                    description: 'Error occurred while loading dashboard',
+                    actions: ['showError', 'provideRetryOption']
+                }
+            },
+            'log-viewer': {
+                idle: {
+                    description: 'Log viewer is ready',
+                    actions: ['initialize', 'setupLogSources']
+                },
+                loading: {
+                    description: 'Loading log data',
+                    actions: ['fetchLogs', 'parseLogs', 'showProgress']
+                },
+                viewing: {
+                    description: 'Displaying logs for viewing',
+                    actions: ['renderLogs', 'setupFilters', 'enableSearch']
+                },
+                filtering: {
+                    description: 'Applying filters to logs',
+                    actions: ['applyFilters', 'updateView', 'showFilterCount']
+                }
+            }
+        }
+    }
+};
+// Utility function to create a custom structural config
+function createStructuralConfig(overrides = {}) {
+    return {
+        ...DefaultStructuralConfig,
+        ...overrides,
+        ComponentTomeMapping: {
+            ...DefaultStructuralConfig.ComponentTomeMapping,
+            ...overrides.ComponentTomeMapping
+        },
+        RoutingConfig: {
+            ...DefaultStructuralConfig.RoutingConfig,
+            ...overrides.RoutingConfig,
+            routes: [
+                ...(overrides.RoutingConfig?.routes || DefaultStructuralConfig.RoutingConfig.routes)
+            ],
+            navigation: {
+                ...DefaultStructuralConfig.RoutingConfig.navigation,
+                ...overrides.RoutingConfig?.navigation,
+                primary: [
+                    ...(overrides.RoutingConfig?.navigation?.primary || DefaultStructuralConfig.RoutingConfig.navigation.primary)
+                ],
+                secondary: [
+                    ...(overrides.RoutingConfig?.navigation?.secondary || DefaultStructuralConfig.RoutingConfig.navigation.secondary || [])
+                ]
+            }
+        },
+        TomeConfig: {
+            ...DefaultStructuralConfig.TomeConfig,
+            ...overrides.TomeConfig,
+            tomes: {
+                ...DefaultStructuralConfig.TomeConfig.tomes,
+                ...overrides.TomeConfig?.tomes
+            },
+            machineStates: {
+                ...DefaultStructuralConfig.TomeConfig.machineStates,
+                ...overrides.TomeConfig?.machineStates
+            }
+        }
+    };
+}
+
 exports.ClientGenerator = ClientGenerator;
+exports.DefaultStructuralConfig = DefaultStructuralConfig;
 exports.EditorTomeConfig = EditorTomeConfig;
 exports.FishBurgerTomeConfig = FishBurgerTomeConfig;
 exports.RobotCopy = RobotCopy;
+exports.Route = Route;
+exports.RouteFallback = RouteFallback;
+exports.StructuralRouter = StructuralRouter;
+exports.StructuralSystem = StructuralSystem;
+exports.StructuralTomeConnector = StructuralTomeConnector;
 exports.TomeConnector = TomeConnector;
 exports.TomeManager = TomeManager;
 exports.Tracing = Tracing;
@@ -48864,8 +49583,13 @@ exports.ViewStateMachine = ViewStateMachine;
 exports.createClientGenerator = createClientGenerator;
 exports.createProxyRobotCopyStateMachine = createProxyRobotCopyStateMachine;
 exports.createRobotCopy = createRobotCopy;
+exports.createStructuralConfig = createStructuralConfig;
+exports.createStructuralSystem = createStructuralSystem;
 exports.createTomeConfig = createTomeConfig;
 exports.createTomeConnector = createTomeConnector;
 exports.createTracing = createTracing;
 exports.createViewStateMachine = createViewStateMachine;
+exports.useRouter = useRouter;
+exports.useStructuralSystem = useStructuralSystem;
+exports.useStructuralTomeConnector = useStructuralTomeConnector;
 //# sourceMappingURL=index.js.map

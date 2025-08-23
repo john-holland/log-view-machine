@@ -55,4 +55,40 @@ export {
 export type {
   TomeConfig,
   TomeInstance
-} from './core/TomeConfig'; 
+} from './core/TomeConfig';
+
+// Structural System exports
+export {
+  StructuralSystem,
+  createStructuralSystem,
+  useStructuralSystem,
+  type AppStructureConfig,
+  type AppStructureNode,
+  type ComponentTomeMapping,
+  type RouteConfig,
+  type NavigationItem,
+  type RoutingConfig,
+  type TomeDefinition
+} from './core/StructuralSystem';
+
+// Structural Router exports
+export {
+  StructuralRouter,
+  Route,
+  RouteFallback,
+  useRouter,
+  type RouterContextType
+} from './core/StructuralRouter';
+
+// Structural Tome Connector exports
+export {
+  StructuralTomeConnector,
+  useStructuralTomeConnector,
+  type TomeConnectorContext
+} from './core/StructuralTomeConnector';
+
+// Default Structural Config exports
+export {
+  DefaultStructuralConfig,
+  createStructuralConfig
+} from './core/DefaultStructuralConfig'; 
