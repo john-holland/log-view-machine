@@ -61,7 +61,7 @@ export class ViewStateMachine<TModel = any> {
     this.tomeConfig = config.tomeConfig;
     
     // Create the XState machine
-    this.machine = createMachine({
+    const machineDefinition = createMachine({
       ...config.xstateConfig,
       on: {
         ...config.xstateConfig.on,
@@ -95,6 +95,9 @@ export class ViewStateMachine<TModel = any> {
         }
       }
     });
+
+    // Interpret the machine to create a service with send method
+    this.machine = interpret(machineDefinition);
 
     // Register log state handlers if provided
     if (config.logStates) {
@@ -300,7 +303,26 @@ export class ViewStateMachine<TModel = any> {
 
   // Direct send method for TomeConnector
   send(event: any): void {
-    this.machine.send(event);
+    if (this.machine && typeof this.machine.send === 'function') {
+      this.machine.send(event);
+    } else {
+      console.warn('Machine not started or send method not available');
+    }
+  }
+
+  // Start the machine service
+  start(): void {
+    if (this.machine && typeof this.machine.start === 'function') {
+      this.machine.start();
+    }
+  }
+
+  // Get current state
+  getState(): any {
+    if (this.machine && typeof this.machine.getSnapshot === 'function') {
+      return this.machine.getSnapshot();
+    }
+    return null;
   }
 
   async executeServerState(stateName: string, model: TModel): Promise<string> {

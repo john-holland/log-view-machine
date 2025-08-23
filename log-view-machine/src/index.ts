@@ -38,4 +38,21 @@ export {
   type ClientGeneratorConfig,
   type ClientGeneratorExample,
   type ClientGeneratorDiscovery
-} from './core/ClientGenerator'; 
+} from './core/ClientGenerator';
+
+// TomeManager exports
+export {
+  TomeManager
+} from './core/TomeManager';
+
+// TomeConfig exports
+export {
+  createTomeConfig,
+  FishBurgerTomeConfig,
+  EditorTomeConfig
+} from './core/TomeConfig';
+
+export type {
+  TomeConfig,
+  TomeInstance
+} from './core/TomeConfig'; 

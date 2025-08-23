@@ -71,6 +71,8 @@ export declare class ViewStateMachine<TModel = any> {
     };
     on(eventType: string, handler: (event: any) => void): void;
     send(event: any): void;
+    start(): void;
+    getState(): any;
     executeServerState(stateName: string, model: TModel): Promise<string>;
     private createServerStateContext;
     compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel>;

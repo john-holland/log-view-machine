@@ -2,6 +2,7 @@ import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import dts from 'rollup-plugin-dts';
+import json from '@rollup/plugin-json';
 
 const config = [
   {
@@ -28,17 +29,17 @@ const config = [
     plugins: [
       resolve(),
       commonjs(),
+      json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: true,
-        declarationDir: './dist'
+        declaration: false
       })
     ]
   },
   {
-    input: 'dist/index.d.ts',
+    input: 'src/index.ts',
     output: [{ file: 'dist/index.d.ts', format: 'es' }],
-    plugins: [dts()]
+    plugins: [dts({ respectExternal: true })]
   }
 ];
 
