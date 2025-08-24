@@ -1,4 +1,4 @@
-import { ViewStateMachine } from './ViewStateMachine';
+// ViewStateMachine import removed as it's not used
 import { Tracing, createTracing, MessageMetadata } from './Tracing';
 
 export interface RobotCopyConfig {
@@ -44,7 +44,7 @@ export class RobotCopy {
     this.unleashToggles.set('enable-datadog', true);
   }
 
-  async isEnabled(toggleName: string, context: any = {}): Promise<boolean> {
+  async isEnabled(toggleName: string, _context: any = {}): Promise<boolean> {
     return this.unleashToggles.get(toggleName) || false;
   }
 
@@ -185,7 +185,6 @@ export class RobotCopy {
   }
 
   async getTrace(traceId: string): Promise<any> {
-    const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
 
     try {
@@ -201,7 +200,6 @@ export class RobotCopy {
   }
 
   async getMessageFromBackend(messageId: string): Promise<any> {
-    const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
 
     try {
@@ -241,7 +239,7 @@ export class RobotCopy {
   }
 
   // Response handling
-  onResponse(channel: string, handler: (response: any) => void): void {
+  onResponse(channel: string, _handler: (response: any) => void): void {
     // This would be implemented to handle incoming responses
     // For now, we'll just store the handler for future use
     console.log(`Registered response handler for channel: ${channel}`);

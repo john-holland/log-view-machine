@@ -71,6 +71,14 @@ const TEMPLATES = [
     category: 'Editor Components',
     templatePath: 'templates/generic-editor',
     version: '1.0.0'
+  },
+  {
+    name: 'Structural Editor',
+    identifier: 'structural-editor',
+    description: 'Visual hierarchy editor for organizing root app components',
+    category: 'Editor Components',
+    templatePath: 'templates/structural-editor',
+    version: '1.0.0'
   }
 ];
 
@@ -253,114 +261,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }
 
-export { registerAllTemplates, checkDotCMSConnectivity }; 
-
-/**
- * Template Registration Script for dotCMS
- * 
- * This script registers the existing templates with the dotCMS instance
- * running in the docker-compose setup.
- */
-
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// dotCMS Configuration
-const DOTCMS_CONFIG = {
-  baseUrl: process.env.DOTCMS_URL || 'http://localhost:8080',
-  apiKey: process.env.DOTCMS_API_KEY || 'demo-key',
-  adminUser: process.env.DOTCMS_ADMIN_USER || 'admin@dotcms.com',
-  adminPassword: process.env.DOTCMS_ADMIN_PASSWORD || 'admin'
-};
-
-// Template definitions
-const TEMPLATES = [
-  {
-    name: 'HTML Editor',
-    identifier: 'html-editor',
-    description: 'Generic HTML editor component with SunEditor integration',
-    category: 'Editor Components',
-    templatePath: 'templates/html-editor',
-    version: '1.0.0'
-  },
-  {
-    name: 'CSS Editor',
-    identifier: 'css-editor',
-    description: 'CSS editor component with Ace editor integration',
-    category: 'Editor Components',
-    templatePath: 'templates/css-editor',
-    version: '1.0.0'
-  },
-  {
-    name: 'JavaScript Editor',
-    identifier: 'javascript-editor',
-    description: 'JavaScript editor component with Ace editor integration',
-    category: 'Editor Components',
-    templatePath: 'templates/javascript-editor',
-    version: '1.0.0'
-  },
-  {
-    name: 'XState Editor',
-    identifier: 'xstate-editor',
-    description: 'XState state machine editor and visualizer',
-    category: 'Editor Components',
-    templatePath: 'templates/xstate-editor',
-    version: '1.0.0'
-  },
-  {
-    name: 'Component Library',
-    identifier: 'component-library',
-    description: 'Component library and management system',
-    category: 'Management Components',
-    templatePath: 'templates/component-library',
-    version: '1.0.0'
-  },
-  {
-    name: 'Generic Editor',
-    identifier: 'generic-editor',
-    description: 'Complete generic editor with all components integrated',
-    category: 'Editor Components',
-    templatePath: 'templates/generic-editor',
-    version: '1.0.0'
-  }
-];
-
-/**
- * Read template files and create dotCMS resource
- */
-async function readTemplateFiles(templatePath) {
-  const fullPath = path.join(__dirname, templatePath);
-  
-  try {
-    const files = await fs.readdir(fullPath, { recursive: true });
-    const templateData = {};
-    
-    for (const file of files) {
-      if (typeof file === 'string') {
-        const filePath = path.join(fullPath, file);
-        const stats = await fs.stat(filePath);
-        
-        if (stats.isFile()) {
-          const content = await fs.readFile(filePath, 'utf8');
-          templateData[file] = {
-            content,
-            size: stats.size,
-            modified: stats.mtime
-          };
-        }
-      }
-    }
-    
-    return templateData;
-  } catch (error) {
-    console.error(`Error reading template files for ${templatePath}:`, error);
-    return null;
-  }
-}
+export { registerAllTemplates, checkDotCMSConnectivity };
 
 /**
  * Create dotCMS resource for a template

@@ -1,4 +1,4 @@
-import { ViewStateMachine, ViewStateMachineConfig } from './ViewStateMachine';
+import { ViewStateMachine } from './ViewStateMachine';
 
 export interface ClientGeneratorConfig {
   machineId: string;
@@ -74,7 +74,7 @@ export class ClientGenerator {
     return discovery;
   }
 
-  private analyzeMachine(machine: ViewStateMachine<any>, machineId: string, discovery: ClientGeneratorDiscovery): void {
+  private analyzeMachine(_machine: ViewStateMachine<any>, machineId: string, discovery: ClientGeneratorDiscovery): void {
     // This would analyze the XState machine configuration
     // For now, we'll create a basic structure
     discovery.states.set(machineId, ['idle', 'creating', 'success', 'error']);
@@ -86,7 +86,7 @@ export class ClientGenerator {
   private generateDocumentation(discovery: ClientGeneratorDiscovery): string {
     let doc = '# ViewStateMachine Discovery\n\n';
     
-    discovery.machines.forEach((machine, machineId) => {
+    discovery.machines.forEach((_machine, machineId) => {
       const config = this.configs.get(machineId);
       doc += `## ${machineId}\n\n`;
       
@@ -164,7 +164,7 @@ export class ClientGenerator {
       }
     } else {
       // Generate for all machines
-      discovery.machines.forEach((machine, id) => {
+      discovery.machines.forEach((_machine, id) => {
         code += `export class ${id}Client {\n`;
         code += `  // Generated client for ${id}\n`;
         code += `}\n\n`;
@@ -186,7 +186,7 @@ export class ClientGenerator {
       code += `}\n\n`;
       code += `module.exports = ${machineId}Client;\n`;
     } else {
-      discovery.machines.forEach((machine, id) => {
+      discovery.machines.forEach((_machine, id) => {
         code += `class ${id}Client {\n`;
         code += `  // Generated client for ${id}\n`;
         code += `}\n\n`;
@@ -213,7 +213,7 @@ export class ClientGenerator {
       code += `  );\n`;
       code += `};\n`;
     } else {
-      discovery.machines.forEach((machine, id) => {
+      discovery.machines.forEach((_machine, id) => {
         code += `export const ${id}Component: React.FC = () => {\n`;
         code += `  // Generated component for ${id}\n`;
         code += `  return <div>${id} Component</div>;\n`;
@@ -236,7 +236,7 @@ export class ClientGenerator {
       code += `  // Client methods\n`;
       code += `}\n`;
     } else {
-      discovery.machines.forEach((machine, id) => {
+      discovery.machines.forEach((_machine, id) => {
         code += `class ${id}Client {\n`;
         code += `  // Generated client for ${id}\n`;
         code += `}\n\n`;
@@ -258,7 +258,7 @@ export class ClientGenerator {
       code += `  // Client methods\n`;
       code += `}\n`;
     } else {
-      discovery.machines.forEach((machine, id) => {
+      discovery.machines.forEach((_machine, id) => {
         code += `public class ${id}Client {\n`;
         code += `  // Generated client for ${id}\n`;
         code += `}\n\n`;

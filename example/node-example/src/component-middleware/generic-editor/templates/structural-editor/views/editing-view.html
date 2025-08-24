@@ -1,0 +1,227 @@
+<div class="structural-editor editing">
+  <div class="editor-header">
+    <div class="header-left">
+      <h3>🏗️ Structural Editor</h3>
+      <p>Editing component hierarchy</p>
+    </div>
+    <div class="header-actions">
+      <button onclick="context.send({ type: 'SAVE_STRUCTURE' })" class="btn btn-primary">
+        💾 Save Structure
+      </button>
+      <button onclick="context.send({ type: 'EXPORT_STRUCTURE' })" class="btn btn-secondary">
+        📤 Export
+      </button>
+      <button onclick="context.send({ type: 'RESET_STRUCTURE' })" class="btn btn-warning">
+        🔄 Reset
+      </button>
+    </div>
+  </div>
+  
+  <div class="editor-main">
+    <div class="toolbar">
+      <div class="tool-group">
+        <button onclick="addComponent()" class="btn btn-success btn-sm">
+          ➕ Add Component
+        </button>
+        <button onclick="addContainer()" class="btn btn-info btn-sm">
+          📦 Add Container
+        </button>
+        <button onclick="addLayout()" class="btn btn-warning btn-sm">
+          🎨 Add Layout
+        </button>
+      </div>
+      
+      <div class="tool-group">
+        <button onclick="expandAll()" class="btn btn-outline btn-sm">
+          🔽 Expand All
+        </button>
+        <button onclick="collapseAll()" class="btn btn-outline btn-sm">
+          🔼 Collapse All
+        </button>
+        <button onclick="autoLayout()" class="btn btn-outline btn-sm">
+          🎯 Auto Layout
+        </button>
+      </div>
+      
+      <div class="tool-group">
+        <select id="viewMode" onchange="changeViewMode()" class="form-select">
+          <option value="tree">🌳 Tree View</option>
+          <option value="grid">📱 Grid View</option>
+          <option value="flow">🔄 Flow View</option>
+          <option value="mindmap">🧠 Mind Map</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="editor-workspace">
+      <div class="component-tree-panel">
+        <div class="panel-header">
+          <h5>Component Hierarchy</h5>
+          <div class="panel-actions">
+            <button onclick="searchComponents()" class="btn btn-outline btn-xs">
+              🔍 Search
+            </button>
+            <button onclick="filterComponents()" class="btn btn-outline btn-xs">
+              🔧 Filter
+            </button>
+          </div>
+        </div>
+        
+        <div class="component-tree" id="componentTree">
+          <!-- Component tree will be rendered here -->
+          <div class="tree-node root-node" data-component-id="app-root">
+            <div class="node-content">
+              <span class="node-icon">🏠</span>
+              <span class="node-label">App Root</span>
+              <span class="node-type">(Application)</span>
+            </div>
+            <div class="node-actions">
+              <button onclick="editComponent('app-root')" class="btn btn-xs btn-outline">✏️</button>
+              <button onclick="addChild('app-root')" class="btn btn-xs btn-outline">➕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="component-details-panel">
+        <div class="panel-header">
+          <h5>Component Details</h5>
+          <button onclick="closeDetails()" class="btn btn-xs btn-outline">✕</button>
+        </div>
+        
+        <div class="details-content" id="componentDetails">
+          <div class="no-selection">
+            <p>Select a component to view details</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="visual-preview-panel">
+        <div class="panel-header">
+          <h5>Visual Preview</h5>
+          <div class="preview-controls">
+            <button onclick="zoomIn()" class="btn btn-xs btn-outline">🔍+</button>
+            <button onclick="zoomOut()" class="btn btn-xs btn-outline">🔍-</button>
+            <button onclick="resetZoom()" class="btn btn-xs btn-outline">🔍↺</button>
+          </div>
+        </div>
+        
+        <div class="preview-canvas" id="previewCanvas">
+          <div class="canvas-placeholder">
+            <p>Component preview will appear here</p>
+            <p class="text-muted">Select components to see their visual representation</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="status-bar">
+      <div class="status-left">
+        <span class="status-item">
+          <span class="status-label">Components:</span>
+          <span class="status-value" id="componentCount">1</span>
+        </span>
+        <span class="status-item">
+          <span class="status-label">Depth:</span>
+          <span class="status-value" id="maxDepth">1</span>
+        </span>
+        <span class="status-item">
+          <span class="status-label">Mode:</span>
+          <span class="status-value" id="currentMode">Tree View</span>
+        </span>
+      </div>
+      <div class="status-right">
+        <span class="status-item">
+          <span class="status-label">Last Saved:</span>
+          <span class="status-value" id="lastSaved">Never</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Component management functions
+function addComponent() {
+  const componentName = prompt('Enter component name:');
+  if (componentName) {
+    context.send({ type: 'ADD_COMPONENT', payload: { name: componentName } });
+  }
+}
+
+function addContainer() {
+  const containerName = prompt('Enter container name:');
+  if (containerName) {
+    context.send({ type: 'ADD_COMPONENT', payload: { name: containerName, type: 'container' } });
+  }
+}
+
+function addLayout() {
+  const layoutName = prompt('Enter layout name:');
+  if (layoutName) {
+    context.send({ type: 'ADD_COMPONENT', payload: { name: layoutName, type: 'layout' } });
+  }
+}
+
+function editComponent(componentId) {
+  // Implementation for editing component
+  console.log('Editing component:', componentId);
+}
+
+function addChild(parentId) {
+  const childName = prompt('Enter child component name:');
+  if (childName) {
+    context.send({ type: 'ADD_COMPONENT', payload: { name: childName, parentId } });
+  }
+}
+
+function expandAll() {
+  // Implementation for expanding all nodes
+  console.log('Expanding all nodes');
+}
+
+function collapseAll() {
+  // Implementation for collapsing all nodes
+  console.log('Collapsing all nodes');
+}
+
+function autoLayout() {
+  // Implementation for auto-layout
+  console.log('Auto-layout triggered');
+}
+
+function changeViewMode() {
+  const viewMode = document.getElementById('viewMode').value;
+  document.getElementById('currentMode').textContent = viewMode.charAt(0).toUpperCase() + viewMode.slice(1) + ' View';
+}
+
+function searchComponents() {
+  const searchTerm = prompt('Search components:');
+  if (searchTerm) {
+    console.log('Searching for:', searchTerm);
+  }
+}
+
+function filterComponents() {
+  const filterType = prompt('Filter by type (component/container/layout):');
+  if (filterType) {
+    console.log('Filtering by type:', filterType);
+  }
+}
+
+function closeDetails() {
+  document.getElementById('componentDetails').innerHTML = '<div class="no-selection"><p>Select a component to view details</p></div>';
+}
+
+function zoomIn() {
+  console.log('Zooming in');
+}
+
+function zoomOut() {
+  console.log('Zooming out');
+}
+
+function resetZoom() {
+  console.log('Resetting zoom');
+}
+</script>

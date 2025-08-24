@@ -1,0 +1,274 @@
+<div class="structural-editor creating">
+  <div class="editor-header">
+    <h3>🏗️ Structural Editor</h3>
+    <p>Creating new component</p>
+  </div>
+  
+  <div class="editor-content">
+    <div class="creation-form">
+      <div class="form-section">
+        <h4>Component Information</h4>
+        
+        <div class="form-group">
+          <label for="componentName">Component Name *</label>
+          <input type="text" id="componentName" class="form-control" placeholder="e.g., UserProfile, NavigationBar" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentType">Component Type</label>
+          <select id="componentType" class="form-control">
+            <option value="component">🧩 Component</option>
+            <option value="container">📦 Container</option>
+            <option value="layout">🎨 Layout</option>
+            <option value="page">📄 Page</option>
+            <option value="widget">🔧 Widget</option>
+            <option value="form">📝 Form</option>
+            <option value="modal">🪟 Modal</option>
+            <option value="navigation">🧭 Navigation</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentDescription">Description</label>
+          <textarea id="componentDescription" class="form-control" rows="3" placeholder="Describe what this component does..."></textarea>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <h4>Structure & Relationships</h4>
+        
+        <div class="form-group">
+          <label for="parentComponent">Parent Component</label>
+          <select id="parentComponent" class="form-control">
+            <option value="">No parent (root level)</option>
+            <option value="app-root">App Root</option>
+            <option value="main-layout">Main Layout</option>
+            <option value="navigation">Navigation</option>
+            <option value="content-area">Content Area</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentPosition">Position</label>
+          <select id="componentPosition" class="form-control">
+            <option value="auto">Auto (recommended)</option>
+            <option value="first">First child</option>
+            <option value="last">Last child</option>
+            <option value="before">Before specific component</option>
+            <option value="after">After specific component</option>
+          </select>
+        </div>
+        
+        <div class="form-group" id="relativeComponentGroup" style="display: none;">
+          <label for="relativeComponent">Relative Component</label>
+          <select id="relativeComponent" class="form-control">
+            <option value="">Select component...</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <h4>Properties & Configuration</h4>
+        
+        <div class="form-group">
+          <label for="componentProps">Props/Parameters</label>
+          <textarea id="componentProps" class="form-control" rows="3" placeholder="e.g., title, data, onAction, className"></textarea>
+          <small class="form-text">Comma-separated list of props this component accepts</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentState">State Management</label>
+          <select id="componentState" class="form-control">
+            <option value="none">No state</option>
+            <option value="local">Local state only</option>
+            <option value="global">Global state</option>
+            <option value="context">React Context</option>
+            <option value="xstate">XState machine</option>
+            <option value="custom">Custom state management</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentLifecycle">Lifecycle Hooks</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" id="useEffect" value="useEffect">
+              useEffect
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="useState" value="useState">
+              useState
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="useCallback" value="useCallback">
+              useCallback
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="useMemo" value="useMemo">
+              useMemo
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="useRef" value="useRef">
+              useRef
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <h4>Styling & Appearance</h4>
+        
+        <div class="form-group">
+          <label for="componentStyle">Styling Approach</label>
+          <select id="componentStyle" class="form-control">
+            <option value="css">CSS</option>
+            <option value="scss">SCSS/Sass</option>
+            <option value="styled-components">Styled Components</option>
+            <option value="emotion">Emotion</option>
+            <option value="tailwind">Tailwind CSS</option>
+            <option value="material-ui">Material-UI</option>
+            <option value="chakra-ui">Chakra UI</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentTheme">Theme Support</label>
+          <select id="componentTheme" class="form-control">
+            <option value="none">No theme</option>
+            <option value="light-dark">Light/Dark mode</option>
+            <option value="color-schemes">Color schemes</option>
+            <option value="custom-themes">Custom themes</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="componentResponsive">Responsive Design</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" id="mobile" value="mobile">
+              Mobile
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="tablet" value="tablet">
+              Tablet
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="desktop" value="desktop">
+              Desktop
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="large-screen" value="large-screen">
+              Large Screen
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button onclick="createComponent()" class="btn btn-success">
+        ✅ Create Component
+      </button>
+      <button onclick="context.send({ type: 'CREATION_CANCELLED' })" class="btn btn-secondary">
+        ❌ Cancel
+      </button>
+      <button onclick="saveAsTemplate()" class="btn btn-outline">
+        💾 Save as Template
+      </button>
+    </div>
+    
+    <div class="preview-section" style="display: none;">
+      <h4>Component Preview</h4>
+      <div class="component-preview" id="componentPreview">
+        <!-- Component preview will be generated here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Form interaction logic
+document.getElementById('componentPosition').addEventListener('change', function() {
+  const relativeGroup = document.getElementById('relativeComponentGroup');
+  if (this.value === 'before' || this.value === 'after') {
+    relativeGroup.style.display = 'block';
+  } else {
+    relativeGroup.style.display = 'none';
+  }
+});
+
+// Component creation
+function createComponent() {
+  const componentData = {
+    name: document.getElementById('componentName').value,
+    type: document.getElementById('componentType').value,
+    description: document.getElementById('componentDescription').value,
+    parent: document.getElementById('parentComponent').value,
+    position: document.getElementById('componentPosition').value,
+    relativeComponent: document.getElementById('relativeComponent').value,
+    props: document.getElementById('componentProps').value,
+    state: document.getElementById('componentState').value,
+    lifecycle: getSelectedLifecycleHooks(),
+    style: document.getElementById('componentStyle').value,
+    theme: document.getElementById('componentTheme').value,
+    responsive: getSelectedResponsiveOptions()
+  };
+  
+  if (!componentData.name) {
+    alert('Please enter a component name');
+    return;
+  }
+  
+  context.send({ 
+    type: 'COMPONENT_CREATED', 
+    payload: componentData 
+  });
+}
+
+function getSelectedLifecycleHooks() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getSelectedResponsiveOptions() {
+  const responsiveCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(responsiveCheckboxes).map(cb => cb.value);
+}
+
+function saveAsTemplate() {
+  // Implementation for saving as template
+  console.log('Saving as template...');
+}
+
+// Auto-generate preview
+document.addEventListener('input', function() {
+  generatePreview();
+});
+
+function generatePreview() {
+  const name = document.getElementById('componentName').value;
+  const type = document.getElementById('componentType').value;
+  const description = document.getElementById('componentDescription').value;
+  
+  if (name) {
+    const preview = document.getElementById('componentPreview');
+    preview.innerHTML = `
+      <div class="preview-component ${type}">
+        <div class="preview-header">
+          <h5>${name}</h5>
+          <span class="preview-type">${type}</span>
+        </div>
+        <div class="preview-content">
+          <p>${description || 'Component description will appear here'}</p>
+        </div>
+        <div class="preview-footer">
+          <span class="preview-status">Draft</span>
+        </div>
+      </div>
+    `;
+    
+    document.querySelector('.preview-section').style.display = 'block';
+  }
+}
+</script>

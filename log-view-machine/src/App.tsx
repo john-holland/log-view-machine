@@ -1,22 +1,27 @@
-import React from 'react';
+import React, { ErrorInfo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import XStateBurgerCreationUI from './components/XStateBurgerCreationUI';
-import FluentBurgerCreationUI from './components/FluentBurgerCreationUI';
-import AdvancedFluentDemo from './components/AdvancedFluentDemo';
+import GenericEditor from './components/GenericEditor';
+import TomeIntegration from './components/TomeIntegration';
+import StructuralExample from './components/StructuralExample';
 import './index.css';
 
 const App: React.FC = () => {
+  const handleError = (error: Error, errorInfo: ErrorInfo) => {
+    console.error('App-level error:', error, errorInfo);
+    // You could send this to your error tracking service
+    // or log it to your TomeConnector for monitoring
+  };
+
   return (
     <Router>
       <div className="app">
         <nav className="app-nav">
           <div className="nav-container">
-            <h1>🍔 Fish Burger Examples</h1>
+            <h1>🔗 TomeConnector Studio</h1>
             <div className="nav-links">
               <Link to="/" className="nav-link">🏠 Home</Link>
-              <Link to="/xstate" className="nav-link">⚡ XState Demo</Link>
-              <Link to="/fluent" className="nav-link">✨ Fluent API</Link>
-              <Link to="/advanced" className="nav-link">🤖 Advanced Demo</Link>
+              <Link to="/tome-integration" className="nav-link">🔗 Tome Integration</Link>
+              <Link to="/structural" className="nav-link">🏗️ Structural System</Link>
             </div>
           </div>
         </nav>
@@ -24,36 +29,88 @@ const App: React.FC = () => {
         <main className="app-main">
           <Routes>
             <Route path="/" element={
-              <div className="home-page">
-                <h2>Welcome to Fish Burger Examples</h2>
-                <p>This demonstrates the ViewStateMachine package with different approaches:</p>
-                <div className="demo-cards">
-                  <div className="demo-card">
-                    <h3>⚡ XState Demo</h3>
-                    <p>Traditional XState implementation with manual state management</p>
-                    <Link to="/xstate" className="demo-link">View Demo</Link>
+              <GenericEditor 
+                title="Welcome to TomeConnector Studio"
+                description="A powerful platform for building connected, observable applications with state machines and distributed tracing."
+                onError={handleError}
+              >
+                <div className="home-page">
+                  <div className="hero-section">
+                    <h2>🚀 Build Connected Applications</h2>
+                    <p>Leverage the power of TomeConnector, ViewStateMachine, and OpenTelemetry to create robust, observable systems.</p>
                   </div>
-                  <div className="demo-card">
-                    <h3>✨ Fluent API</h3>
-                    <p>ViewStateMachine with beautiful fluent API for state management</p>
-                    <Link to="/fluent" className="demo-link">View Demo</Link>
+                  
+                  <div className="feature-grid">
+                    <div className="feature-card">
+                      <h3>🔗 Tome Integration</h3>
+                      <p>Connect state machines with RobotCopy message broker and distributed tracing</p>
+                      <Link to="/tome-integration" className="feature-link">Explore Integration</Link>
+                    </div>
+                    
+                    <div className="feature-card">
+                      <h3>🏗️ Structural System</h3>
+                      <p>Organize applications with routing, navigation, and component mapping</p>
+                      <Link to="/structural" className="feature-link">View Structure</Link>
+                    </div>
+                    
+                    <div className="feature-card">
+                      <h3>📊 Observability</h3>
+                      <p>Monitor performance with OpenTelemetry, Prometheus, and Grafana</p>
+                      <span className="feature-status">✅ Running</span>
+                    </div>
+                    
+                    <div className="feature-card">
+                      <h3>🐳 Container Ready</h3>
+                      <p>Deploy anywhere with Docker and Kubernetes support</p>
+                      <span className="feature-status">✅ Ready</span>
+                    </div>
                   </div>
-                  <div className="demo-card">
-                    <h3>🤖 Advanced Demo</h3>
-                    <p>Sub-machines + RobotCopy message broker + ClientGenerator</p>
-                    <Link to="/advanced" className="demo-link">View Demo</Link>
+                  
+                  <div className="status-section">
+                    <h3>System Status</h3>
+                    <div className="status-grid">
+                      <div className="status-item">
+                        <span className="status-label">TomeConnector Server:</span>
+                        <span className="status-value success">🟢 Running</span>
+                      </div>
+                      <div className="status-item">
+                        <span className="status-label">OpenTelemetry:</span>
+                        <span className="status-value success">🟢 Active</span>
+                      </div>
+                      <div className="status-item">
+                        <span className="status-label">Metrics:</span>
+                        <span className="status-value success">🟢 Collecting</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </GenericEditor>
             } />
-            <Route path="/xstate" element={<XStateBurgerCreationUI />} />
-            <Route path="/fluent" element={<FluentBurgerCreationUI />} />
-            <Route path="/advanced" element={<AdvancedFluentDemo />} />
+            
+            <Route path="/tome-integration" element={
+              <GenericEditor 
+                title="Tome Integration Demo"
+                description="Experience the power of TomeConnector with RobotCopy message broker and distributed tracing."
+                onError={handleError}
+              >
+                <TomeIntegration />
+              </GenericEditor>
+            } />
+            
+            <Route path="/structural" element={
+              <GenericEditor 
+                title="Structural System Demo"
+                description="Explore the structural system for organizing applications with routing and navigation."
+                onError={handleError}
+              >
+                <StructuralExample />
+              </GenericEditor>
+            } />
           </Routes>
         </main>
 
         <footer className="app-footer">
-          <p>Powered by ViewStateMachine Package</p>
+          <p>🔗 TomeConnector Studio - Powered by ViewStateMachine & OpenTelemetry</p>
         </footer>
       </div>
     </Router>

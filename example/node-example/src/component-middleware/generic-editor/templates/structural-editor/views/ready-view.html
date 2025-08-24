@@ -1,0 +1,44 @@
+<div class="structural-editor ready">
+  <div class="editor-header">
+    <h3>🏗️ Structural Editor</h3>
+    <p>Visual hierarchy editor for organizing root app components</p>
+  </div>
+  
+  <div class="editor-content">
+    <div class="welcome-section">
+      <div class="welcome-icon">🏛️</div>
+      <h4>Welcome to the Structural Editor</h4>
+      <p>Organize your application's component architecture with a visual, hierarchical interface.</p>
+    </div>
+    
+    <div class="action-buttons">
+      <button onclick="context.send({ type: 'LOAD_STRUCTURE' })" class="btn btn-primary">
+        📂 Load Existing Structure
+      </button>
+      <button onclick="context.send({ type: 'CREATE_COMPONENT' })" class="btn btn-success">
+        ➕ Create New Component
+      </button>
+      <button onclick="context.send({ type: 'EDIT_STRUCTURE' })" class="btn btn-info">
+        ✏️ Start from Scratch
+      </button>
+    </div>
+    
+    <div class="features-overview">
+      <h5>Key Features:</h5>
+      <ul>
+        <li>🌳 Visual component hierarchy</li>
+        <li>🔄 Drag & drop organization</li>
+        <li>📊 Component relationship mapping</li>
+        <li>💾 Structure persistence</li>
+        <li>📤 Export to various formats</li>
+      </ul>
+    </div>
+    
+    <div class="recent-structures" style="display: none;">
+      <h5>Recent Structures:</h5>
+      <div class="structure-list">
+        <!-- Recent structures will be populated here -->
+      </div>
+    </div>
+  </div>
+</div>

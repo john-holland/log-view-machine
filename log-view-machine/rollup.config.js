@@ -31,7 +31,32 @@ const config = [
       commonjs(),
       json(),
       typescript({
-        tsconfig: './tsconfig.json',
+        tsconfig: './tsconfig.build.json',
+        declaration: false
+      })
+    ]
+  },
+  {
+    input: 'src/simple-server.ts',
+    output: {
+      file: 'dist/server.js',
+      format: 'es',
+      sourcemap: true
+    },
+    external: [
+      'react',
+      'react-dom',
+      '@xstate/react',
+      'xstate',
+      'graphql',
+      'express'
+    ],
+    plugins: [
+      resolve(),
+      commonjs(),
+      json(),
+      typescript({
+        tsconfig: './tsconfig.build.json',
         declaration: false
       })
     ]

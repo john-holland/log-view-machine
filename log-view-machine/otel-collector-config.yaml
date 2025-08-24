@@ -1,0 +1,132 @@
+receivers:
+  # OTLP receivers for traces, metrics, and logs
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+          allowed_headers:
+            - "*"
+
+  # Prometheus receiver for metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+
+processors:
+  # Batch processor for efficient data handling
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1500
+
+  # Resource processor to add service information
+  resource:
+    attributes:
+      - key: environment
+        value: "development"
+        action: upsert
+      - key: deployment.region
+        value: "local"
+        action: upsert
+
+  # Filter processor to control what gets exported
+  filter:
+    spans:
+      include:
+        match_type: regexp
+        services: [".*"]
+        attributes:
+          - key: http.status_code
+            value: [".*"]
+    metrics:
+      include:
+        match_type: regexp
+        metrics: [".*"]
+    logs:
+      include:
+        match_type: regexp
+        services: [".*"]
+
+exporters:
+  # Jaeger exporter for distributed tracing
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "tome_connector"
+    const_labels:
+      label1: value1
+      "another label": spaced value
+    send_timestamps: true
+    metric_expiration: 180m
+    enable_open_metrics: true
+    add_metric_suffixes: false
+
+  # OTLP exporter for forwarding to other systems
+  otlp:
+    endpoint: "http://localhost:4318"
+    tls:
+      insecure: true
+
+  # Logging exporter for debugging (development only)
+  logging:
+    loglevel: debug
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # File exporter for local debugging
+  file:
+    path: ./otel-output.json
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # Pprof extension for profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # ZPages extension for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [batch, memory_limiter, resource, filter]
+      exporters: [jaeger, otlp, logging, file]
+
+    # Metrics pipeline  
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [batch, memory_limiter, resource, filter]
+      exporters: [prometheus, otlp, logging, file]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors: [batch, memory_limiter, resource, filter]
+      exporters: [otlp, logging, file]
