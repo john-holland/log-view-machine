@@ -15,6 +15,7 @@
   },
   "files": [
     "dist",
+    "editor-build",
     "README.md",
     "INSTALLATION.md"
   ],
@@ -30,6 +31,9 @@
     "otel:logs": "docker-compose -f docker-compose.opentelemetry.yml logs -f",
     "demo:otel": "npm run build && node dist/examples/OpenTelemetryIntegrationExample.js",
     "start": "node dist/server.js",
+    "start:editor": "node editor-build/editor-server.js",
+    "start:editor:dev": "tsx src/editor-server.ts",
+    "editor-build": "rollup -c rollup.editor.config.js",
     "start:dev": "tsx src/server.ts",
     "docker:build": "docker build -t tome-connector .",
     "docker:run": "docker run -p 3000:3000 tome-connector",

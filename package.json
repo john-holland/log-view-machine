@@ -1,16 +1,84 @@
 {
-  "name": "log-view-machine-workspace",
-  "version": "1.0.0",
-  "description": "Log View Machine - A powerful state machine library with examples",
-  "private": true,
-  "workspaces": [
-    "log-view-machine",
-    "example/*"
+  "name": "log-view-machine",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A powerful state machine library with fluent API, sub-machines, RobotCopy message broker, GraphQL integration, and structural system for application organization",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "editor-build",
+    "README.md",
+    "INSTALLATION.md"
   ],
   "scripts": {
-    "build": "npm run build --workspace=log-view-machine",
-    "test": "npm run test --workspace=log-view-machine",
-    "dev": "npm run dev --workspace=log-view-machine"
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "start:otel": "./start-opentelemetry.sh",
+    "otel:up": "docker-compose -f docker-compose.opentelemetry.yml up -d",
+    "otel:down": "docker-compose -f docker-compose.opentelemetry.yml down",
+    "otel:logs": "docker-compose -f docker-compose.opentelemetry.yml logs -f",
+    "demo:otel": "npm run build && node dist/examples/OpenTelemetryIntegrationExample.js",
+    "start": "node dist/server.js",
+    "start:dev": "tsx src/server.ts",
+    "start:editor": "node editor-build/editor-server.js",
+    "start:editor:dev": "tsx src/editor-server.ts",
+    "editor-build": "rollup -c rollup.editor.config.js",
+    "editor:discover": "node scripts/discover-editors.js",
+    "editor:run": "node scripts/run-editor.js",
+    "studio:build": "npm run editor-build",
+    "studio:publish": "cd editor-build && npm publish",
+    "studio:pack": "cd editor-build && npm pack",
+    "docker:build": "docker build -t tome-connector .",
+    "docker:run": "docker run -p 3000:3000 tome-connector",
+    "docker:compose": "docker-compose -f docker-compose.opentelemetry.yml up -d",
+    "start:full": "./start-full-stack.sh"
+  },
+  "peerDependencies": {
+    "@xstate/react": "^3.0.0",
+    "graphql": "^16.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "xstate": "^4.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^29.5.0",
+    "jest": "^29.7.0",
+    "rollup": "^3.0.0",
+    "rollup-plugin-dts": "^5.0.0",
+    "tome-connector-studio": "file:editor-build/tome-connector-studio-1.0.0.tgz",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.4.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.44.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.44.0",
+    "@opentelemetry/resources": "^1.18.0",
+    "@opentelemetry/sdk-metrics": "^1.18.0",
+    "@opentelemetry/sdk-trace-node": "^1.18.0",
+    "@opentelemetry/semantic-conventions": "^1.18.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "prom-client": "^15.1.0"
   },
   "keywords": [
     "state-machine",
@@ -18,7 +86,10 @@
     "react",
     "typescript",
     "fluent-api",
-    "examples"
+    "sub-machines",
+    "message-broker",
+    "graphql",
+    "robotcopy"
   ],
   "author": "ViewStateMachine Team",
   "license": "MIT",
@@ -30,4 +101,4 @@
     "url": "https://github.com/viewstatemachine/log-view-machine/issues"
   },
   "homepage": "https://github.com/viewstatemachine/log-view-machine#readme"
-} 
+}

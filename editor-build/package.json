@@ -1,0 +1,87 @@
+{
+  "name": "tome-connector-studio",
+  "version": "1.2.0",
+  "description": "A powerful studio for building and managing Tome Connector components, state machines, and integrations",
+  "type": "module",
+  "main": "editor-server.js",
+  "bin": {
+    "tome-studio": "./cli.js"
+  },
+  "files": [
+    "editor-server.js",
+    "editor-server.js.map",
+    "cli.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node editor-server.js",
+    "start:dev": "node --watch editor-server.js",
+    "dev": "node --watch editor-server.js",
+    "build": "echo 'Editor already built'",
+    "prepublishOnly": "npm run build",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linting configured'",
+    "clean": "rm -rf node_modules package-lock.json",
+    "studio": "node cli.js",
+    "studio:dev": "node cli.js --dev --watch"
+  },
+  "keywords": [
+    "tome-connector",
+    "studio",
+    "editor",
+    "component-builder",
+    "state-machine",
+    "xstate",
+    "react",
+    "typescript",
+    "component-middleware",
+    "generic-editor",
+    "state-machines",
+    "components",
+    "development",
+    "tooling"
+  ],
+  "author": "LogViewMachine Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/viewstatemachine/tome-connector-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/viewstatemachine/tome-connector-studio/issues"
+  },
+  "homepage": "https://github.com/viewstatemachine/tome-connector-studio#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@xstate/react": "^3.0.0",
+    "xstate": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "optionalDependencies": {
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1"
+  },
+  "config": {
+    "defaultPort": 3003,
+    "defaultHost": "localhost"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
