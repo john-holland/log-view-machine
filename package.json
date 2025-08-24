@@ -34,6 +34,7 @@
     "start:dev": "tsx src/server.ts",
     "start:editor": "node editor-build/editor-server.js",
     "start:editor:dev": "tsx src/editor-server.ts",
+    "restart:editor": "pkill -f 'editor-server.js' && sleep 2 && npm run start:editor",
     "editor-build": "rollup -c rollup.editor.config.js",
     "editor:discover": "node scripts/discover-editors.js",
     "editor:run": "node scripts/run-editor.js",

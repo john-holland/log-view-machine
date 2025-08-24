@@ -20,7 +20,7 @@ const __dirname = dirname(__filename);
  *   tome-studio --version         # Show version
  */
 
-const VERSION = '1.0.0';
+const VERSION = '1.2.0';
 const DEFAULT_PORT = 3003;
 const DEFAULT_HOST = 'localhost';
 

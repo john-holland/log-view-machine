@@ -56,7 +56,7 @@ function copyPackageFiles() {
 }
 
 export default {
-  input: 'log-view-machine/src/editor-server.ts',
+  input: 'src/editor-server.ts',
   output: {
     file: 'editor-build/editor-server.js',
     format: 'es',
@@ -77,8 +77,8 @@ export default {
     commonjs(),
     json(),
     typescript({
-      tsconfig: './log-view-machine/tsconfig.build.json',
-      declaration: false
+      tsconfig: './tsconfig.build.json',
+      declaration: true
     }),
     {
       name: 'copy-package-files',

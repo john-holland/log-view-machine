@@ -6,7 +6,7 @@ import json from '@rollup/plugin-json';
 
 const config = [
   {
-    input: 'log-view-machine/src/index.ts',
+    input: 'src/index.ts',
     output: [
       {
         file: 'dist/index.js',
@@ -31,13 +31,13 @@ const config = [
       commonjs(),
       json(),
       typescript({
-        tsconfig: './log-view-machine/tsconfig.build.json',
-        declaration: false
+        tsconfig: './tsconfig.build.json',
+        declaration: true
       })
     ]
   },
   {
-    input: 'log-view-machine/src/simple-server.ts',
+    input: 'src/simple-server.ts',
     output: {
       file: 'dist/server.js',
       format: 'es',
@@ -56,13 +56,13 @@ const config = [
       commonjs(),
       json(),
       typescript({
-        tsconfig: './log-view-machine/tsconfig.build.json',
-        declaration: false
+        tsconfig: './tsconfig.build.json',
+        declaration: true
       })
     ]
   },
   {
-    input: 'log-view-machine/src/editor-server.ts',
+    input: 'src/editor-server.ts',
     output: {
       file: 'editor-dist/editor-server.js',
       format: 'es',
@@ -83,8 +83,8 @@ const config = [
       commonjs(),
       json(),
       typescript({
-        tsconfig: './log-view-machine/tsconfig.build.json',
-        declaration: false
+        tsconfig: './tsconfig.build.json',
+        declaration: true
       })
     ]
   }
