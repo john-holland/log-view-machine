@@ -1326,6 +1326,9 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
                 }
             };
 
+            // Close the componentData object
+            };
+
             // State variables
             let currentComponent = null;
             let currentFile = 'component.html';
