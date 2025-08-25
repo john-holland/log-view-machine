@@ -2,6 +2,44 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { RobotCopy } from './core/RobotCopy';
+import { openTelemetryManager } from './opentelemetry-setup';
+import { SpanStatusCode } from '@opentelemetry/api';
+
+// Simple template processor for server-side rendering
+class TemplateProcessor {
+  private static processTemplate(template: string, variables: Record<string, any> = {}): string {
+    // Only remove very specific JSX patterns that cause browser errors
+    // Be very conservative to avoid breaking JavaScript code structure
+    
+    let processed = template;
+    
+    // Remove JSX code blocks with problematic attributes (only if they're complete)
+    processed = processed.replace(/<[^>]*\s+value=\{.*?\}[^>]*>/g, '');
+    processed = processed.replace(/<[^>]*\s+onChange=\{.*?\}[^>]*>/g, '');
+    processed = processed.replace(/<[^>]*\s+checked=\{.*?\}[^>]*>/g, '');
+    
+    // Remove JSX expressions but be very careful
+    // Only remove JSX expressions that are clearly JSX, not JavaScript
+    // Look for patterns like {setting.value} but avoid {this.state.hasError}
+    processed = processed.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z0-9_]*)\}/g, '');
+    
+    // Replace template variables
+    Object.entries(variables).forEach(([key, value]) => {
+      const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      processed = processed.replace(pattern, String(value));
+    });
+    
+    return processed;
+  }
+  
+  static renderComponentTemplate(template: string, componentName: string): string {
+    return this.processTemplate(template, {
+      componentName,
+      timestamp: new Date().toISOString(),
+      version: '1.2.0'
+    });
+  }
+}
 
 // Editor-specific configuration
 const EDITOR_CONFIG = {
@@ -19,6 +57,29 @@ const robotCopy = new RobotCopy({
 
 // Create Express app
 const app = express();
+
+// OpenTelemetry middleware for trace context propagation
+app.use((req, res, next) => {
+  // Extract trace context from incoming request
+  const traceContext = openTelemetryManager.extractTraceContext(req.headers);
+  
+  if (traceContext) {
+    // If trace context exists, use it
+    req.traceId = traceContext.traceId;
+    req.spanId = traceContext.spanId;
+  } else {
+    // Generate new trace context for this request
+    const newContext = openTelemetryManager.createTraceContext();
+    req.traceId = newContext.traceId;
+    req.spanId = newContext.spanId;
+  }
+  
+  // Add trace headers to response
+  res.set('X-Trace-ID', req.traceId);
+  res.set('X-Span-ID', req.spanId);
+  
+  next();
+});
 
 // Security middleware
 if (EDITOR_CONFIG.enableSecurity) {
@@ -110,10 +171,19 @@ app.get('/api/pact/backend', async (req, res) => {
 
 // Tracing endpoints
 app.get('/api/tracing/status', (req, res) => {
+  const currentContext = openTelemetryManager.getCurrentTraceContext();
+  
   res.json({
     tracing: {
-      enabled: robotCopy['config'].enableTracing,
-      datadog: robotCopy['config'].enableDataDog
+      enabled: openTelemetryManager.getInitializationStatus(),
+      opentelemetry: true,
+      currentTrace: currentContext,
+      service: {
+        name: 'tome-connector-editor',
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development'
+      },
+      endpoint: process.env.OTEL_ENDPOINT || 'http://localhost:4318'
     }
   });
 });
@@ -126,10 +196,30 @@ app.post('/api/tracing/message', async (req, res) => {
       return res.status(400).json({ error: 'action parameter is required' });
     }
     
-    const result = await robotCopy.sendMessage(action, data);
-    res.json({ success: true, result });
+    // Start a span for this message
+    const span = openTelemetryManager.startSpan(`tracing.message.${action}`);
+    
+    try {
+      const result = await robotCopy.sendMessage(action, data);
+      
+      // Add attributes to span
+      span.setAttributes({
+        'action': action,
+        'success': true,
+        'traceId': req.traceId,
+        'spanId': req.spanId
+      });
+      
+      span.setStatus({ code: SpanStatusCode.OK });
+      res.json({ success: true, result, traceId: req.traceId, spanId: req.spanId });
+    } catch (error) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: 'Failed to send message', traceId: req.traceId, spanId: req.spanId });
   }
 });
 
@@ -139,12 +229,24 @@ app.get('/api/tracing/message/:messageId', (req, res) => {
     const message = robotCopy.getMessage(messageId);
     
     if (message) {
-      res.json({ message });
+      res.json({ 
+        message,
+        traceId: req.traceId,
+        spanId: req.spanId
+      });
     } else {
-      res.status(404).json({ error: 'Message not found' });
+      res.status(404).json({ 
+        error: 'Message not found',
+        traceId: req.traceId,
+        spanId: req.spanId
+      });
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve message' });
+    res.status(500).json({ 
+      error: 'Failed to retrieve message',
+      traceId: req.traceId,
+      spanId: req.spanId
+    });
   }
 });
 
@@ -158,23 +260,43 @@ app.get('/api/tracing/trace/:traceId', (req, res) => {
       traceId, 
       messageCount: messages.length,
       messages,
-      fullTrace
+      fullTrace,
+      currentTrace: {
+        traceId: req.traceId,
+        spanId: req.spanId
+      }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve trace' });
+    res.status(500).json({ 
+      error: 'Failed to retrieve trace',
+      traceId: req.traceId,
+      spanId: req.spanId
+    });
   }
 });
 
-// Generate new IDs
+// Generate new IDs using OpenTelemetry
 app.get('/api/tracing/generate', (req, res) => {
   try {
     const messageId = robotCopy.generateMessageId();
-    const traceId = robotCopy.generateTraceId();
-    const spanId = robotCopy.generateSpanId();
+    const traceId = openTelemetryManager.generateTraceId();
+    const spanId = openTelemetryManager.generateSpanId();
     
-    res.json({ messageId, traceId, spanId });
+    res.json({ 
+      messageId, 
+      traceId, 
+      spanId,
+      currentTrace: {
+        traceId: req.traceId,
+        spanId: req.spanId
+      }
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate IDs' });
+    res.status(500).json({ 
+      error: 'Failed to generate IDs',
+      traceId: req.traceId,
+      spanId: req.spanId
+    });
   }
 });
 
@@ -243,7 +365,7 @@ app.get('/', (req, res) => {
 app.get('/wave-reader', (req, res) => {
   const workingDir = process.env.WORKING_DIRECTORY || 'Current Directory';
   
-  res.send(`
+  const template = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -416,17 +538,17 @@ app.get('/wave-reader', (req, res) => {
                         <div class="editor-panel">
                             <h4>📁 File Structure</h4>
                             <div class="file-tree" id="fileTree">
-                                <div class="file-item active" data-file="component.tsx">component.tsx</div>
-                                <div class="file-item" data-file="index.ts">index.ts</div>
-                                <div class="file-item" data-file="types.ts">types.ts</div>
-                                <div class="file-item" data-file="utils.ts">utils.ts</div>
+                                <div class="file-item active" data-file="component.html">component.html</div>
+                                <div class="file-item" data-file="index.html">index.html</div>
+                                <div class="file-item" data-file="types.html">types.html</div>
+                                <div class="file-item" data-file="utils.html">utils.html</div>
                             </div>
                         </div>
                         <div class="editor-panel">
                             <h4>💻 Code Editor</h4>
                             <div class="code-editor" id="codeEditor" contenteditable="true">
-// Component code will be loaded here
-// Click on a file in the file tree to view its contents
+<!-- HTML Component code will be loaded here -->
+<!-- Click on a file in the file tree to view its contents -->
                             </div>
                         </div>
                     </div>
@@ -507,123 +629,375 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     name: 'Go Button',
                     description: 'Navigation and action button components',
                     files: {
-                        'component.tsx': \`import React from 'react';
+                        'component.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Button Component</title>
+    <style>
+        .go-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .go-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .go-button.primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .go-button.primary:hover:not(:disabled) {
+            background-color: #2563eb;
+        }
+        .go-button.secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        .go-button.secondary:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+        .go-button.success {
+            background-color: #10b981;
+            color: white;
+        }
+        .go-button.success:hover:not(:disabled) {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="component-demo">
+        <h2>Go Button Component</h2>
+        
+        <div class="button-examples">
+            <button class="go-button primary" onclick="handleClick('primary')">
+                Primary Button
+            </button>
+            
+            <button class="go-button secondary" onclick="handleClick('secondary')">
+                Secondary Button
+            </button>
+            
+            <button class="go-button success" onclick="handleClick('success')">
+                Success Button
+            </button>
+            
+            <button class="go-button primary" disabled onclick="handleClick('disabled')">
+                Disabled Button
+            </button>
+        </div>
+        
+        <div id="clickLog" class="click-log"></div>
+    </div>
 
-interface GoButtonProps {
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'success';
-}
-
-export const GoButton: React.FC<GoButtonProps> = ({
-  onClick,
-  disabled = false,
-  children,
-  variant = 'primary'
-}) => {
-  const baseClasses = 'px-4 py-2 rounded font-medium transition-colors';
-  const variantClasses = {
-    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
-    secondary: 'bg-gray-500 hover:bg-gray-600 text-white',
-    success: 'bg-green-500 hover:bg-green-600 text-white'
-  };
-
-  return (
-    <button
-      className={\`\${baseClasses} \${variantClasses[variant]}\`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};\`,
-                        'index.ts': \`export { GoButton } from './component';\`,
-                        'types.ts': \`export type ButtonVariant = 'primary' | 'secondary' | 'success';\`,
-                        'utils.ts': \`export const getButtonClasses = (variant: ButtonVariant) => {
-  // Button styling utilities
-};\`
+    <script>
+        function handleClick(variant) {
+            const log = document.getElementById('clickLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += '<p>' + timestamp + ': ' + variant + ' button clicked</p>';
+        }
+    </script>
+</body>
+</html>\`,
+                        'index.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Button Index</title>
+</head>
+<body>
+    <h1>Go Button Component Index</h1>
+    <p>This is the index page for the Go Button component.</p>
+    <a href="component.html">View Component Demo</a>
+</body>
+</html>\`,
+                        'types.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Types</title>
+</head>
+<body>
+    <h1>Button Variant Types</h1>
+    <ul>
+        <li><strong>primary:</strong> Blue button for main actions</li>
+        <li><strong>secondary:</strong> Gray button for secondary actions</li>
+        <li><strong>success:</strong> Green button for positive actions</li>
+    </ul>
+</body>
+</html>\`,
+                        'utils.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Utilities</title>
+</head>
+<body>
+    <h1>Button Styling Utilities</h1>
+    <p>Utility functions for button styling and behavior.</p>
+    <div id="utilityDemo"></div>
+    
+    <script>
+        function getButtonClasses(variant) {
+            const baseClasses = 'px-4 py-2 rounded font-medium transition-colors';
+            const variantClasses = {
+                primary: 'bg-blue-500 hover:bg-blue-600 text-white',
+                secondary: 'bg-gray-500 hover:bg-gray-600 text-white',
+                success: 'bg-green-500 hover:bg-green-600 text-white'
+            };
+            return \`\${baseClasses} \${variantClasses[variant]}\`;
+        }
+        
+        document.getElementById('utilityDemo').innerHTML = 
+            '<p>Primary classes: ' + getButtonClasses('primary') + '</p>';
+    </script>
+</body>
+</html>\`
                     }
                 },
                 'selector-hierarchy': {
                     name: 'Selector Hierarchy',
                     description: 'Component selection and hierarchy management',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface SelectorNode {
-  id: string;
-  name: string;
-  children?: SelectorNode[];
-  selected?: boolean;
-}
-
-interface SelectorHierarchyProps {
-  nodes: SelectorNode[];
-  onSelectionChange: (selectedIds: string[]) => void;
-}
-
-export const SelectorHierarchy: React.FC<SelectorHierarchyProps> = ({
-  nodes,
-  onSelectionChange
-}) => {
-  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-
-  const handleToggle = (nodeId: string) => {
-    const newSelection = selectedIds.includes(nodeId)
-      ? selectedIds.filter(id => id !== nodeId)
-      : [...selectedIds, nodeId];
-    
-    setSelectedIds(newSelection);
-    onSelectionChange(newSelection);
-  };
-
-  const renderNode = (node: SelectorNode) => (
-    <div key={node.id} className="selector-node">
-      <label>
-        <input
-          type="checkbox"
-          checked={selectedIds.includes(node.id)}
-          onChange={() => handleToggle(node.id)}
-        />
-        {node.name}
-      </label>
-      {node.children && (
-        <div className="selector-children">
-          {node.children.map(renderNode)}
+                        'component.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selector Hierarchy Component</title>
+    <style>
+        .selector-hierarchy {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .selector-node {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .selector-children {
+            margin-left: 30px;
+            border-left: 2px solid #eee;
+            padding-left: 15px;
+        }
+        .selector-node label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .selector-node input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .selected {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="selector-hierarchy">
+        <h2>Selector Hierarchy Component</h2>
+        
+        <div id="hierarchyContainer">
+            <!-- Hierarchy will be rendered here -->
         </div>
-      )}
+        
+        <div class="selection-info">
+            <h3>Selected Items:</h3>
+            <div id="selectedItems"></div>
+        </div>
     </div>
-  );
 
-  return (
-    <div className="selector-hierarchy">
-      {nodes.map(renderNode)}
+    <script>
+        // Sample hierarchy data
+        const sampleNodes = [
+            {
+                id: '1',
+                name: 'Root Component',
+                children: [
+                    {
+                        id: '1-1',
+                        name: 'Child Component 1',
+                        children: [
+                            { id: '1-1-1', name: 'Grandchild 1' },
+                            { id: '1-1-2', name: 'Grandchild 2' }
+                        ]
+                    },
+                    {
+                        id: '1-2',
+                        name: 'Child Component 2',
+                        children: [
+                            { id: '1-2-1', name: 'Grandchild 3' }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        let selectedIds = [];
+
+        function renderNode(node) {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'selector-node';
+            nodeDiv.setAttribute('data-id', node.id);
+
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selectedIds.includes(node.id);
+            checkbox.onchange = () => handleToggle(node.id);
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(node.name));
+            nodeDiv.appendChild(label);
+
+            if (node.children && node.children.length > 0) {
+                const childrenDiv = document.createElement('div');
+                childrenDiv.className = 'selector-children';
+                node.children.forEach(child => {
+                    childrenDiv.appendChild(renderNode(child));
+                });
+                nodeDiv.appendChild(childrenDiv);
+            }
+
+            return nodeDiv;
+        }
+
+        function handleToggle(nodeId) {
+            if (selectedIds.includes(nodeId)) {
+                selectedIds = selectedIds.filter(id => id !== nodeId);
+            } else {
+                selectedIds.push(nodeId);
+            }
+            updateSelection();
+        }
+
+        function updateSelection() {
+            // Update visual selection
+            document.querySelectorAll('.selector-node').forEach(nodeDiv => {
+                const nodeId = nodeDiv.getAttribute('data-id');
+                if (selectedIds.includes(nodeId)) {
+                    nodeDiv.classList.add('selected');
+                } else {
+                    nodeDiv.classList.remove('selected');
+                }
+            });
+
+            // Update selection info
+            const selectedItemsDiv = document.getElementById('selectedItems');
+            if (selectedIds.length === 0) {
+                selectedItemsDiv.innerHTML = '<p>No items selected</p>';
+            } else {
+                selectedItemsDiv.innerHTML = '<ul>' + 
+                    selectedIds.map(id => '<li>' + id + '</li>').join('') + 
+                    '</ul>';
+            }
+        }
+
+        // Initialize the component
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('hierarchyContainer');
+            sampleNodes.forEach(node => {
+                container.appendChild(renderNode(node));
+            });
+            updateSelection();
+        });
+    </script>
+</body>
+</html>\`,
+                        'index.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selector Hierarchy Index</title>
+</head>
+<body>
+    <h1>Selector Hierarchy Component Index</h1>
+    <p>This is the index page for the Selector Hierarchy component.</p>
+    <a href="component.html">View Component Demo</a>
+</body>
+</html>\`,
+                        'types.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selector Node Types</title>
+</head>
+<body>
+    <h1>Selector Node Interface</h1>
+    <ul>
+        <li><strong>id:</strong> Unique identifier for the node</li>
+        <li><strong>name:</strong> Display name for the node</li>
+        <li><strong>children:</strong> Optional array of child nodes</li>
+        <li><strong>selected:</strong> Optional boolean indicating selection state</li>
+    </ul>
+</body>
+</html>\`,
+                        'utils.html': \`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selector Utilities</title>
+</head>
+<body>
+    <h1>Selector Node Utilities</h1>
+    <p>Utility functions for working with selector nodes.</p>
+    
+    <div id="utilityDemo">
+        <h3>Flatten Nodes Demo</h3>
+        <button onclick="demoFlatten()">Demo Flatten Function</button>
+        <div id="flattenResult"></div>
     </div>
-  );
-};\`,
-                        'index.ts': \`export { SelectorHierarchy } from './component';\`,
-                        'types.ts': \`export interface SelectorNode {
-  id: string;
-  name: string;
-  children?: SelectorNode[];
-  selected?: boolean;
-}\`,
-                        'utils.ts': \`export const flattenNodes = (nodes: SelectorNode[]): SelectorNode[] => {
-  const result: SelectorNode[] = [];
-  const stack = [...nodes];
-  
-  while (stack.length > 0) {
-    const node = stack.pop()!;
-    result.push(node);
-    if (node.children) {
-      stack.push(...node.children);
-    }
-  }
-  
-  return result;
-};\`
+    
+    <script>
+        function flattenNodes(nodes) {
+            const result = [];
+            const stack = [...nodes];
+            
+            while (stack.length > 0) {
+                const node = stack.pop();
+                result.push(node);
+                if (node.children) {
+                    stack.push(...node.children);
+                }
+            }
+            
+            return result;
+        }
+        
+        function demoFlatten() {
+            const sampleNodes = [
+                {
+                    id: '1',
+                    name: 'Root',
+                    children: [
+                        { id: '1-1', name: 'Child 1' },
+                        { id: '1-2', name: 'Child 2' }
+                    ]
+                }
+            ];
+            
+            const flattened = flattenNodes(sampleNodes);
+            document.getElementById('flattenResult').innerHTML = 
+                '<p>Flattened nodes: ' + flattened.map(n => n.name).join(', ') + '</p>';
+        }
+    </script>
+</body>
+</html>\`
                     }
                 },
                 'settings': {
@@ -645,68 +1019,21 @@ interface SettingsProps {
   onSettingChange: (key: string, value: any) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({
-  settings,
-  onSettingChange
-}) => {
-  const renderSettingInput = (setting: Setting) => {
-    switch (setting.type) {
-      case 'text':
-        return (
-          <input
-            type="text"
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-          />
-        );
-      case 'number':
-        return (
-          <input
-            type="number"
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, Number(e.target.value))}
-            className="w-full px-3 py-2 border rounded"
-          />
-        );
-      case 'boolean':
-        return (
-          <input
-            type="checkbox"
-            checked={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.checked)}
-            className="w-4 h-4"
-          />
-        );
-      case 'select':
-        return (
-          <select
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-          >
-            {setting.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="settings">
-      <h3>Settings</h3>
-      {settings.map(setting => (
-        <div key={setting.key} className="setting-item">
-          <label>{setting.label}</label>
-          {renderSettingInput(setting)}
-        </div>
-      ))}
-    </div>
-  );
-};\`,
+        // Example settings component - this would be processed server-side in a real app
+        export const Settings: React.FC<SettingsProps> = ({
+          settings,
+          onSettingChange
+        }) => {
+          // Component implementation would go here
+          // This is a placeholder for the actual component code
+          // In a real application, this would be processed server-side
+          // and rendered as proper HTML
+          
+          console.log('Settings component props:', { settings, onSettingChange });
+          
+          // Return a simple div for now
+          return document.createElement('div');
+        };\`,
                         'index.ts': \`export { Settings } from './component';\`,
                         'types.ts': \`export interface Setting {
   key: string;
@@ -880,69 +1207,19 @@ export const ScanForInput: React.FC<ScanForInputProps> = ({
                     name: 'Selector Input',
                     description: 'Input selection and management tools',
                     files: {
-                        'component.tsx': \`import React from 'react';
+                        'component.tsx': \`// Selector Input Component
+// This component provides input selection with suggestions
 
-interface SelectorInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  suggestions?: string[];
-}
-
-export const SelectorInput: React.FC<SelectorInputProps> = ({
-  value,
-  onChange,
-  placeholder = 'Enter selector...',
-  suggestions = []
-}) => {
-  const [showSuggestions, setShowSuggestions] = React.useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = React.useState(suggestions);
-
-  const handleInputChange = (inputValue: string) => {
-    onChange(inputValue);
-    
-    if (inputValue.length > 0) {
-      const filtered = suggestions.filter(suggestion =>
-        suggestion.toLowerCase().includes(inputValue.toLowerCase())
-      );
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(filtered.length > 0);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion);
-    setShowSuggestions(false);
-  };
-
-  return (
-    <div className="selector-input">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => handleInputChange(e.target.value)}
-        placeholder={placeholder}
-        className="selector-field"
-        onFocus={() => setShowSuggestions(suggestions.length > 0)}
-      />
-      
-      {showSuggestions && (
-        <div className="suggestions-dropdown">
-          {filteredSuggestions.map(suggestion => (
-            <div
-              key={suggestion}
-              className="suggestion-item"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+export const SelectorInput = ({ value, onChange, placeholder, suggestions }) => {
+  // Component implementation would go here
+  // This is a placeholder for the actual component code
+  // In a real application, this would be processed server-side
+  // and rendered as proper HTML
+  
+  console.log('SelectorInput props:', { value, placeholder, suggestions });
+  
+  // Return a simple div for now
+  return document.createElement('div');
 };\`,
                         'index.ts': \`export { SelectorInput } from './component';\`,
                         'types.ts': \`export interface SelectorSuggestion {
@@ -1051,26 +1328,42 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
 
             // State variables
             let currentComponent = null;
-            let currentFile = 'component.tsx';
+            let currentFile = 'component.html';
 
             // Event handlers
             function openComponent(componentId) {
+                console.log('🎯 Opening component:', componentId);
                 currentComponent = componentId;
                 const component = componentData[componentId];
                 
                 if (component) {
+                    console.log('📁 Component found:', component);
+                    
                     // Update UI
-                    document.getElementById('editorTitle').textContent = \`\${component.name} Editor\`;
-                    document.getElementById('componentEditor').classList.add('active');
+                    const editorTitle = document.getElementById('editorTitle');
+                    const componentEditor = document.getElementById('componentEditor');
                     
-                    // Load first file
-                    loadFile('component.tsx');
-                    
-                    // Update component cards
-                    document.querySelectorAll('.component-card').forEach(card => {
-                        card.classList.remove('clicked');
-                    });
-                    document.querySelector(\`[data-component="\${componentId}"]\`).classList.add('clicked');
+                    if (editorTitle && componentEditor) {
+                        editorTitle.textContent = \`\${component.name} Editor\`;
+                        componentEditor.classList.add('active');
+                        console.log('✅ Editor UI updated');
+                        
+                        // Load first file
+                        loadFile('component.tsx');
+                        
+                        // Update component cards
+                        document.querySelectorAll('.component-card').forEach(card => {
+                            card.classList.remove('clicked');
+                        });
+                        const clickedCard = document.querySelector(\`[data-component="\${componentId}"]\`);
+                        if (clickedCard) {
+                            clickedCard.classList.add('clicked');
+                        }
+                    } else {
+                        console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
+                    }
+                } else {
+                    console.error('❌ Component not found:', componentId);
                 }
             }
 
@@ -1090,7 +1383,15 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
                 const fileContent = component.files[filename];
                 
                 if (fileContent) {
-                    document.getElementById('codeEditor').textContent = fileContent;
+                    // For HTML files, we'll display them in a preview format
+                    if (filename.endsWith('.html')) {
+                        // Create a preview container
+                        const codeEditor = document.getElementById('codeEditor');
+                        codeEditor.innerHTML = '<div style="padding: 20px; background: #f8f9fa; border-radius: 8px;"><h3>HTML Preview</h3><p>This is an HTML component file. You can view it in a browser or edit the HTML content.</p><div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto;">' + fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                    } else {
+                        // For other file types, display as text
+                        document.getElementById('codeEditor').textContent = fileContent;
+                    }
                     
                     // Update file tree
                     document.querySelectorAll('.file-item').forEach(item => {
@@ -1101,8 +1402,16 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
             }
 
             function viewFiles(componentId) {
-                // This could open a file explorer or show file structure
-                alert(\`Viewing files for \${componentData[componentId].name}\`);
+                console.log('📂 Viewing files for component:', componentId);
+                const component = componentData[componentId];
+                
+                if (component) {
+                    const fileList = Object.keys(component.files).join(', ');
+                    const message = \`📁 Files for \${component.name}:\n\n\${fileList}\n\nClick "Open Editor" to view and edit these files.\`;
+                    alert(message);
+                } else {
+                    alert('❌ Component not found: ' + componentId);
+                }
             }
 
             // Initialize event listeners when DOM is loaded
@@ -1136,7 +1445,11 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
         </script>
     </body>
     </html>
-  `);
+  `;
+  
+  // Process the template to remove JSX and handle variables
+  const processedTemplate = TemplateProcessor.renderComponentTemplate(template, 'Wave Reader');
+  res.send(processedTemplate);
 });
 
 // Error handling middleware

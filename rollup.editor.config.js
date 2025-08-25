@@ -70,7 +70,16 @@ export default {
     'graphql',
     'express',
     'cors',
-    'helmet'
+    'helmet',
+    '@opentelemetry/api',
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/auto-instrumentations-node',
+    '@opentelemetry/resources',
+    '@opentelemetry/semantic-conventions',
+    '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/exporter-metrics-otlp-http',
+    '@opentelemetry/sdk-trace-base',
+    '@opentelemetry/sdk-metrics'
   ],
   plugins: [
     resolve(),
