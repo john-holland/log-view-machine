@@ -1326,9 +1326,6 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
                 }
             };
 
-            // Close the componentData object
-            };
-
             // State variables
             let currentComponent = null;
             let currentFile = 'component.html';
@@ -1445,14 +1442,21 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
 
                 console.log('🎨 Wave Reader Editor initialized successfully!');
             });
+
+            // Close the componentData object
+            };
         </script>
     </body>
     </html>
   `;
   
   // Process the template to remove JSX and handle variables
-  const processedTemplate = TemplateProcessor.renderComponentTemplate(template, 'Wave Reader');
-  res.send(processedTemplate);
+  // Temporarily disable template processing to debug the structure
+  // const processedTemplate = TemplateProcessor.renderComponentTemplate(template, 'Wave Reader');
+  // res.send(processedTemplate);
+  
+  // Send the raw template for now to debug the structure
+  res.send(template);
 });
 
 // Error handling middleware
