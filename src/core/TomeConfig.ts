@@ -246,7 +246,7 @@ export const FishBurgerTomeConfig: TomeConfig = createTomeConfig({
   },
   context: {
     baseUrl: 'http://localhost:3000',
-    adminKey: process.env.ADMIN_KEY || 'admin123'
+    adminKey: (typeof process !== 'undefined' && process.env?.ADMIN_KEY) || 'admin123'
   }
 });
 

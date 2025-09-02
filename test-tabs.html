@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TomeConnector Studio - Settings & About Tabs Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav-tab {
+            padding: 20px 30px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-tab:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-icon {
+            font-size: 1.3rem;
+        }
+
+        .tab-content {
+            padding: 40px;
+            min-height: 600px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+        }
+
+        .demo-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .demo-section p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .feature-description {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .status-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-beta {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-coming-soon {
+            background: #e2e3e5;
+            color: #6c757d;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .tech-card {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+
+        .tech-name {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .tech-version {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .tech-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 30px 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .getting-started {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+
+        .getting-started h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .step-content code {
+            background: #e9ecef;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #e83e8c;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-direction: column;
+            }
+            
+            .nav-tab {
+                justify-content: center;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 TomeConnector Studio</h1>
+            <p>Settings & About Tabs Demo - Experience the Enhanced Interface</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('home')">
+                <span class="tab-icon">🏠</span>
+                <span>Home</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('settings')">
+                <span class="tab-icon">⚙️</span>
+                <span>Settings</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('about')">
+                <span class="tab-icon">ℹ️</span>
+                <span>About</span>
+            </button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Home Tab -->
+            <div id="home" class="tab-pane active">
+                <div class="demo-section">
+                    <h2>🚀 Welcome to TomeConnector Studio</h2>
+                    <p>
+                        Experience the power of connected, observable applications with state machines and distributed tracing. 
+                        This demo showcases our new Settings and About tabs with enhanced functionality.
+                    </p>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">6+</div>
+                            <div class="stat-label">Core Features</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">100%</div>
+                            <div class="stat-label">Open Source</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">24/7</div>
+                            <div class="stat-label">Monitoring</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">∞</div>
+                            <div class="stat-label">Scalability</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h2>✨ New Features Added</h2>
+                    <p>We've enhanced the interface with comprehensive Settings and About tabs:</p>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">⚙️</span>
+                                <span class="feature-title">Settings Tab</span>
+                            </div>
+                            <p class="feature-description">
+                                Comprehensive configuration options for tracing, performance, and UI preferences
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">ℹ️</span>
+                                <span class="feature-title">About Tab</span>
+                            </div>
+                            <p class="feature-description">
+                                Detailed information about the platform, features, and getting started guide
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">🔍</span>
+                                <span class="feature-title">Stack Trace Capture</span>
+                            </div>
+                            <p class="feature-description">
+                                Advanced error tracking with OpenTelemetry integration and correlation
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-pane">
+                <div class="demo-section">
+                    <h2>⚙️ Settings Configuration</h2>
+                    <p>
+                        Configure your TomeConnector Studio preferences and system settings. 
+                        All changes are automatically saved and synchronized across your development environment.
+                    </p>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">🔍</span>
+                                <span class="feature-title">Tracing Settings</span>
+                            </div>
+                            <p class="feature-description">
+                                Enable stack traces, configure sampling rates, and set OpenTelemetry endpoints
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">📊</span>
+                                <span class="feature-title">Performance Settings</span>
+                            </div>
+                            <p class="feature-description">
+                                Configure metrics collection, logging, and monitoring preferences
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-icon">🎨</span>
+                                <span class="feature-title">Interface Settings</span>
+                            </div>
+                            <p class="feature-description">
+                                Customize themes, auto-save behavior, and UI preferences
+                            </p>
+                            <span class="status-badge status-ready">✅ Ready</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Tab -->
+            <div id="about" class="tab-pane">
+                <div class="demo-section">
+                    <h2>ℹ️ About TomeConnector Studio</h2>
+                    <p>
+                        A powerful platform for building connected, observable applications with state machines and distributed tracing. 
+                        TomeConnector Studio combines the best of modern web technologies with enterprise-grade observability.
+                    </p>
+                    
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <div class="tech-name">React</div>
+                            <div class="tech-version">18.x</div>
+                            <div class="tech-description">Modern UI framework for building interactive interfaces</div>
+                        </div>
+                        
+                        <div class="tech-card">
+                            <div class="tech-name">TypeScript</div>
+                            <div class="tech-version">5.x</div>
+                            <div class="tech-description">Type-safe JavaScript for better development experience</div>
+                        </div>
+                        
+                        <div class="tech-card">
+                            <div class="tech-name">XState</div>
+                            <div class="tech-version">4.x</div>
+                            <div class="tech-description">State machine library for complex state management</div>
+                        </div>
+                        
+                        <div class="tech-card">
+                            <div class="tech-name">OpenTelemetry</div>
+                            <div class="tech-version">1.x</div>
+                            <div class="tech-description">Observability framework for distributed tracing</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h2>🚀 Getting Started</h2>
+                    <p>Quick start guide to get you up and running with TomeConnector Studio:</p>
+                    
+                    <div class="getting-started">
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Clone the Repository</h4>
+                                    <code>git clone https://github.com/your-org/tome-connector-studio.git</code>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Install Dependencies</h4>
+                                    <code>npm install</code>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Start Development Server</h4>
+                                    <code>npm run start:dev</code>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Open in Browser</h4>
+                                    <code>http://localhost:3000</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab panes
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            tabPanes.forEach(pane => pane.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab pane
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.closest('.nav-tab').classList.add('active');
+        }
+
+        // Add some interactive features
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects to feature cards
+            const featureCards = document.querySelectorAll('.feature-card');
+            featureCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px)';
+                    this.style.boxShadow = '0 15px 35px rgba(0,0,0,0.15)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+                });
+            });
+
+            // Add click effects to nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Add a subtle click animation
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

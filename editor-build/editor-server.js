@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 class Tracing {
     constructor() {
@@ -314,6 +315,293 @@ class RobotCopy {
     }
 }
 
+class OpenTelemetryManager {
+    constructor(config) {
+        Object.defineProperty(this, "config", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        Object.defineProperty(this, "isInitialized", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: false
+        });
+        Object.defineProperty(this, "errorRegistry", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
+        this.config = {
+            enableMetrics: true,
+            enableLogs: true,
+            samplingRate: 1.0,
+            enableStackTraces: true,
+            maxStackTraceDepth: 10,
+            ...config
+        };
+    }
+    async initialize() {
+        if (this.isInitialized)
+            return;
+        try {
+            console.log('🔧 Initializing OpenTelemetry...');
+            console.log(`  📡 Service: ${this.config.serviceName}`);
+            console.log(`  🌍 Environment: ${this.config.environment}`);
+            console.log(`  🔗 Endpoint: ${this.config.endpoint}`);
+            console.log(`  🔍 Stack Traces: ${this.config.enableStackTraces ? 'Enabled' : 'Disabled'}`);
+            // For now, we'll use a simplified approach without the full SDK
+            // This will still provide trace ID generation and basic functionality
+            this.isInitialized = true;
+            console.log('✅ OpenTelemetry initialized successfully (simplified mode)');
+        }
+        catch (error) {
+            console.error('❌ Failed to initialize OpenTelemetry:', error);
+            throw error;
+        }
+    }
+    async shutdown() {
+        if (!this.isInitialized)
+            return;
+        try {
+            console.log('🔄 Shutting down OpenTelemetry...');
+            this.isInitialized = false;
+            console.log('✅ OpenTelemetry shutdown complete');
+        }
+        catch (error) {
+            console.error('❌ Error during OpenTelemetry shutdown:', error);
+        }
+    }
+    // Generate a new trace ID using a simple approach
+    generateTraceId() {
+        // Generate a random 32-character hex string for trace ID
+        return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    }
+    // Generate a new span ID using a simple approach
+    generateSpanId() {
+        // Generate a random 16-character hex string for span ID
+        return Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    }
+    // Extract stack trace information from an Error object
+    extractStackTrace(error) {
+        if (!this.config.enableStackTraces) {
+            return {
+                message: error.message,
+                stack: '',
+                name: error.name
+            };
+        }
+        const stackLines = error.stack?.split('\n') || [];
+        const stackTrace = {
+            message: error.message,
+            stack: error.stack || '',
+            name: error.name
+        };
+        // Parse stack trace lines to extract file and line information
+        if (stackLines.length > 1) {
+            // Skip the first line (error message) and parse the stack
+            for (let i = 1; i < Math.min(stackLines.length, this.config.maxStackTraceDepth + 1); i++) {
+                const line = stackLines[i].trim();
+                if (line.startsWith('at ')) {
+                    // Parse: "at FunctionName (fileName:lineNumber:columnNumber)"
+                    const match = line.match(/at\s+(.+?)\s+\((.+):(\d+):(\d+)\)/);
+                    if (match) {
+                        stackTrace.functionName = match[1];
+                        stackTrace.fileName = match[2];
+                        stackTrace.lineNumber = parseInt(match[3]);
+                        stackTrace.columnNumber = parseInt(match[4]);
+                        break; // Get the first meaningful stack frame
+                    }
+                }
+            }
+        }
+        return stackTrace;
+    }
+    // Capture error context with stack trace
+    captureError(error, context) {
+        if (!this.config.enableStackTraces) {
+            return this.generateTraceId();
+        }
+        const traceId = this.generateTraceId();
+        const stackTrace = this.extractStackTrace(error);
+        const errorContext = {
+            error,
+            stackTrace,
+            context,
+            timestamp: Date.now()
+        };
+        this.errorRegistry.set(traceId, errorContext);
+        console.log(`🔍 Error captured with trace ID: ${traceId}`);
+        console.log(`  📍 File: ${stackTrace.fileName}:${stackTrace.lineNumber}`);
+        console.log(`  🔧 Function: ${stackTrace.functionName}`);
+        console.log(`  💬 Message: ${stackTrace.message}`);
+        return traceId;
+    }
+    // Get error context by trace ID
+    getErrorContext(traceId) {
+        return this.errorRegistry.get(traceId);
+    }
+    // Start a new span with enhanced error handling
+    startSpan(name, options) {
+        // Create a simple span object for now
+        const spanId = this.generateSpanId();
+        const traceId = this.generateTraceId();
+        // Create a proper span object with its own state
+        const span = {
+            name,
+            traceId,
+            spanId,
+            attributes: {},
+            status: { code: SpanStatusCode.OK, message: '' },
+            setAttributes: (attributes) => {
+                // Store attributes on the span object
+                Object.assign(span.attributes, attributes);
+            },
+            setStatus: (status) => {
+                // Store status on the span object
+                span.status = status;
+            },
+            recordException: (error, attributes) => {
+                // Capture error with stack trace
+                const errorTraceId = this.captureError(error, attributes);
+                // Set error attributes on the span
+                span.setAttributes({
+                    'error': true,
+                    'error.message': error.message,
+                    'error.type': error.name,
+                    'error.stack_trace_id': errorTraceId,
+                    'error.timestamp': new Date().toISOString()
+                });
+                // Also set any additional attributes passed in
+                if (attributes) {
+                    span.setAttributes(attributes);
+                }
+                // Set span status to error
+                span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+                console.log(`🚨 Exception recorded in span: ${name} (${traceId}:${spanId})`);
+                console.log(`  🔍 Error trace ID: ${errorTraceId}`);
+            },
+            end: () => {
+                // End the span
+                console.log(`🔍 Span ended: ${name} (${traceId}:${spanId})`);
+                console.log(`  📊 Final attributes:`, span.attributes);
+                console.log(`  📊 Final status:`, span.status);
+            },
+            spanContext: () => ({
+                traceId,
+                spanId,
+                traceFlags: 1,
+                isRemote: false
+            })
+        };
+        return span;
+    }
+    // Get current trace context
+    getCurrentTraceContext() {
+        // For now, return a generated context
+        return {
+            traceId: this.generateTraceId(),
+            spanId: this.generateSpanId(),
+            traceFlags: 1,
+            isRemote: false,
+        };
+    }
+    // Create a trace context for HTTP requests
+    createTraceContext() {
+        const traceId = this.generateTraceId();
+        const spanId = this.generateSpanId();
+        return {
+            traceId,
+            spanId,
+            headers: {
+                'X-Trace-ID': traceId,
+                'X-Span-ID': spanId,
+                'traceparent': `00-${traceId}-${spanId}-01`,
+            }
+        };
+    }
+    // Extract trace context from HTTP headers
+    extractTraceContext(headers) {
+        const traceId = headers['x-trace-id'] || headers['X-Trace-ID'];
+        const spanId = headers['x-span-id'] || headers['X-Span-ID'];
+        const traceparent = headers['traceparent'];
+        if (traceId && spanId) {
+            return { traceId, spanId };
+        }
+        if (traceparent) {
+            // Parse W3C traceparent header: 00-<trace-id>-<span-id>-<trace-flags>
+            const parts = traceparent.split('-');
+            if (parts.length === 4) {
+                return { traceId: parts[1], spanId: parts[2] };
+            }
+        }
+        return null;
+    }
+    // Get error statistics
+    getErrorStats() {
+        if (!this.config.enableStackTraces) {
+            return { enabled: false };
+        }
+        const errors = Array.from(this.errorRegistry.values());
+        const errorTypes = new Map();
+        const fileErrors = new Map();
+        errors.forEach(errorContext => {
+            // Count error types
+            const errorType = errorContext.error.name;
+            errorTypes.set(errorType, (errorTypes.get(errorType) || 0) + 1);
+            // Count errors by file
+            if (errorContext.stackTrace.fileName) {
+                fileErrors.set(errorContext.stackTrace.fileName, (fileErrors.get(errorContext.stackTrace.fileName) || 0) + 1);
+            }
+        });
+        return {
+            enabled: true,
+            totalErrors: errors.length,
+            errorTypes: Object.fromEntries(errorTypes),
+            fileErrors: Object.fromEntries(fileErrors),
+            recentErrors: errors
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, 5)
+                .map(ec => ({
+                message: ec.error.message,
+                type: ec.error.name,
+                file: ec.stackTrace.fileName,
+                line: ec.stackTrace.lineNumber,
+                timestamp: new Date(ec.timestamp).toISOString()
+            }))
+        };
+    }
+    // Clear error registry (useful for testing or cleanup)
+    clearErrorRegistry() {
+        this.errorRegistry.clear();
+        console.log('🧹 Error registry cleared');
+    }
+    getInitializationStatus() {
+        return this.isInitialized;
+    }
+    getConfig() {
+        return { ...this.config };
+    }
+}
+// Create and export a singleton instance
+const openTelemetryManager = new OpenTelemetryManager({
+    serviceName: 'tome-connector-editor',
+    serviceVersion: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    endpoint: process.env.OTEL_ENDPOINT || 'http://localhost:4318',
+    enableMetrics: true,
+    enableLogs: true,
+    enableStackTraces: true,
+    maxStackTraceDepth: 10,
+});
+// Initialize OpenTelemetry when this module is imported
+if (process.env.NODE_ENV !== 'test') {
+    openTelemetryManager.initialize().catch(console.error);
+}
+
 // Editor-specific configuration
 const EDITOR_CONFIG = {
     port: process.env.EDITOR_PORT || 3003,
@@ -328,6 +616,26 @@ const robotCopy = new RobotCopy({
 });
 // Create Express app
 const app = express();
+// OpenTelemetry middleware for trace context propagation
+app.use((req, res, next) => {
+    // Extract trace context from incoming request
+    const traceContext = openTelemetryManager.extractTraceContext(req.headers);
+    if (traceContext) {
+        // If trace context exists, use it
+        req.traceId = traceContext.traceId;
+        req.spanId = traceContext.spanId;
+    }
+    else {
+        // Generate new trace context for this request
+        const newContext = openTelemetryManager.createTraceContext();
+        req.traceId = newContext.traceId;
+        req.spanId = newContext.spanId;
+    }
+    // Add trace headers to response
+    res.set('X-Trace-ID', req.traceId);
+    res.set('X-Span-ID', req.spanId);
+    next();
+});
 // Security middleware
 {
     app.use(helmet({
@@ -411,10 +719,18 @@ app.get('/api/pact/backend', async (req, res) => {
 });
 // Tracing endpoints
 app.get('/api/tracing/status', (req, res) => {
+    const currentContext = openTelemetryManager.getCurrentTraceContext();
     res.json({
         tracing: {
-            enabled: robotCopy['config'].enableTracing,
-            datadog: robotCopy['config'].enableDataDog
+            enabled: openTelemetryManager.getInitializationStatus(),
+            opentelemetry: true,
+            currentTrace: currentContext,
+            service: {
+                name: 'tome-connector-editor',
+                version: '1.0.0',
+                environment: process.env.NODE_ENV || 'development'
+            },
+            endpoint: process.env.OTEL_ENDPOINT || 'http://localhost:4318'
         }
     });
 });
@@ -424,11 +740,30 @@ app.post('/api/tracing/message', async (req, res) => {
         if (!action) {
             return res.status(400).json({ error: 'action parameter is required' });
         }
-        const result = await robotCopy.sendMessage(action, data);
-        res.json({ success: true, result });
+        // Start a span for this message
+        const span = openTelemetryManager.startSpan(`tracing.message.${action}`);
+        try {
+            const result = await robotCopy.sendMessage(action, data);
+            // Add attributes to span
+            span.setAttributes({
+                'action': action,
+                'success': true,
+                'traceId': req.traceId,
+                'spanId': req.spanId
+            });
+            span.setStatus({ code: SpanStatusCode.OK });
+            res.json({ success: true, result, traceId: req.traceId, spanId: req.spanId });
+        }
+        catch (error) {
+            span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+            throw error;
+        }
+        finally {
+            span.end();
+        }
     }
     catch (error) {
-        res.status(500).json({ error: 'Failed to send message' });
+        res.status(500).json({ error: 'Failed to send message', traceId: req.traceId, spanId: req.spanId });
     }
 });
 app.get('/api/tracing/message/:messageId', (req, res) => {
@@ -436,14 +771,26 @@ app.get('/api/tracing/message/:messageId', (req, res) => {
         const { messageId } = req.params;
         const message = robotCopy.getMessage(messageId);
         if (message) {
-            res.json({ message });
+            res.json({
+                message,
+                traceId: req.traceId,
+                spanId: req.spanId
+            });
         }
         else {
-            res.status(404).json({ error: 'Message not found' });
+            res.status(404).json({
+                error: 'Message not found',
+                traceId: req.traceId,
+                spanId: req.spanId
+            });
         }
     }
     catch (error) {
-        res.status(500).json({ error: 'Failed to retrieve message' });
+        res.status(500).json({
+            error: 'Failed to retrieve message',
+            traceId: req.traceId,
+            spanId: req.spanId
+        });
     }
 });
 app.get('/api/tracing/trace/:traceId', (req, res) => {
@@ -455,23 +802,43 @@ app.get('/api/tracing/trace/:traceId', (req, res) => {
             traceId,
             messageCount: messages.length,
             messages,
-            fullTrace
+            fullTrace,
+            currentTrace: {
+                traceId: req.traceId,
+                spanId: req.spanId
+            }
         });
     }
     catch (error) {
-        res.status(500).json({ error: 'Failed to retrieve trace' });
+        res.status(500).json({
+            error: 'Failed to retrieve trace',
+            traceId: req.traceId,
+            spanId: req.spanId
+        });
     }
 });
-// Generate new IDs
+// Generate new IDs using OpenTelemetry
 app.get('/api/tracing/generate', (req, res) => {
     try {
         const messageId = robotCopy.generateMessageId();
-        const traceId = robotCopy.generateTraceId();
-        const spanId = robotCopy.generateSpanId();
-        res.json({ messageId, traceId, spanId });
+        const traceId = openTelemetryManager.generateTraceId();
+        const spanId = openTelemetryManager.generateSpanId();
+        res.json({
+            messageId,
+            traceId,
+            spanId,
+            currentTrace: {
+                traceId: req.traceId,
+                spanId: req.spanId
+            }
+        });
     }
     catch (error) {
-        res.status(500).json({ error: 'Failed to generate IDs' });
+        res.status(500).json({
+            error: 'Failed to generate IDs',
+            traceId: req.traceId,
+            spanId: req.spanId
+        });
     }
 });
 // Main studio interface
@@ -537,7 +904,7 @@ app.get('/', (req, res) => {
 // Wave Reader Editor Interface
 app.get('/wave-reader', (req, res) => {
     const workingDir = process.env.WORKING_DIRECTORY || 'Current Directory';
-    res.send(`
+    const template = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -710,17 +1077,17 @@ app.get('/wave-reader', (req, res) => {
                         <div class="editor-panel">
                             <h4>📁 File Structure</h4>
                             <div class="file-tree" id="fileTree">
-                                <div class="file-item active" data-file="component.tsx">component.tsx</div>
-                                <div class="file-item" data-file="index.ts">index.ts</div>
-                                <div class="file-item" data-file="types.ts">types.ts</div>
-                                <div class="file-item" data-file="utils.ts">utils.ts</div>
+                                <div class="file-item active" data-file="component.html">component.html</div>
+                                <div class="file-item" data-file="index.html">index.html</div>
+                                <div class="file-item" data-file="types.html">types.html</div>
+                                <div class="file-item" data-file="utils.html">utils.html</div>
                             </div>
                         </div>
                         <div class="editor-panel">
                             <h4>💻 Code Editor</h4>
                             <div class="code-editor" id="codeEditor" contenteditable="true">
-// Component code will be loaded here
-// Click on a file in the file tree to view its contents
+<!-- HTML Component code will be loaded here -->
+<!-- Click on a file in the file tree to view its contents -->
                             </div>
                         </div>
                     </div>
@@ -745,626 +1112,120 @@ app.get('/wave-reader', (req, res) => {
                     name: 'Error Boundary',
                     description: 'Error handling and boundary management for components',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback?: React.ComponentType<{ error: Error }>;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-}
-
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      const FallbackComponent = this.props.fallback;
-      if (FallbackComponent) {
-        return <FallbackComponent error={this.state.error!} />;
-      }
-      return (
-        <div className="error-boundary">
-          <h2>Something went wrong</h2>
-          <p>Please try refreshing the page</p>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}\`,
-                        'index.ts': \`export { ErrorBoundary } from './component';\`,
-                        'types.ts': \`export interface ErrorInfo {
-  componentStack: string;
-}\`,
-                        'utils.ts': \`export const logError = (error: Error, errorInfo: any) => {
-  console.error('Error logged:', error, errorInfo);
-};\`
+                        'component.tsx': '// Error Boundary Component - React component for error handling',
+                        'index.ts': 'export { ErrorBoundary } from "./component";',
+                        'types.ts': 'export interface ErrorInfo { componentStack: string; }',
+                        'utils.ts': 'export const logError = (error, errorInfo) => console.error("Error logged:", error, errorInfo);'
                     }
                 },
                 'go-button': {
                     name: 'Go Button',
                     description: 'Navigation and action button components',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface GoButtonProps {
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'success';
-}
-
-export const GoButton: React.FC<GoButtonProps> = ({
-  onClick,
-  disabled = false,
-  children,
-  variant = 'primary'
-}) => {
-  const baseClasses = 'px-4 py-2 rounded font-medium transition-colors';
-  const variantClasses = {
-    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
-    secondary: 'bg-gray-500 hover:bg-gray-600 text-white',
-    success: 'bg-green-500 hover:bg-green-600 text-white'
-  };
-
-  return (
-    <button
-      className={\`\${baseClasses} \${variantClasses[variant]}\`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};\`,
-                        'index.ts': \`export { GoButton } from './component';\`,
-                        'types.ts': \`export type ButtonVariant = 'primary' | 'secondary' | 'success';\`,
-                        'utils.ts': \`export const getButtonClasses = (variant: ButtonVariant) => {
-  // Button styling utilities
-};\`
+                        'component.html': '<!DOCTYPE html><html><head><title>Go Button</title></head><body><button class="go-button">Go</button></body></html>',
+                        'component.css': '.go-button { padding: 0.5rem 1rem; border-radius: 0.25rem; }',
+                        'component.js': 'function handleClick() { console.log("Button clicked"); }'
                     }
                 },
                 'selector-hierarchy': {
                     name: 'Selector Hierarchy',
                     description: 'Component selection and hierarchy management',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface SelectorNode {
-  id: string;
-  name: string;
-  children?: SelectorNode[];
-  selected?: boolean;
-}
-
-interface SelectorHierarchyProps {
-  nodes: SelectorNode[];
-  onSelectionChange: (selectedIds: string[]) => void;
-}
-
-export const SelectorHierarchy: React.FC<SelectorHierarchyProps> = ({
-  nodes,
-  onSelectionChange
-}) => {
-  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-
-  const handleToggle = (nodeId: string) => {
-    const newSelection = selectedIds.includes(nodeId)
-      ? selectedIds.filter(id => id !== nodeId)
-      : [...selectedIds, nodeId];
-    
-    setSelectedIds(newSelection);
-    onSelectionChange(newSelection);
-  };
-
-  const renderNode = (node: SelectorNode) => (
-    <div key={node.id} className="selector-node">
-      <label>
-        <input
-          type="checkbox"
-          checked={selectedIds.includes(node.id)}
-          onChange={() => handleToggle(node.id)}
-        />
-        {node.name}
-      </label>
-      {node.children && (
-        <div className="selector-children">
-          {node.children.map(renderNode)}
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="selector-hierarchy">
-      {nodes.map(renderNode)}
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { SelectorHierarchy } from './component';\`,
-                        'types.ts': \`export interface SelectorNode {
-  id: string;
-  name: string;
-  children?: SelectorNode[];
-  selected?: boolean;
-}\`,
-                        'utils.ts': \`export const flattenNodes = (nodes: SelectorNode[]): SelectorNode[] => {
-  const result: SelectorNode[] = [];
-  const stack = [...nodes];
-  
-  while (stack.length > 0) {
-    const node = stack.pop()!;
-    result.push(node);
-    if (node.children) {
-      stack.push(...node.children);
-    }
-  }
-  
-  return result;
-};\`
+                        'component.html': '<!DOCTYPE html><html><head><title>Selector</title></head><body><div class="selector">Selector Component</div></body></html>',
+                        'component.css': '.selector { font-family: Arial, sans-serif; }',
+                        'component.js': 'function initSelector() { console.log("Selector initialized"); }'
                     }
                 },
                 'settings': {
                     name: 'Settings',
                     description: 'Configuration and settings management',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface Setting {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'boolean' | 'select';
-  value: any;
-  options?: string[];
-}
-
-interface SettingsProps {
-  settings: Setting[];
-  onSettingChange: (key: string, value: any) => void;
-}
-
-export const Settings: React.FC<SettingsProps> = ({
-  settings,
-  onSettingChange
-}) => {
-  const renderSettingInput = (setting: Setting) => {
-    switch (setting.type) {
-      case 'text':
-        return (
-          <input
-            type="text"
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-          />
-        );
-      case 'number':
-        return (
-          <input
-            type="number"
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, Number(e.target.value))}
-            className="w-full px-3 py-2 border rounded"
-          />
-        );
-      case 'boolean':
-        return (
-          <input
-            type="checkbox"
-            checked={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.checked)}
-            className="w-4 h-4"
-          />
-        );
-      case 'select':
-        return (
-          <select
-            value={setting.value}
-            onChange={(e) => onSettingChange(setting.key, e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-          >
-            {setting.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="settings">
-      <h3>Settings</h3>
-      {settings.map(setting => (
-        <div key={setting.key} className="setting-item">
-          <label>{setting.label}</label>
-          {renderSettingInput(setting)}
-        </div>
-      ))}
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { Settings } from './component';\`,
-                        'types.ts': \`export interface Setting {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'boolean' | 'select';
-  value: any;
-  options?: string[];
-}\`,
-                        'utils.ts': \`export const validateSetting = (setting: Setting, value: any): boolean => {
-  // Validation logic for different setting types
-  return true;
-};\`
+                        'component.tsx': '// Settings Component - Configuration management',
+                        'index.ts': 'export { Settings } from "./component";',
+                        'types.ts': 'export interface Setting { key: string; value: any; }',
+                        'utils.ts': 'export const validateSetting = (setting, value) => true;'
                     }
                 },
                 'wave-tabs': {
                     name: 'Wave Tabs',
                     description: 'Tab-based navigation and content management',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface Tab {
-  id: string;
-  label: string;
-  content: React.ReactNode;
-  disabled?: boolean;
-}
-
-interface WaveTabsProps {
-  tabs: Tab[];
-  activeTab?: string;
-  onTabChange: (tabId: string) => void;
-}
-
-export const WaveTabs: React.FC<WaveTabsProps> = ({
-  tabs,
-  activeTab,
-  onTabChange
-}) => {
-  const [currentTab, setCurrentTab] = React.useState(activeTab || tabs[0]?.id);
-
-  const handleTabClick = (tabId: string) => {
-    if (!tabs.find(tab => tab.id === tabId)?.disabled) {
-      setCurrentTab(tabId);
-      onTabChange(tabId);
-    }
-  };
-
-  const activeTabData = tabs.find(tab => tab.id === currentTab);
-
-  return (
-    <div className="wave-tabs">
-      <div className="tab-navigation">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={\`tab-button \${currentTab === tab.id ? 'active' : ''} \${tab.disabled ? 'disabled' : ''}\`}
-            onClick={() => handleTabClick(tab.id)}
-            disabled={tab.disabled}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div className="tab-content">
-        {activeTabData?.content}
-      </div>
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { WaveTabs } from './component';\`,
-                        'types.ts': \`export interface Tab {
-  id: string;
-  label: string;
-  content: React.ReactNode;
-  disabled?: boolean;
-}\`,
-                        'utils.ts': \`export const createTab = (id: string, label: string, content: React.ReactNode): Tab => ({
-  id,
-  label,
-  content,
-  disabled: false
-});\`
+                        'component.tsx': '// Wave Tabs Component - Tab navigation',
+                        'index.ts': 'export { WaveTabs } from "./component";',
+                        'types.ts': 'export interface Tab { id: string; label: string; }',
+                        'utils.ts': 'export const createTab = (id, label) => ({ id, label });'
                     }
                 },
                 'scan-for-input': {
                     name: 'Scan for Input',
                     description: 'Input detection and scanning functionality',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface ScanResult {
-  id: string;
-  type: 'input' | 'button' | 'link' | 'select';
-  value?: string;
-  placeholder?: string;
-}
-
-interface ScanForInputProps {
-  onScanComplete: (results: ScanResult[]) => void;
-  autoScan?: boolean;
-}
-
-export const ScanForInput: React.FC<ScanForInputProps> = ({
-  onScanComplete,
-  autoScan = false
-}) => {
-  const [isScanning, setIsScanning] = React.useState(false);
-  const [scanResults, setScanResults] = React.useState<ScanResult[]>([]);
-
-  const performScan = () => {
-    setIsScanning(true);
-    
-    // Simulate scanning process
-    setTimeout(() => {
-      const mockResults: ScanResult[] = [
-        { id: 'input-1', type: 'input', placeholder: 'Enter text...' },
-        { id: 'button-1', type: 'button', value: 'Submit' },
-        { id: 'link-1', type: 'link', value: 'Click here' }
-      ];
-      
-      setScanResults(mockResults);
-      setIsScanning(false);
-      onScanComplete(mockResults);
-    }, 1000);
-  };
-
-  React.useEffect(() => {
-    if (autoScan) {
-      performScan();
-    }
-  }, [autoScan]);
-
-  return (
-    <div className="scan-for-input">
-      <button
-        onClick={performScan}
-        disabled={isScanning}
-        className="scan-button"
-      >
-        {isScanning ? 'Scanning...' : 'Scan for Inputs'}
-      </button>
-      
-      {scanResults.length > 0 && (
-        <div className="scan-results">
-          <h4>Scan Results:</h4>
-          <ul>
-            {scanResults.map(result => (
-              <li key={result.id}>
-                <strong>{result.type}:</strong> {result.value || result.placeholder}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { ScanForInput } from './component';\`,
-                        'types.ts': \`export interface ScanResult {
-  id: string;
-  type: 'input' | 'button' | 'link' | 'select';
-  value?: string;
-  placeholder?: string;
-}\`,
-                        'utils.ts': \`export const validateInput = (input: HTMLInputElement): boolean => {
-  return input.offsetWidth > 0 && input.offsetHeight > 0;
-};\`
+                        'component.tsx': '// Scan for Input Component - Input detection',
+                        'index.ts': 'export { ScanForInput } from "./component";',
+                        'types.ts': 'export interface ScanResult { id: string; type: string; }',
+                        'utils.ts': 'export const validateInput = (input) => input.offsetWidth > 0;'
                     }
                 },
                 'selector-input': {
                     name: 'Selector Input',
                     description: 'Input selection and management tools',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface SelectorInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  suggestions?: string[];
-}
-
-export const SelectorInput: React.FC<SelectorInputProps> = ({
-  value,
-  onChange,
-  placeholder = 'Enter selector...',
-  suggestions = []
-}) => {
-  const [showSuggestions, setShowSuggestions] = React.useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = React.useState(suggestions);
-
-  const handleInputChange = (inputValue: string) => {
-    onChange(inputValue);
-    
-    if (inputValue.length > 0) {
-      const filtered = suggestions.filter(suggestion =>
-        suggestion.toLowerCase().includes(inputValue.toLowerCase())
-      );
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(filtered.length > 0);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion);
-    setShowSuggestions(false);
-  };
-
-  return (
-    <div className="selector-input">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => handleInputChange(e.target.value)}
-        placeholder={placeholder}
-        className="selector-field"
-        onFocus={() => setShowSuggestions(suggestions.length > 0)}
-      />
-      
-      {showSuggestions && (
-        <div className="suggestions-dropdown">
-          {filteredSuggestions.map(suggestion => (
-            <div
-              key={suggestion}
-              className="suggestion-item"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { SelectorInput } from './component';\`,
-                        'types.ts': \`export interface SelectorSuggestion {
-  value: string;
-  label: string;
-  category?: string;
-}\`,
-                        'utils.ts': \`export const parseSelector = (selector: string) => {
-  // Parse CSS selector into components
-  return {
-    tag: selector.match(/^[a-zA-Z]+/)?.[0],
-    id: selector.match(/#([a-zA-Z0-9_-]+)/)?.[1],
-    classes: selector.match(/\\.([a-zA-Z0-9_-]+)/g)?.map(c => c.slice(1)) || []
-  };
-};\`
+                        'component.tsx': '// Selector Input Component - Input selection',
+                        'index.ts': 'export { SelectorInput } from "./component";',
+                        'types.ts': 'export interface SelectorSuggestion { value: string; label: string; }',
+                        'utils.ts': 'export const parseSelector = (selector) => ({ tag: "div", id: null, classes: [] });'
                     }
                 },
                 'wave-reader': {
                     name: 'Wave Reader',
                     description: 'Core Wave Reader functionality and components',
                     files: {
-                        'component.tsx': \`import React from 'react';
-
-interface WaveReaderProps {
-  text: string;
-  speed?: number;
-  onComplete?: () => void;
-}
-
-export const WaveReader: React.FC<WaveReaderProps> = ({
-  text,
-  speed = 200,
-  onComplete
-}) => {
-  const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [isReading, setIsReading] = React.useState(false);
-
-  const startReading = () => {
-    setIsReading(true);
-    setCurrentIndex(0);
-  };
-
-  const stopReading = () => {
-    setIsReading(false);
-  };
-
-  React.useEffect(() => {
-    if (isReading && currentIndex < text.length) {
-      const timer = setTimeout(() => {
-        setCurrentIndex(prev => {
-          const next = prev + 1;
-          if (next >= text.length) {
-            setIsReading(false);
-            onComplete?.();
-          }
-          return next;
-        });
-      }, speed);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isReading, currentIndex, text.length, speed, onComplete]);
-
-  const currentText = text.slice(0, currentIndex + 1);
-  const remainingText = text.slice(currentIndex + 1);
-
-  return (
-    <div className="wave-reader">
-      <div className="controls">
-        <button onClick={startReading} disabled={isReading}>
-          {isReading ? 'Reading...' : 'Start Reading'}
-        </button>
-        <button onClick={stopReading} disabled={!isReading}>
-          Stop
-        </button>
-      </div>
-      
-      <div className="text-display">
-        <span className="read-text">{currentText}</span>
-        <span className="remaining-text">{remainingText}</span>
-      </div>
-      
-      <div className="progress">
-        <div 
-          className="progress-bar" 
-          style={{ width: \`\${((currentIndex + 1) / text.length) * 100}%\` }}
-        />
-      </div>
-    </div>
-  );
-};\`,
-                        'index.ts': \`export { WaveReader } from './component';\`,
-                        'types.ts': \`export interface ReadingConfig {
-  speed: number;
-  autoStart: boolean;
-  highlightWords: boolean;
-}\`,
-                        'utils.ts': \`export const calculateReadingTime = (text: string, speed: number): number => {
-  const words = text.split(' ').length;
-  const wordsPerMinute = 60000 / speed;
-  return Math.ceil(words / wordsPerMinute);
-};\`
+                        'component.tsx': '// Wave Reader Component - Core functionality',
+                        'index.ts': 'export { WaveReader } from "./component";',
+                        'types.ts': 'export interface ReadingConfig { speed: number; autoStart: boolean; }',
+                        'utils.ts': 'export const calculateReadingTime = (text, speed) => Math.ceil(text.split(" ").length / (60000 / speed));'
                     }
                 }
             };
 
             // State variables
             let currentComponent = null;
-            let currentFile = 'component.tsx';
+            let currentFile = 'component.html';
 
             // Event handlers
             function openComponent(componentId) {
+                console.log('🎯 Opening component:', componentId);
                 currentComponent = componentId;
                 const component = componentData[componentId];
                 
                 if (component) {
+                    console.log('📁 Component found:', component);
+                    
                     // Update UI
-                    document.getElementById('editorTitle').textContent = \`\${component.name} Editor\`;
-                    document.getElementById('componentEditor').classList.add('active');
+                    const editorTitle = document.getElementById('editorTitle');
+                    const componentEditor = document.getElementById('componentEditor');
                     
-                    // Load first file
-                    loadFile('component.tsx');
-                    
-                    // Update component cards
-                    document.querySelectorAll('.component-card').forEach(card => {
-                        card.classList.remove('clicked');
-                    });
-                    document.querySelector(\`[data-component="\${componentId}"]\`).classList.add('clicked');
+                    if (editorTitle && componentEditor) {
+                        editorTitle.textContent = \`\${component.name} Editor\`;
+                        componentEditor.classList.add('active');
+                        console.log('✅ Editor UI updated');
+                        
+                        // Load first file
+                        loadFile('component.tsx');
+                        
+                        // Update component cards
+                        document.querySelectorAll('.component-card').forEach(card => {
+                            card.classList.remove('clicked');
+                        });
+                        const clickedCard = document.querySelector(\`[data-component="\${componentId}"]\`);
+                        if (clickedCard) {
+                            clickedCard.classList.add('clicked');
+                        }
+                    } else {
+                        console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
+                    }
+                } else {
+                    console.error('❌ Component not found:', componentId);
                 }
             }
 
@@ -1384,7 +1245,15 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
                 const fileContent = component.files[filename];
                 
                 if (fileContent) {
-                    document.getElementById('codeEditor').textContent = fileContent;
+                    // For HTML files, we'll display them in a preview format
+                    if (filename.endsWith('.html')) {
+                        // Create a preview container
+                        const codeEditor = document.getElementById('codeEditor');
+                        codeEditor.innerHTML = '<div style="padding: 20px; background: #f8f9fa; border-radius: 8px;"><h3>HTML Preview</h3><p>This is an HTML component file. You can view it in a browser or edit the HTML content.</p><div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto;">' + fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                    } else {
+                        // For other file types, display as text
+                        document.getElementById('codeEditor').textContent = fileContent;
+                    }
                     
                     // Update file tree
                     document.querySelectorAll('.file-item').forEach(item => {
@@ -1395,8 +1264,16 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
             }
 
             function viewFiles(componentId) {
-                // This could open a file explorer or show file structure
-                alert(\`Viewing files for \${componentData[componentId].name}\`);
+                console.log('📂 Viewing files for component:', componentId);
+                const component = componentData[componentId];
+                
+                if (component) {
+                    const fileList = Object.keys(component.files).join(', ');
+                    const message = \`📁 Files for \${component.name}:\n\n\${fileList}\n\nClick "Open Editor" to view and edit these files.\`;
+                    alert(message);
+                } else {
+                    alert('❌ Component not found: ' + componentId);
+                }
             }
 
             // Initialize event listeners when DOM is loaded
@@ -1430,7 +1307,13 @@ export const WaveReader: React.FC<WaveReaderProps> = ({
         </script>
     </body>
     </html>
-  `);
+  `;
+    // Process the template to remove JSX and handle variables
+    // Temporarily disable template processing to debug the structure
+    // const processedTemplate = TemplateProcessor.renderComponentTemplate(template, 'Wave Reader');
+    // res.send(processedTemplate);
+    // Send the raw template for now to debug the structure
+    res.send(template);
 });
 // Error handling middleware
 app.use((error, req, res, next) => {

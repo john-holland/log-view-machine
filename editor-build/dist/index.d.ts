@@ -1,0 +1,14 @@
+export { ViewStateMachine, createViewStateMachine, createProxyRobotCopyStateMachine, type ViewStateMachineConfig, type StateContext, type StateHandler } from './core/ViewStateMachine';
+export { Tracing, createTracing, type MessageMetadata, type TraceInfo } from './core/Tracing';
+export { TomeConnector, createTomeConnector, type TomeConnection, type TomeConnectionConfig } from './core/TomeConnector';
+export { RobotCopy, createRobotCopy, type RobotCopyConfig } from './core/RobotCopy';
+export { ClientGenerator, createClientGenerator, type ClientGeneratorConfig, type ClientGeneratorExample, type ClientGeneratorDiscovery } from './core/ClientGenerator';
+export { TomeManager } from './core/TomeManager';
+export { createTomeConfig, FishBurgerTomeConfig, EditorTomeConfig } from './core/TomeConfig';
+export type { TomeConfig, TomeInstance } from './core/TomeConfig';
+export { StructuralSystem, createStructuralSystem, useStructuralSystem, type AppStructureConfig, type AppStructureNode, type ComponentTomeMapping, type RouteConfig, type NavigationItem, type RoutingConfig, type TomeDefinition } from './core/StructuralSystem';
+export { StructuralRouter, Route, RouteFallback, useRouter, type RouterContextType } from './core/StructuralRouter';
+export { StructuralTomeConnector, useStructuralTomeConnector, type TomeConnectorContext } from './core/StructuralTomeConnector';
+export { DefaultStructuralConfig, createStructuralConfig } from './core/DefaultStructuralConfig';
+export { OpenTelemetryManager, openTelemetryManager, type OpenTelemetryConfig, type StackTraceInfo, type ErrorContext } from './opentelemetry-setup';
+export { StackTraceExample, createStackTraceExample } from './examples/StackTraceExample';

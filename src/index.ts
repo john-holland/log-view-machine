@@ -91,4 +91,19 @@ export {
 export {
   DefaultStructuralConfig,
   createStructuralConfig
-} from './core/DefaultStructuralConfig'; 
+} from './core/DefaultStructuralConfig';
+
+// OpenTelemetry exports
+export {
+  OpenTelemetryManager,
+  openTelemetryManager,
+  type OpenTelemetryConfig,
+  type StackTraceInfo,
+  type ErrorContext
+} from './opentelemetry-setup';
+
+// Example exports
+export {
+  StackTraceExample,
+  createStackTraceExample
+} from './examples/StackTraceExample'; 
