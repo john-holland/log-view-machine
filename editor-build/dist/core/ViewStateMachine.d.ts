@@ -54,6 +54,7 @@ export declare class ViewStateMachine<TModel = any> {
     withServerState(stateName: string, handler: (context: ServerStateContext<TModel>) => void): ViewStateMachine<TModel>;
     withSubMachine(machineId: string, config: ViewStateMachineConfig<any>): ViewStateMachine<TModel>;
     getSubMachine(machineId: string): ViewStateMachine<any> | undefined;
+    subscribe(callback: (state: any) => void): () => void;
     private createStateContext;
     useViewStateMachine(initialModel: TModel): {
         state: any;
@@ -71,7 +72,7 @@ export declare class ViewStateMachine<TModel = any> {
     };
     on(eventType: string, handler: (event: any) => void): void;
     send(event: any): void;
-    start(): void;
+    start(): Promise<void>;
     getState(): any;
     executeServerState(stateName: string, model: TModel): Promise<string>;
     private createServerStateContext;

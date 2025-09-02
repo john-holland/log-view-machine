@@ -1077,10 +1077,7 @@ app.get('/wave-reader', (req, res) => {
                         <div class="editor-panel">
                             <h4>📁 File Structure</h4>
                             <div class="file-tree" id="fileTree">
-                                <div class="file-item active" data-file="component.html">component.html</div>
-                                <div class="file-item" data-file="index.html">index.html</div>
-                                <div class="file-item" data-file="types.html">types.html</div>
-                                <div class="file-item" data-file="utils.html">utils.html</div>
+                                <!-- File items will be dynamically populated -->
                             </div>
                         </div>
                         <div class="editor-panel">
@@ -1207,11 +1204,46 @@ app.get('/wave-reader', (req, res) => {
                     
                     if (editorTitle && componentEditor) {
                         editorTitle.textContent = \`\${component.name} Editor\`;
-                        componentEditor.classList.add('active');
-                        console.log('✅ Editor UI updated');
+                        console.log('📝 Editor title updated to:', component.name);
                         
-                        // Load first file
-                        loadFile('component.tsx');
+                        componentEditor.classList.add('active');
+                        console.log('✅ Editor UI updated - active class added');
+                        
+                        // Debug: Check if the class was actually added
+                        console.log('🔍 Editor classes after update:', componentEditor.className);
+                        console.log('🔍 Editor display style:', window.getComputedStyle(componentEditor).display);
+                        
+                        // Populate file tree with actual component files
+                        const fileTree = document.getElementById('fileTree');
+                        if (fileTree) {
+                            fileTree.innerHTML = '';
+                            const availableFiles = Object.keys(component.files);
+                            
+                            availableFiles.forEach((filename, index) => {
+                                const fileItem = document.createElement('div');
+                                fileItem.className = 'file-item';
+                                fileItem.setAttribute('data-file', filename);
+                                fileItem.textContent = filename;
+                                
+                                // Make first file active by default
+                                if (index === 0) {
+                                    fileItem.classList.add('active');
+                                }
+                                
+                                // Add click handler
+                                fileItem.addEventListener('click', function() {
+                                    const clickedFilename = this.getAttribute('data-file');
+                                    loadFile(clickedFilename);
+                                });
+                                
+                                fileTree.appendChild(fileItem);
+                            });
+                            
+                            // Load first file
+                            if (availableFiles.length > 0) {
+                                loadFile(availableFiles[0]);
+                            }
+                        }
                         
                         // Update component cards
                         document.querySelectorAll('.component-card').forEach(card => {
@@ -1223,6 +1255,10 @@ app.get('/wave-reader', (req, res) => {
                         }
                     } else {
                         console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
+                        console.log('🔍 DOM state check:');
+                        console.log('  - document.getElementById("editorTitle"):', document.getElementById('editorTitle'));
+                        console.log('  - document.getElementById("componentEditor"):', document.getElementById('componentEditor'));
+                        console.log('  - document.readyState:', document.readyState);
                     }
                 } else {
                     console.error('❌ Component not found:', componentId);
@@ -1249,17 +1285,28 @@ app.get('/wave-reader', (req, res) => {
                     if (filename.endsWith('.html')) {
                         // Create a preview container
                         const codeEditor = document.getElementById('codeEditor');
-                        codeEditor.innerHTML = '<div style="padding: 20px; background: #f8f9fa; border-radius: 8px;"><h3>HTML Preview</h3><p>This is an HTML component file. You can view it in a browser or edit the HTML content.</p><div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto;">' + fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                        if (codeEditor) {
+                            codeEditor.innerHTML = '<div style="padding: 20px; background: #f8f9fa; border-radius: 8px;"><h3>HTML Preview</h3><p>This is an HTML component file. You can view it in a browser or edit the HTML content.</p><div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto;">' + fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                        }
                     } else {
                         // For other file types, display as text
-                        document.getElementById('codeEditor').textContent = fileContent;
+                        const codeEditor = document.getElementById('codeEditor');
+                        if (codeEditor) {
+                            codeEditor.textContent = fileContent;
+                        }
                     }
                     
-                    // Update file tree
+                    // Update file tree - safely handle missing elements
                     document.querySelectorAll('.file-item').forEach(item => {
                         item.classList.remove('active');
                     });
-                    document.querySelector(\`[data-file="\${filename}"]\`).classList.add('active');
+                    
+                    const targetFileItem = document.querySelector(\`[data-file="\${filename}"]\`);
+                    if (targetFileItem) {
+                        targetFileItem.classList.add('active');
+                    } else {
+                        console.warn(\`⚠️ File item not found for: \${filename}\`);
+                    }
                 }
             }
 
@@ -1294,13 +1341,7 @@ app.get('/wave-reader', (req, res) => {
                 // Close editor button
                 document.getElementById('closeEditorBtn').addEventListener('click', closeComponent);
 
-                // File tree click handlers
-                document.querySelectorAll('.file-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const filename = this.getAttribute('data-file');
-                        loadFile(filename);
-                    });
-                });
+                // File tree is now populated dynamically in openComponent function
 
                 console.log('🎨 Wave Reader Editor initialized successfully!');
             });
