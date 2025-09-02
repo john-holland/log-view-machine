@@ -654,7 +654,10 @@ app.use((req, res, next) => {
                 baseUri: ["'self'"],
                 formAction: ["'self'"],
                 // Prevent extension manifest injection
-                manifestSrc: ["'none'"]
+                manifestSrc: ["'none'"],
+                // Allow inline styles and scripts for editor functionality
+                styleSrcAttr: ["'unsafe-inline'"],
+                scriptSrcAttr: ["'unsafe-inline'"]
             }
         },
         // Additional security headers
@@ -679,7 +682,9 @@ app.use((req, res, next) => {
         req.path.includes('background.js') ||
         req.path.includes('content.js') ||
         req.path.includes('service-worker') ||
-        req.path.includes('chrome-extension')) {
+        req.path.includes('chrome-extension') ||
+        req.path.includes('shadowContent.js') ||
+        req.path.includes('log-view-machine')) {
         return res.status(404).json({ error: 'Extension resources not available' });
     }
     // Add headers to prevent extension interference
@@ -687,7 +692,10 @@ app.use((req, res, next) => {
         'X-Frame-Options': 'DENY',
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+        // Additional headers to block extension loading
+        'X-Content-Security-Policy': "default-src 'self'; worker-src 'none'; manifest-src 'none';",
+        'X-WebKit-CSP': "default-src 'self'; worker-src 'none'; manifest-src 'none';"
     });
     next();
 });
@@ -883,7 +891,7 @@ app.get('/', (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Tome Connector Studio</title>
         <!-- Extension isolation meta tags -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none';">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none'; style-src-attr 'unsafe-inline'; script-src-attr 'unsafe-inline';">
         <meta name="referrer" content="strict-origin-when-cross-origin">
         <meta name="format-detection" content="telephone=no">
         <meta name="robots" content="noindex, nofollow">
@@ -984,7 +992,7 @@ app.get('/wave-reader', (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Wave Reader Editor - Tome Connector Studio</title>
         <!-- Extension isolation meta tags -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none';">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none'; style-src-attr 'unsafe-inline'; script-src-attr 'unsafe-inline';">
         <meta name="referrer" content="strict-origin-when-cross-origin">
         <meta name="format-detection" content="telephone=no">
         <meta name="robots" content="noindex, nofollow">
