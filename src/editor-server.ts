@@ -90,9 +90,22 @@ if (EDITOR_CONFIG.enableSecurity) {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "ws:", "wss:"]
+        connectSrc: ["'self'", "ws:", "wss:"],
+        // Block extension scripts and service workers
+        workerSrc: ["'none'"],
+        childSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        // Prevent extension manifest injection
+        manifestSrc: ["'none'"]
       }
-    }
+    },
+    // Additional security headers
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   }));
 }
 
@@ -105,6 +118,28 @@ if (EDITOR_CONFIG.enableCors) {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   }));
 }
+
+// Extension isolation middleware
+app.use((req, res, next) => {
+  // Block extension-related requests
+  if (req.path.includes('manifest.json') || 
+      req.path.includes('background.js') || 
+      req.path.includes('content.js') ||
+      req.path.includes('service-worker') ||
+      req.path.includes('chrome-extension')) {
+    return res.status(404).json({ error: 'Extension resources not available' });
+  }
+  
+  // Add headers to prevent extension interference
+  res.set({
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  });
+  
+  next();
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -309,6 +344,11 @@ app.get('/', (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Tome Connector Studio</title>
+        <!-- Extension isolation meta tags -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none';">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="robots" content="noindex, nofollow">
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
             .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
@@ -407,6 +447,11 @@ app.get('/wave-reader', (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Wave Reader Editor - Tome Connector Studio</title>
+        <!-- Extension isolation meta tags -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none';">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="robots" content="noindex, nofollow">
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f8fafc; }
             .header { background: white; padding: 20px; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
