@@ -851,50 +851,85 @@ app.get('/', (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Tome Connector Studio</title>
         <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-            h1 { color: #2563eb; margin-bottom: 20px; }
-            .nav { margin: 30px 0; }
-            .nav a { display: inline-block; margin: 10px 20px 10px 0; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; transition: background 0.2s; }
-            .nav a:hover { background: #1d4ed8; }
-            .endpoint { background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #2563eb; }
-            .endpoint h3 { margin: 0 0 10px 0; color: #1e293b; }
-            .endpoint p { margin: 5px 0; color: #64748b; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+            .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+            .hero { text-align: center; margin-bottom: 60px; }
+            .hero h1 { color: white; margin-bottom: 20px; font-size: 3.5rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+            .hero p { color: rgba(255,255,255,0.9); font-size: 1.3rem; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto; }
+            .hero-button { display: inline-block; padding: 20px 40px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; text-decoration: none; border-radius: 50px; font-size: 1.2rem; font-weight: 600; transition: all 0.3s; box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+            .hero-button:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(0,0,0,0.4); }
+            .main-content { background: white; border-radius: 20px; padding: 50px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .nav { margin: 30px 0; text-align: center; }
+            .nav a { display: inline-block; margin: 10px 15px; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+            .nav a:hover { background: #1d4ed8; transform: translateY(-2px); }
+            .endpoint { background: #f8fafc; padding: 20px; margin: 15px 0; border-radius: 12px; border-left: 4px solid #2563eb; }
+            .endpoint h3 { margin: 0 0 15px 0; color: #1e293b; }
+            .endpoint p { margin: 8px 0; color: #475569; }
+            .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0; }
+            .feature-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px; text-align: center; }
+            .feature-card h3 { margin: 0 0 15px 0; font-size: 1.4rem; }
+            .feature-card p { margin: 0; opacity: 0.9; }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🌊 Tome Connector Studio</h1>
-            <p>A powerful studio for building and managing Tome Connector components, state machines, and integrations.</p>
-            
-            <div class="nav">
-                <a href="/wave-reader">🎨 Wave Reader Editor</a>
-                <a href="/health">📊 Health Check</a>
-                <a href="/api/editor/status">🎛️ Editor Status</a>
+            <!-- Hero Section -->
+            <div class="hero">
+                <h1>🌊 Tome Connector Studio</h1>
+                <p>A powerful studio for building and managing Tome Connector components, state machines, and integrations.</p>
+                <a href="/wave-reader" class="hero-button">🚀 Open Wave Reader Editor</a>
             </div>
             
-            <h2>Available Endpoints</h2>
-            <div class="endpoint">
-                <h3>🎨 Wave Reader Editor</h3>
-                <p><strong>GET /wave-reader</strong> - Main editor interface for Wave Reader components</p>
-            </div>
-            <div class="endpoint">
-                <h3>📊 Health & Status</h3>
-                <p><strong>GET /health</strong> - Server health check</p>
-                <p><strong>GET /api/editor/status</strong> - Editor status and configuration</p>
-            </div>
-            <div class="endpoint">
-                <h3>⚙️ Pact Features</h3>
-                <p><strong>GET /api/pact/features</strong> - Available Pact features</p>
-                <p><strong>GET /api/pact/backend</strong> - Pact backend status</p>
-            </div>
-            <div class="endpoint">
-                <h3>🔍 Tracing & Monitoring</h3>
-                <p><strong>GET /api/tracing/status</strong> - Tracing system status</p>
-                <p><strong>POST /api/tracing/message</strong> - Send tracing message</p>
-                <p><strong>GET /api/tracing/message/:messageId</strong> - Get specific message</p>
-                <p><strong>GET /api/tracing/trace/:traceId</strong> - Get trace details</p>
-                <p><strong>GET /api/tracing/generate</strong> - Generate new IDs</p>
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Feature Grid -->
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🎨 Component Editor</h3>
+                        <p>Full-featured editor for Wave Reader components with live preview and file management</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>⚙️ State Machines</h3>
+                        <p>Visual state machine editor and management for complex component behaviors</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔍 Tracing & Monitoring</h3>
+                        <p>Advanced tracing and monitoring capabilities for debugging and performance analysis</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="nav">
+                    <a href="/wave-reader">🎨 Wave Reader Editor</a>
+                    <a href="/health">📊 Health Check</a>
+                    <a href="/api/editor/status">🎛️ Editor Status</a>
+                    <a href="/api/pact/features">⚙️ Pact Features</a>
+                </div>
+                
+                <!-- Available Endpoints -->
+                <h2>Available Endpoints</h2>
+                <div class="endpoint">
+                    <h3>🎨 Wave Reader Editor</h3>
+                    <p><strong>GET /wave-reader</strong> - Main editor interface for Wave Reader components</p>
+                </div>
+                <div class="endpoint">
+                    <h3>📊 Health & Status</h3>
+                    <p><strong>GET /health</strong> - Server health check</p>
+                    <p><strong>GET /api/editor/status</strong> - Editor status and configuration</p>
+                </div>
+                <div class="endpoint">
+                    <h3>⚙️ Pact Features</h3>
+                    <p><strong>GET /api/pact/features</strong> - Available Pact features</p>
+                    <p><strong>GET /api/pact/backend</strong> - Pact backend status</p>
+                </div>
+                <div class="endpoint">
+                    <h3>🔍 Tracing & Monitoring</h3>
+                    <p><strong>GET /api/tracing/status</strong> - Tracing system status</p>
+                    <p><strong>POST /api/tracing/message</strong> - Send tracing message</p>
+                    <p><strong>GET /api/tracing/message/:messageId</strong> - Get specific message</p>
+                    <p><strong>GET /api/tracing/trace/:traceId</strong> - Get trace details</p>
+                    <p><strong>GET /api/tracing/generate</strong> - Generate new IDs</p>
+                </div>
             </div>
         </div>
     </body>
