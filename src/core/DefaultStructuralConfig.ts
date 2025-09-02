@@ -8,8 +8,7 @@ export const DefaultStructuralConfig: AppStructureConfig = {
     name: 'Log View Machine Application',
     type: 'application',
     routing: {
-      base: '/',
-      defaultRoute: '/dashboard'
+      path: '/'
     }
   },
 
@@ -39,6 +38,27 @@ export const DefaultStructuralConfig: AppStructureConfig = {
       componentPath: 'src/components/Settings.tsx',
       tomePath: 'src/component-middleware/settings/SettingsTomes.tsx',
       templatePath: 'src/component-middleware/settings/templates/settings-component/'
+    },
+    // Add missing component mappings for the editor
+    'app': {
+      componentPath: 'src/App.tsx',
+      tomePath: 'src/core/AppTome.tsx',
+      templatePath: 'src/templates/app-component/'
+    },
+    'WaveTabs': {
+      componentPath: 'src/components/WaveTabs.tsx',
+      tomePath: 'src/component-middleware/wave-tabs/WaveTabsTomes.tsx',
+      templatePath: 'src/component-middleware/wave-tabs/templates/wave-tabs-component/'
+    },
+    'SelectorInput': {
+      componentPath: 'src/components/SelectorInput.tsx',
+      tomePath: 'src/component-middleware/selector-input/SelectorInputTomes.tsx',
+      templatePath: 'src/component-middleware/selector-input/templates/selector-input-component/'
+    },
+    'About': {
+      componentPath: 'src/components/About.tsx',
+      tomePath: 'src/component-middleware/about/AboutTomes.tsx',
+      templatePath: 'src/component-middleware/about/templates/about-component/'
     }
   },
 
@@ -68,6 +88,23 @@ export const DefaultStructuralConfig: AppStructureConfig = {
       {
         path: '/settings',
         component: 'settings'
+      },
+      // Add routes for editor components
+      {
+        path: '/app',
+        component: 'app'
+      },
+      {
+        path: '/wave-tabs',
+        component: 'WaveTabs'
+      },
+      {
+        path: '/selector-input',
+        component: 'SelectorInput'
+      },
+      {
+        path: '/about',
+        component: 'About'
       }
     ],
     navigation: {
@@ -95,6 +132,18 @@ export const DefaultStructuralConfig: AppStructureConfig = {
           label: 'Tome Manager',
           path: '/tome-manager',
           icon: '📚'
+        },
+        {
+          id: 'WaveTabs',
+          label: 'Wave Tabs',
+          path: '/wave-tabs',
+          icon: '🌊'
+        },
+        {
+          id: 'SelectorInput',
+          label: 'Selector Input',
+          path: '/selector-input',
+          icon: '🎯'
         }
       ],
       secondary: [
@@ -103,6 +152,12 @@ export const DefaultStructuralConfig: AppStructureConfig = {
           label: 'Settings',
           path: '/settings',
           icon: '⚙️'
+        },
+        {
+          id: 'About',
+          label: 'About',
+          path: '/about',
+          icon: 'ℹ️'
         }
       ]
     }
@@ -140,6 +195,31 @@ export const DefaultStructuralConfig: AppStructureConfig = {
         description: 'Application settings and configuration',
         states: ['idle', 'loading', 'editing', 'saving', 'resetting', 'error'],
         events: ['LOAD_SETTINGS', 'EDIT', 'SAVE', 'RESET', 'ERROR']
+      },
+      // Add missing tome configurations for the editor
+      'app-tome': {
+        machineId: 'app',
+        description: 'Main application state management',
+        states: ['idle', 'initializing', 'ready', 'navigating', 'error'],
+        events: ['INITIALIZE', 'NAVIGATE', 'TAB_CHANGE', 'ERROR']
+      },
+      'WaveTabs-tome': {
+        machineId: 'WaveTabs',
+        description: 'Wave tabs navigation state management',
+        states: ['idle', 'active', 'navigating', 'error'],
+        events: ['TAB_SELECT', 'TAB_ADD', 'TAB_REMOVE', 'ERROR']
+      },
+      'SelectorInput-tome': {
+        machineId: 'SelectorInput',
+        description: 'Selector input state management',
+        states: ['idle', 'inputting', 'validating', 'saving', 'error'],
+        events: ['INPUT_CHANGE', 'VALIDATE', 'SAVE', 'CLEAR', 'ERROR']
+      },
+      'About-tome': {
+        machineId: 'About',
+        description: 'About component state management',
+        states: ['idle', 'expanded', 'help', 'error'],
+        events: ['EXPAND', 'SHOW_HELP', 'COLLAPSE', 'ERROR']
       }
     },
     machineStates: {
@@ -177,6 +257,87 @@ export const DefaultStructuralConfig: AppStructureConfig = {
         filtering: {
           description: 'Applying filters to logs',
           actions: ['applyFilters', 'updateView', 'showFilterCount']
+        }
+      },
+      // Add missing machine states for the editor components
+      'app': {
+        idle: {
+          description: 'Application is ready for initialization',
+          actions: ['setup', 'prepare']
+        },
+        initializing: {
+          description: 'Application is initializing',
+          actions: ['loadConfig', 'setupMachines', 'prepareUI']
+        },
+        ready: {
+          description: 'Application is ready for use',
+          actions: ['enableNavigation', 'setupEventHandlers']
+        },
+        navigating: {
+          description: 'Application is navigating between routes',
+          actions: ['updateRoute', 'updateContext']
+        },
+        error: {
+          description: 'Application encountered an error',
+          actions: ['showError', 'provideRecovery']
+        }
+      },
+      'wave-tabs': {
+        idle: {
+          description: 'Wave tabs are ready',
+          actions: ['setup', 'prepare']
+        },
+        active: {
+          description: 'Wave tabs are active and navigable',
+          actions: ['enableNavigation', 'setupTabHandlers']
+        },
+        navigating: {
+          description: 'Wave tabs are navigating between tabs',
+          actions: ['updateActiveTab', 'updateHistory']
+        },
+        error: {
+          description: 'Wave tabs encountered an error',
+          actions: ['showError', 'provideRecovery']
+        }
+      },
+      'selector-input': {
+        idle: {
+          description: 'Selector input is ready',
+          actions: ['setup', 'prepare']
+        },
+        inputting: {
+          description: 'User is entering input',
+          actions: ['captureInput', 'validateFormat']
+        },
+        validating: {
+          description: 'Input is being validated',
+          actions: ['checkSyntax', 'verifyRules']
+        },
+        saving: {
+          description: 'Input is being saved',
+          actions: ['persistData', 'updateState']
+        },
+        error: {
+          description: 'Selector input encountered an error',
+          actions: ['showError', 'provideRecovery']
+        }
+      },
+      'about': {
+        idle: {
+          description: 'About component is ready',
+          actions: ['setup', 'prepare']
+        },
+        expanded: {
+          description: 'About information is expanded',
+          actions: ['showDetails', 'enableInteractions']
+        },
+        help: {
+          description: 'Help information is displayed',
+          actions: ['showHelp', 'enableNavigation']
+        },
+        error: {
+          description: 'About component encountered an error',
+          actions: ['showError', 'provideRecovery']
         }
       }
     }

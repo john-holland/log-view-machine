@@ -197,6 +197,19 @@ export class ViewStateMachine<TModel = any> {
     return this.subMachines.get(machineId);
   }
 
+  // Add missing method for StructuralTomeConnector compatibility
+  subscribe(callback: (state: any) => void): () => void {
+    // Subscribe to state changes - the service must be started first
+    if (this.machine && typeof this.machine.subscribe === 'function') {
+      return this.machine.subscribe(callback);
+    } else {
+      // Fallback: create a simple subscription that calls the callback with current state
+      const currentState = this.getState();
+      callback(currentState);
+      return () => {}; // Return empty unsubscribe function
+    }
+  }
+
   // State context methods
   private createStateContext(state: any, model: TModel): StateContext<TModel> {
     return {
@@ -298,7 +311,11 @@ export class ViewStateMachine<TModel = any> {
 
   // Event subscription methods for TomeConnector
   on(eventType: string, handler: (event: any) => void): void {
-    this.machine.on(eventType, handler);
+    if (this.machine && typeof this.machine.on === 'function') {
+      this.machine.on(eventType, handler);
+    } else {
+      console.warn('Machine not started or on method not available');
+    }
   }
 
   // Direct send method for TomeConnector
@@ -311,10 +328,11 @@ export class ViewStateMachine<TModel = any> {
   }
 
   // Start the machine service
-  start(): void {
+  start(): Promise<void> {
     if (this.machine && typeof this.machine.start === 'function') {
       this.machine.start();
     }
+    return Promise.resolve();
   }
 
   // Get current state
