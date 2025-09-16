@@ -3,6 +3,78 @@ import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
 import { RobotCopy } from './RobotCopy';
 
+/**
+ * XState Action Types for better IDE support
+ */
+export type XStateAction<TContext = any, TEvent = any> = 
+  | string 
+  | ((context: TContext, event: TEvent) => void)
+  | { type: string; [key: string]: any };
+
+/**
+ * XState Action Creator for assign actions
+ * @template TContext - The context type
+ * @template TEvent - The event type
+ */
+export type ActionCreator<TContext = any, TEvent = any> = 
+  | ((context: TContext, event: TEvent) => Partial<TContext>)
+  | Partial<TContext>;
+
+/**
+ * XState Actions Configuration
+ * @template TContext - The context type
+ * @template TEvent - The event type
+ */
+export type XStateActions<TContext = any, TEvent = any> = {
+  [key: string]: XStateAction<TContext, TEvent>;
+};
+
+/**
+ * Helper function to create assign actions with better IDE support
+ * @template TContext - The context type
+ * @template TEvent - The event type
+ * @param actionCreator - Function or object that creates the context update
+ * @returns XState assign action
+ * 
+ * @example
+ * ```typescript
+ * // Function-based assign
+ * const addItem = createAssignAction<MyContext, AddItemEvent>((context, event) => ({
+ *   items: [...context.items, event.payload]
+ * }));
+ * 
+ * // Object-based assign
+ * const clearItems = createAssignAction<MyContext>({ items: [] });
+ * ```
+ */
+export function createAssignAction<TContext = any, TEvent = any>(
+  actionCreator: ActionCreator<TContext, TEvent>
+) {
+  return assign(actionCreator as any);
+}
+
+/**
+ * Helper function to create named actions for better navigation
+ * @template TContext - The context type
+ * @template TEvent - The event type
+ * @param name - The action name
+ * @param action - The action implementation
+ * @returns Named action object
+ * 
+ * @example
+ * ```typescript
+ * const logAction = createNamedAction('logAction', (context, event) => {
+ *   console.log('Action executed:', event.type);
+ * });
+ * ```
+ */
+export function createNamedAction<TContext = any, TEvent = any>(
+  name: string,
+  action: (context: TContext, event: TEvent) => void
+) {
+  return { [name]: action };
+}
+
 export interface LogEntry {
   id: string;
   timestamp: string;
@@ -11,28 +83,78 @@ export interface LogEntry {
   metadata?: any;
 }
 
-// Types for the fluent API
+/**
+ * Context object provided to state handlers in withState() methods
+ * @template TModel - The type of the model/context data
+ */
 export type StateContext<TModel = any> = {
+  /** Current state name */
   state: string;
+  /** Current model/context data */
   model: TModel;
+  /** Available state transitions */
   transitions: any[];
+  /** 
+   * Log a message with optional metadata
+   * @param message - The log message
+   * @param metadata - Optional metadata object
+   */
   log: (message: string, metadata?: any) => Promise<void>;
+  /** 
+   * Render a React component for this state
+   * @param component - The React component to render
+   * @returns The rendered component
+   */
   view: (component: React.ReactNode) => React.ReactNode;
+  /** Clear the current view */
   clear: () => void;
+  /** 
+   * Transition to a different state
+   * @param to - Target state name
+   */
   transition: (to: string) => void;
+  /** 
+   * Send an event to the state machine
+   * @param event - Event object with type and optional payload
+   */
   send: (event: any) => void;
+  /** 
+   * Register an event handler
+   * @param eventName - Name of the event to listen for
+   * @param handler - Function to call when event occurs
+   */
   on: (eventName: string, handler: () => void) => void;
   // Sub-machine support
+  /** 
+   * Create a sub-machine
+   * @param machineId - Unique identifier for the sub-machine
+   * @param config - Configuration for the sub-machine
+   * @returns The created sub-machine instance
+   */
   subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => ViewStateMachine<any>;
+  /** 
+   * Get an existing sub-machine
+   * @param machineId - Unique identifier of the sub-machine
+   * @returns The sub-machine instance or undefined if not found
+   */
   getSubMachine: (machineId: string) => ViewStateMachine<any> | undefined;
   // GraphQL support
   graphql: {
+    /** Execute a GraphQL query */
     query: (query: string, variables?: any) => Promise<any>;
+    /** Execute a GraphQL mutation */
     mutation: (mutation: string, variables?: any) => Promise<any>;
+    /** Subscribe to a GraphQL subscription */
     subscription: (subscription: string, variables?: any) => Promise<any>;
   };
 };
 
+/**
+ * Handler function for state-specific logic
+ * @template TModel - The type of the model/context data
+ * @param context - The state context containing model, view functions, and utilities
+ * @returns Promise that resolves when state handling is complete
+ */
 export type StateHandler<TModel = any> = (context: StateContext<TModel>) => Promise<any>;
 
 export type ViewStateMachineConfig<TModel = any> = {
@@ -151,9 +273,39 @@ export class ViewStateMachine<TModel = any> {
   }
 
   // Fluent API methods
+  /**
+   * Register a state handler for the specified state
+   * @param stateName - The name of the state to handle
+   * @param handler - Function that handles the state logic
+   * @returns This ViewStateMachine instance for method chaining
+   * 
+   * @example
+   * ```typescript
+   * machine.withState('idle', async ({ state, model, log, view, transition }) => {
+   *   await log('Entered idle state');
+   *   view(<div>Idle UI</div>);
+   * });
+   * ```
+   */
   withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel> {
     this.stateHandlers.set(stateName, handler);
     return this;
+  }
+
+  /**
+   * Execute state handler with proper context
+   * @param stateName - The name of the state to execute
+   * @param context - The state context
+   */
+  private async executeStateHandler(stateName: string, context: StateContext<TModel>): Promise<void> {
+    const handler = this.stateHandlers.get(stateName);
+    if (handler) {
+      try {
+        await handler(context);
+      } catch (error) {
+        console.error(`Error executing state handler for ${stateName}:`, error);
+      }
+    }
   }
 
   // Override for withState that registers message handlers
@@ -286,10 +438,7 @@ export class ViewStateMachine<TModel = any> {
     
     // Execute state handler if exists
     React.useEffect(() => {
-      const handler = this.stateHandlers.get(state.value);
-      if (handler) {
-        handler(context);
-      }
+      this.executeStateHandler(state.value, context);
     }, [state.value]);
 
     return {

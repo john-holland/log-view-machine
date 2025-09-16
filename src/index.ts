@@ -5,7 +5,13 @@ export {
   createProxyRobotCopyStateMachine,
   type ViewStateMachineConfig,
   type StateContext,
-  type StateHandler
+  type StateHandler,
+  // New action helper exports
+  createAssignAction,
+  createNamedAction,
+  type XStateAction,
+  type ActionCreator,
+  type XStateActions
 } from './core/ViewStateMachine';
 
 // Tracing exports
@@ -54,8 +60,16 @@ export {
 
 export type {
   TomeConfig,
-  TomeInstance
+  TomeInstance,
+  ISubMachine
 } from './core/TomeConfig';
+
+// TomeAdapter exports
+export {
+  ProxyMachineAdapter,
+  ViewMachineAdapter,
+  LazyTomeManager
+} from './core/TomeAdapters';
 
 // Structural System exports
 export {
