@@ -664,9 +664,25 @@ app.use((req, res, next) => {
                 styleSrc: ["'self'", "'unsafe-inline'"],
                 scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
                 imgSrc: ["'self'", "data:", "https:"],
-                connectSrc: ["'self'", "ws:", "wss:"]
+                connectSrc: ["'self'", "ws:", "wss:"],
+                // Block extension scripts and service workers
+                workerSrc: ["'none'"],
+                childSrc: ["'self'"],
+                frameSrc: ["'none'"],
+                objectSrc: ["'none'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+                // Prevent extension manifest injection
+                manifestSrc: ["'none'"],
+                // Allow inline styles and scripts for editor functionality
+                styleSrcAttr: ["'unsafe-inline'"],
+                scriptSrcAttr: ["'unsafe-inline'"]
             }
-        }
+        },
+        // Additional security headers
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: { policy: "cross-origin" }
     }));
 }
 // CORS middleware
@@ -678,6 +694,30 @@ app.use((req, res, next) => {
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
     }));
 }
+// Extension isolation middleware
+app.use((req, res, next) => {
+    // Block extension-related requests
+    if (req.path.includes('manifest.json') ||
+        req.path.includes('background.js') ||
+        req.path.includes('content.js') ||
+        req.path.includes('service-worker') ||
+        req.path.includes('chrome-extension') ||
+        req.path.includes('shadowContent.js') ||
+        req.path.includes('log-view-machine')) {
+        return res.status(404).json({ error: 'Extension resources not available' });
+    }
+    // Add headers to prevent extension interference
+    res.set({
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+        // Additional headers to block extension loading
+        'X-Content-Security-Policy': "default-src 'self'; worker-src 'none'; manifest-src 'none';",
+        'X-WebKit-CSP': "default-src 'self'; worker-src 'none'; manifest-src 'none';"
+    });
+    next();
+});
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -869,51 +909,91 @@ app.get('/', (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Tome Connector Studio</title>
+        <!-- Extension isolation meta tags -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none'; style-src-attr 'unsafe-inline'; script-src-attr 'unsafe-inline';">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="robots" content="noindex, nofollow">
         <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-            h1 { color: #2563eb; margin-bottom: 20px; }
-            .nav { margin: 30px 0; }
-            .nav a { display: inline-block; margin: 10px 20px 10px 0; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; transition: background 0.2s; }
-            .nav a:hover { background: #1d4ed8; }
-            .endpoint { background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #2563eb; }
-            .endpoint h3 { margin: 0 0 10px 0; color: #1e293b; }
-            .endpoint p { margin: 5px 0; color: #64748b; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+            .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+            .hero { text-align: center; margin-bottom: 60px; }
+            .hero h1 { color: white; margin-bottom: 20px; font-size: 3.5rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+            .hero p { color: rgba(255,255,255,0.9); font-size: 1.3rem; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto; }
+            .hero-button { display: inline-block; padding: 20px 40px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; text-decoration: none; border-radius: 50px; font-size: 1.2rem; font-weight: 600; transition: all 0.3s; box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+            .hero-button:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(0,0,0,0.4); }
+            .main-content { background: white; border-radius: 20px; padding: 50px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .nav { margin: 30px 0; text-align: center; }
+            .nav a { display: inline-block; margin: 10px 15px; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+            .nav a:hover { background: #1d4ed8; transform: translateY(-2px); }
+            .endpoint { background: #f8fafc; padding: 20px; margin: 15px 0; border-radius: 12px; border-left: 4px solid #2563eb; }
+            .endpoint h3 { margin: 0 0 15px 0; color: #1e293b; }
+            .endpoint p { margin: 8px 0; color: #475569; }
+            .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0; }
+            .feature-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px; text-align: center; }
+            .feature-card h3 { margin: 0 0 15px 0; font-size: 1.4rem; }
+            .feature-card p { margin: 0; opacity: 0.9; }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🌊 Tome Connector Studio</h1>
-            <p>A powerful studio for building and managing Tome Connector components, state machines, and integrations.</p>
-            
-            <div class="nav">
-                <a href="/wave-reader">🎨 Wave Reader Editor</a>
-                <a href="/health">📊 Health Check</a>
-                <a href="/api/editor/status">🎛️ Editor Status</a>
+            <!-- Hero Section -->
+            <div class="hero">
+                <h1>🌊 Tome Connector Studio</h1>
+                <p>A powerful studio for building and managing Tome Connector components, state machines, and integrations.</p>
+                <a href="/wave-reader" class="hero-button">🚀 Open Wave Reader Editor</a>
             </div>
             
-            <h2>Available Endpoints</h2>
-            <div class="endpoint">
-                <h3>🎨 Wave Reader Editor</h3>
-                <p><strong>GET /wave-reader</strong> - Main editor interface for Wave Reader components</p>
-            </div>
-            <div class="endpoint">
-                <h3>📊 Health & Status</h3>
-                <p><strong>GET /health</strong> - Server health check</p>
-                <p><strong>GET /api/editor/status</strong> - Editor status and configuration</p>
-            </div>
-            <div class="endpoint">
-                <h3>⚙️ Pact Features</h3>
-                <p><strong>GET /api/pact/features</strong> - Available Pact features</p>
-                <p><strong>GET /api/pact/backend</strong> - Pact backend status</p>
-            </div>
-            <div class="endpoint">
-                <h3>🔍 Tracing & Monitoring</h3>
-                <p><strong>GET /api/tracing/status</strong> - Tracing system status</p>
-                <p><strong>POST /api/tracing/message</strong> - Send tracing message</p>
-                <p><strong>GET /api/tracing/message/:messageId</strong> - Get specific message</p>
-                <p><strong>GET /api/tracing/trace/:traceId</strong> - Get trace details</p>
-                <p><strong>GET /api/tracing/generate</strong> - Generate new IDs</p>
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Feature Grid -->
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🎨 Component Editor</h3>
+                        <p>Full-featured editor for Wave Reader components with live preview and file management</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>⚙️ State Machines</h3>
+                        <p>Visual state machine editor and management for complex component behaviors</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔍 Tracing & Monitoring</h3>
+                        <p>Advanced tracing and monitoring capabilities for debugging and performance analysis</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="nav">
+                    <a href="/wave-reader">🎨 Wave Reader Editor</a>
+                    <a href="/health">📊 Health Check</a>
+                    <a href="/api/editor/status">🎛️ Editor Status</a>
+                    <a href="/api/pact/features">⚙️ Pact Features</a>
+                </div>
+                
+                <!-- Available Endpoints -->
+                <h2>Available Endpoints</h2>
+                <div class="endpoint">
+                    <h3>🎨 Wave Reader Editor</h3>
+                    <p><strong>GET /wave-reader</strong> - Main editor interface for Wave Reader components</p>
+                </div>
+                <div class="endpoint">
+                    <h3>📊 Health & Status</h3>
+                    <p><strong>GET /health</strong> - Server health check</p>
+                    <p><strong>GET /api/editor/status</strong> - Editor status and configuration</p>
+                </div>
+                <div class="endpoint">
+                    <h3>⚙️ Pact Features</h3>
+                    <p><strong>GET /api/pact/features</strong> - Available Pact features</p>
+                    <p><strong>GET /api/pact/backend</strong> - Pact backend status</p>
+                </div>
+                <div class="endpoint">
+                    <h3>🔍 Tracing & Monitoring</h3>
+                    <p><strong>GET /api/tracing/status</strong> - Tracing system status</p>
+                    <p><strong>POST /api/tracing/message</strong> - Send tracing message</p>
+                    <p><strong>GET /api/tracing/message/:messageId</strong> - Get specific message</p>
+                    <p><strong>GET /api/tracing/trace/:traceId</strong> - Get trace details</p>
+                    <p><strong>GET /api/tracing/generate</strong> - Generate new IDs</p>
+                </div>
             </div>
         </div>
     </body>
@@ -930,6 +1010,11 @@ app.get('/wave-reader', (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Wave Reader Editor - Tome Connector Studio</title>
+        <!-- Extension isolation meta tags -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; worker-src 'none'; child-src 'self'; frame-src 'none'; object-src 'none'; manifest-src 'none'; style-src-attr 'unsafe-inline'; script-src-attr 'unsafe-inline';">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="robots" content="noindex, nofollow">
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f8fafc; }
             .header { background: white; padding: 20px; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -1223,8 +1308,14 @@ app.get('/wave-reader', (req, res) => {
                     
                     if (editorTitle && componentEditor) {
                         editorTitle.textContent = \`\${component.name} Editor\`;
+                        console.log('📝 Editor title updated to:', component.name);
+                        
                         componentEditor.classList.add('active');
-                        console.log('✅ Editor UI updated');
+                        console.log('✅ Editor UI updated - active class added');
+                        
+                        // Debug: Check if the class was actually added
+                        console.log('🔍 Editor classes after update:', componentEditor.className);
+                        console.log('🔍 Editor display style:', window.getComputedStyle(componentEditor).display);
                         
                         // Populate file tree with actual component files
                         const fileTree = document.getElementById('fileTree');
@@ -1268,6 +1359,10 @@ app.get('/wave-reader', (req, res) => {
                         }
                     } else {
                         console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
+                        console.log('🔍 DOM state check:');
+                        console.log('  - document.getElementById("editorTitle"):', document.getElementById('editorTitle'));
+                        console.log('  - document.getElementById("componentEditor"):', document.getElementById('componentEditor'));
+                        console.log('  - document.readyState:', document.readyState);
                     }
                 } else {
                     console.error('❌ Component not found:', componentId);

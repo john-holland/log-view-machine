@@ -100,7 +100,66 @@ export class SubViewManager {
       id: editorId
     });
 
+    // Add event delegation to the subview editor
+    this.addSubViewEventDelegation(editorContainer, editorId);
+
     return editor;
+  }
+
+  /**
+   * Add event delegation to subview editor
+   */
+  addSubViewEventDelegation(container, editorId) {
+    console.log(`Adding event delegation to subview editor: ${editorId}`);
+    
+    // Prevent default behavior for all mouse events
+    const preventDefaultHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log(`SubView editor event prevented: ${e.type} on ${editorId}`);
+    };
+    
+    // Add event listeners to the editor container
+    container.addEventListener('mousedown', preventDefaultHandler);
+    container.addEventListener('mousemove', preventDefaultHandler);
+    container.addEventListener('mouseup', preventDefaultHandler);
+    container.addEventListener('click', preventDefaultHandler);
+    container.addEventListener('dblclick', preventDefaultHandler);
+    container.addEventListener('contextmenu', preventDefaultHandler);
+    container.addEventListener('wheel', preventDefaultHandler);
+    container.addEventListener('touchstart', preventDefaultHandler);
+    container.addEventListener('touchmove', preventDefaultHandler);
+    container.addEventListener('touchend', preventDefaultHandler);
+    
+    // Also add to the SunEditor's iframe if it exists
+    const iframe = container.querySelector('iframe');
+    if (iframe) {
+      iframe.addEventListener('mousedown', preventDefaultHandler);
+      iframe.addEventListener('mousemove', preventDefaultHandler);
+      iframe.addEventListener('mouseup', preventDefaultHandler);
+      iframe.addEventListener('click', preventDefaultHandler);
+      iframe.addEventListener('dblclick', preventDefaultHandler);
+      iframe.addEventListener('contextmenu', preventDefaultHandler);
+      iframe.addEventListener('wheel', preventDefaultHandler);
+      iframe.addEventListener('touchstart', preventDefaultHandler);
+      iframe.addEventListener('touchmove', preventDefaultHandler);
+      iframe.addEventListener('touchend', preventDefaultHandler);
+    }
+    
+    // Add to the SunEditor's toolbar if it exists
+    const toolbar = container.querySelector('.se-toolbar');
+    if (toolbar) {
+      toolbar.addEventListener('mousedown', preventDefaultHandler);
+      toolbar.addEventListener('mousemove', preventDefaultHandler);
+      toolbar.addEventListener('mouseup', preventDefaultHandler);
+      toolbar.addEventListener('click', preventDefaultHandler);
+      toolbar.addEventListener('dblclick', preventDefaultHandler);
+      toolbar.addEventListener('contextmenu', preventDefaultHandler);
+      toolbar.addEventListener('wheel', preventDefaultHandler);
+      toolbar.addEventListener('touchstart', preventDefaultHandler);
+      toolbar.addEventListener('touchmove', preventDefaultHandler);
+      toolbar.addEventListener('touchend', preventDefaultHandler);
+    }
   }
 
   /**

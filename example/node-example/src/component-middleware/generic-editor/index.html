@@ -224,6 +224,7 @@
             position: absolute;
             transform-origin: center;
             transition: transform 0.1s ease;
+            z-index: 10;
         }
 
         .sun-editor-wrapper.dragging {
@@ -243,6 +244,9 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
+            height: auto;
+            min-height: 40px;
+            max-height: 60px;
         }
 
         .canvas-btn {
@@ -344,18 +348,28 @@
 
         .gesture-indicator {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #667eea;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: monospace;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 5;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            min-width: 200px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         .gesture-indicator.show {
@@ -700,6 +714,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             min-width: 90vw;
+            z-index: 10;
             min-height: 60vh;
             max-width: 95vw;
             max-height: calc(100vh - 140px); /* Full viewport minus header and margins */
@@ -2350,6 +2365,9 @@
 
         // Initialize editors
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize canvas first to ensure proper transform state
+            initializeCanvas();
+            
             initializeEditors();
             initializeGrabbers();
             initializeCanvasDragging();
@@ -2372,6 +2390,22 @@
             
             // Update layout heights
             updateLayoutHeights();
+            
+            // Final initialization to ensure everything is properly set up
+            setTimeout(() => {
+                console.log('Final initialization - ensuring canvas and event delegation are ready...');
+                
+                // Ensure canvas is in the correct state
+                initializeCanvas();
+                
+                // Re-apply event delegation to catch any dynamically created elements
+                addGeneralEditorEventDelegation();
+                
+                // Update gesture indicator to show current state
+                updateGestureIndicator('initialized');
+                
+                console.log('Final initialization complete - canvas and event delegation ready');
+            }, 500);
             
             // Add keyboard shortcuts
             document.addEventListener('keydown', function(e) {
@@ -2423,7 +2457,174 @@
             console.log('Sample components loaded');
         }
 
+        // Event delegation functions for editors
+        function addEditorEventDelegation(editor, editorId) {
+            if (!editor || !editor.container) return;
+            
+            const container = editor.container;
+            console.log(`Adding event delegation to Ace editor: ${editorId}`);
+            
+            // Prevent default behavior for all mouse events
+            const preventDefaultHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`Ace editor event prevented: ${e.type} on ${editorId}`);
+            };
+            
+            // Add event listeners to the editor container
+            container.addEventListener('mousedown', preventDefaultHandler);
+            container.addEventListener('mousemove', preventDefaultHandler);
+            container.addEventListener('mouseup', preventDefaultHandler);
+            container.addEventListener('click', preventDefaultHandler);
+            container.addEventListener('dblclick', preventDefaultHandler);
+            container.addEventListener('contextmenu', preventDefaultHandler);
+            container.addEventListener('wheel', preventDefaultHandler);
+            container.addEventListener('touchstart', preventDefaultHandler);
+            container.addEventListener('touchmove', preventDefaultHandler);
+            container.addEventListener('touchend', preventDefaultHandler);
+            
+            // Also add to the editor's textarea if it exists
+            const textarea = container.querySelector('textarea');
+            if (textarea) {
+                textarea.addEventListener('mousedown', preventDefaultHandler);
+                textarea.addEventListener('mousemove', preventDefaultHandler);
+                textarea.addEventListener('mouseup', preventDefaultHandler);
+                textarea.addEventListener('click', preventDefaultHandler);
+                textarea.addEventListener('dblclick', preventDefaultHandler);
+                textarea.addEventListener('contextmenu', preventDefaultHandler);
+                textarea.addEventListener('wheel', preventDefaultHandler);
+                textarea.addEventListener('touchstart', preventDefaultHandler);
+                textarea.addEventListener('touchmove', preventDefaultHandler);
+                textarea.addEventListener('touchend', preventDefaultHandler);
+            }
+        }
+        
+        function addSunEditorEventDelegation(editor, editorId) {
+            if (!editor) return;
+            
+            console.log(`Adding event delegation to SunEditor: ${editorId}`);
+            
+            // Get the SunEditor container
+            const container = document.getElementById(editorId);
+            if (!container) return;
+            
+            // Prevent default behavior for all mouse events
+            const preventDefaultHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`SunEditor event prevented: ${e.type} on ${editorId}`);
+            };
+            
+            // Add event listeners to the SunEditor container
+            container.addEventListener('mousedown', preventDefaultHandler);
+            container.addEventListener('mousemove', preventDefaultHandler);
+            container.addEventListener('mouseup', preventDefaultHandler);
+            container.addEventListener('click', preventDefaultHandler);
+            container.addEventListener('dblclick', preventDefaultHandler);
+            container.addEventListener('contextmenu', preventDefaultHandler);
+            container.addEventListener('wheel', preventDefaultHandler);
+            container.addEventListener('touchstart', preventDefaultHandler);
+            container.addEventListener('touchmove', preventDefaultHandler);
+            container.addEventListener('touchend', preventDefaultHandler);
+            
+            // Also add to the SunEditor's iframe if it exists
+            const iframe = container.querySelector('iframe');
+            if (iframe) {
+                iframe.addEventListener('mousedown', preventDefaultHandler);
+                iframe.addEventListener('mousemove', preventDefaultHandler);
+                iframe.addEventListener('mouseup', preventDefaultHandler);
+                iframe.addEventListener('click', preventDefaultHandler);
+                iframe.addEventListener('dblclick', preventDefaultHandler);
+                iframe.addEventListener('contextmenu', preventDefaultHandler);
+                iframe.addEventListener('wheel', preventDefaultHandler);
+                iframe.addEventListener('touchstart', preventDefaultHandler);
+                iframe.addEventListener('touchmove', preventDefaultHandler);
+                iframe.addEventListener('touchend', preventDefaultHandler);
+            }
+            
+            // Add to the SunEditor's toolbar if it exists
+            const toolbar = container.querySelector('.se-toolbar');
+            if (toolbar) {
+                toolbar.addEventListener('mousedown', preventDefaultHandler);
+                toolbar.addEventListener('mousemove', preventDefaultHandler);
+                toolbar.addEventListener('mouseup', preventDefaultHandler);
+                toolbar.addEventListener('click', preventDefaultHandler);
+                toolbar.addEventListener('dblclick', preventDefaultHandler);
+                toolbar.addEventListener('contextmenu', preventDefaultHandler);
+                toolbar.addEventListener('wheel', preventDefaultHandler);
+                toolbar.addEventListener('touchstart', preventDefaultHandler);
+                toolbar.addEventListener('touchmove', preventDefaultHandler);
+                toolbar.addEventListener('touchend', preventDefaultHandler);
+            }
+        }
+        
+        function addGeneralEditorEventDelegation() {
+            console.log('Adding general editor event delegation...');
+            
+            // Prevent default behavior for all mouse events on editor containers
+            const preventDefaultHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`General editor event prevented: ${e.type} on ${e.target.className || e.target.id}`);
+            };
+            
+            // Add event listeners to all editor-related containers
+            const editorSelectors = [
+                '.editor-content',
+                '.ace-editor-container', 
+                '.sun-editor-container',
+                '.editor-panel',
+                '#html-sun-editor',
+                '#css-ace-editor',
+                '#js-ace-editor',
+                '#json-ace-editor',
+                '.se-wrapper',
+                '.se-container',
+                '.ace_editor'
+            ];
+            
+            editorSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    element.addEventListener('mousedown', preventDefaultHandler);
+                    element.addEventListener('mousemove', preventDefaultHandler);
+                    element.addEventListener('mouseup', preventDefaultHandler);
+                    element.addEventListener('click', preventDefaultHandler);
+                    element.addEventListener('dblclick', preventDefaultHandler);
+                    element.addEventListener('contextmenu', preventDefaultHandler);
+                    element.addEventListener('wheel', preventDefaultHandler);
+                    element.addEventListener('touchstart', preventDefaultHandler);
+                    element.addEventListener('touchmove', preventDefaultHandler);
+                    element.addEventListener('touchend', preventDefaultHandler);
+                });
+            });
+            
+            console.log('General editor event delegation added to all editor containers');
+        }
+
+        function initializeCanvas() {
+            console.log('Initializing canvas transform...');
+            
+            // Ensure canvas variables are properly initialized
+            canvasScale = 1;
+            canvasOffsetX = 0;
+            canvasOffsetY = 0;
+            
+            // Apply initial transform
+            updateCanvasTransform();
+            
+            // Reset zoom state machine to idle
+            if (typeof zoomStateMachine !== 'undefined') {
+                zoomStateMachine.reset();
+            }
+            
+            console.log('Canvas initialized with transform:', { canvasScale, canvasOffsetX, canvasOffsetY });
+        }
+
         function initializeEditors() {
+            // Initialize canvas first
+            initializeCanvas();
+            
             // Initialize SunEditor for HTML
             editors.html = SUNEDITOR.create('html-sun-editor', {
                 height: '500px', // Fixed height instead of 100%
@@ -2441,6 +2642,12 @@
                 ],
                 defaultStyle: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px;'
             });
+            
+            // Add event delegation to SunEditor
+            addSunEditorEventDelegation(editors.html, 'html-sun-editor');
+            
+            // Add event delegation to all editor containers
+            addGeneralEditorEventDelegation();
 
             // Initialize Ace editors with proper sizing
             setTimeout(() => {
@@ -2545,6 +2752,18 @@
                     editors.json.resize();
                     
                     console.log('Ace editors initialized successfully:', { css: editors.css, js: editors.js, json: editors.json });
+                    
+                    // Add event delegation to all Ace editors
+                    addEditorEventDelegation(editors.css, 'css-ace-editor');
+                    addEditorEventDelegation(editors.js, 'js-ace-editor');
+                    addEditorEventDelegation(editors.json, 'json-ace-editor');
+                    
+                    // Re-apply general event delegation after Ace editors are ready
+                    setTimeout(() => {
+                        addGeneralEditorEventDelegation();
+                        console.log('Event delegation re-applied after Ace editors initialization');
+                    }, 50);
+                    
                 } catch (error) {
                     console.error('Error initializing Ace editors:', error);
                 }
@@ -2733,6 +2952,14 @@
             const canvasContainer = document.getElementById('canvas-container');
             const sunEditorWrapper = document.getElementById('sun-editor-wrapper');
             
+            // Event delegation for sun-editor-wrapper to prevent default behavior
+            function handleEditorInteraction(e) {
+                // Prevent default behavior for editor interactions
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Editor interaction prevented:', e.type, e.target);
+            }
+            
             // Mouse enter/leave handlers for state machine
             function handleCanvasMouseEnter(e) {
                 zoomStateMachine.transition('MOUSE_ENTER_CANVAS');
@@ -2751,9 +2978,16 @@
             }
             
             function startCanvasDrag(e) {
+                console.log('Mouse down detected on:', e.target);
+                console.log('Canvas container:', canvasContainer);
+                console.log('Target matches canvas:', e.target === canvasContainer);
+                console.log('Target has canvas-container class:', e.target.classList.contains('canvas-container'));
+                console.log('Target is inside sun-editor-wrapper:', e.target.closest('#sun-editor-wrapper'));
+                
                 // Allow dragging from any part of the canvas container, including editors
                 if (e.target === canvasContainer || e.target.classList.contains('canvas-container') || 
                     e.target.closest('#sun-editor-wrapper')) {
+                    console.log('Starting canvas drag...');
                     if (zoomStateMachine.transition('MOUSE_DOWN')) {
                         e.preventDefault();
                         isDraggingCanvas = true;
@@ -2762,6 +2996,9 @@
                         canvasContainer.classList.add('dragging');
                         sunEditorWrapper.classList.add('dragging');
                         document.body.style.cursor = 'grabbing';
+                        
+                        console.log('Drag started - Start position:', canvasStartX, canvasStartY);
+                        updateGestureIndicator('drag_start');
                         
                         // Ensure we're in the right state for dragging
                         if (zoomStateMachine.getCurrentState() !== 'canvas_dragging') {
@@ -2778,17 +3015,21 @@
                 canvasOffsetX = e.clientX - canvasStartX;
                 canvasOffsetY = e.clientY - canvasStartY;
                 
+                console.log('Dragging - Offset:', canvasOffsetX, canvasOffsetY);
                 updateCanvasTransform();
+                updateGestureIndicator('dragging');
             }
 
             function stopCanvasDrag() {
                 if (!isDraggingCanvas) return;
                 
+                console.log('Stopping canvas drag');
                 isDraggingCanvas = false;
                 canvasContainer.classList.remove('dragging');
                 sunEditorWrapper.classList.remove('dragging');
                 document.body.style.cursor = '';
                 zoomStateMachine.transition('MOUSE_UP');
+                updateGestureIndicator('drag_stop');
             }
 
             // Touch events for pinch and zoom with vector analysis
@@ -3055,6 +3296,21 @@
                 editor.addEventListener('mouseenter', handleEditorMouseEnter);
                 editor.addEventListener('mouseleave', handleEditorMouseLeave);
             });
+            
+            // Add event delegation to sun-editor-wrapper to prevent default behavior
+            if (sunEditorWrapper) {
+                sunEditorWrapper.addEventListener('mousedown', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('mousemove', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('mouseup', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('click', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('dblclick', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('contextmenu', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('wheel', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('touchstart', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('touchmove', handleEditorInteraction);
+                sunEditorWrapper.addEventListener('touchend', handleEditorInteraction);
+                console.log('Sun-editor-wrapper event delegation added');
+            }
 
             // Touch events
             canvasContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -4685,13 +4941,21 @@
                     displayText += ` | Gesture: ${gestureType}`;
                 }
                 
+                // Add drag status
+                if (isDraggingCanvas) {
+                    displayText += ` | DRAGGING: ${canvasOffsetX}, ${canvasOffsetY}`;
+                }
+                
                 indicator.textContent = displayText;
                 indicator.classList.add('show');
                 
-                // Hide indicator after 2 seconds
+                // Keep indicator visible longer during dragging
+                const hideDelay = isDraggingCanvas ? 5000 : 2000;
                 setTimeout(() => {
-                    indicator.classList.remove('show');
-                }, 2000);
+                    if (!isDraggingCanvas) {
+                        indicator.classList.remove('show');
+                    }
+                }, hideDelay);
             }
             
             // Always update canvas grabber state indicator for consistency

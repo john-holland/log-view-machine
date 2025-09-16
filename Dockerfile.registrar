@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy the component registration script
+COPY attach-editor-component.js ./
+
+# Install axios for HTTP requests
+RUN npm init -y && npm install axios
+
+# Make the script executable
+RUN chmod +x attach-editor-component.js
+
+# Set the default command
+CMD ["node", "attach-editor-component.js"]

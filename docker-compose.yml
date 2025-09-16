@@ -1,36 +1,88 @@
 version: '3.8'
 
 services:
-  java-server:
+  # Generic Editor Service
+  generic-editor:
     build:
-      context: ./src/server/java
+      context: ./example/node-example/src/component-middleware/generic-editor
       dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DOTCMS_URL=http://dotcms:8080
+      - DOTCMS_USERNAME=admin@dotcms.com
+      - DOTCMS_PASSWORD=admin
+    volumes:
+      - ./example/node-example/src/component-middleware/generic-editor:/app
+      - /app/node_modules
+    depends_on:
+      - dotcms
+    networks:
+      - editor-network
+    restart: unless-stopped
+
+  # dotCMS Service
+  dotcms:
+    image: dotcms/dotcms:latest
     ports:
       - "8080:8080"
     environment:
-      - PORT=8080
-      - API_KEY=java-server-key
+      - DOTCMS_DB_DRIVER=org.postgresql.Driver
+      - DOTCMS_DB_BASE_URL=jdbc:postgresql://postgres:5432/dotcms
+      - DOTCMS_DB_USERNAME=dotcms
+      - DOTCMS_DB_PASSWORD=dotcms
+      - DOTCMS_DB_SCHEMA=public
+      - DOTCMS_ADMIN_EMAIL=admin@dotcms.com
+      - DOTCMS_ADMIN_PASSWORD=admin
+      - DOTCMS_ADMIN_FIRST_NAME=Admin
+      - DOTCMS_ADMIN_LAST_NAME=User
     volumes:
-      - ./src/server/java/machines:/app/machines
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - dotcms_data:/opt/dotcms/dotsecure
+      - dotcms_assets:/opt/dotcms/assets
+    depends_on:
+      - postgres
+    networks:
+      - editor-network
+    restart: unless-stopped
 
-  kotlin-server:
-    build:
-      context: ./src/server/kotlin
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
     environment:
-      - PORT=8081
-      - API_KEY=kotlin-server-key
+      - POSTGRES_DB=dotcms
+      - POSTGRES_USER=dotcms
+      - POSTGRES_PASSWORD=dotcms
     volumes:
-      - ./src/server/kotlin/machines:/app/machines
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3 
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - editor-network
+    restart: unless-stopped
+
+  # Component Registration Utility
+  component-registrar:
+    build:
+      context: .
+      dockerfile: Dockerfile.registrar
+    environment:
+      - DOTCMS_URL=http://dotcms:8080
+      - DOTCMS_USERNAME=admin@dotcms.com
+      - DOTCMS_PASSWORD=admin
+    volumes:
+      - ./example/node-example/src/component-middleware:/components
+    depends_on:
+      - dotcms
+    networks:
+      - editor-network
+    command: ["node", "attach-editor-component.js"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+  dotcms_data:
+  dotcms_assets:
+
+networks:
+  editor-network:
+    driver: bridge
