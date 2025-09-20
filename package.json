@@ -1,6 +1,6 @@
 {
   "name": "log-view-machine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "A powerful state machine library with fluent API, sub-machines, RobotCopy message broker, GraphQL integration, and structural system for application organization",
   "main": "dist/index.js",
