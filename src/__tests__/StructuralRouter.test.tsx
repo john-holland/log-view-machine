@@ -164,7 +164,7 @@ describe('StructuralRouter', () => {
 
     // Check for navigation elements
     expect(screen.getByText('Primary')).toBeInTheDocument();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getAllByText('Dashboard')).toHaveLength(3); // breadcrumb + navigation + test component
     expect(screen.getByText('Log Viewer')).toBeInTheDocument();
     expect(screen.getByText('State Machine')).toBeInTheDocument();
   });

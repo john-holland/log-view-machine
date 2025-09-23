@@ -192,11 +192,18 @@ interface RouteProps {
 export const Route: React.FC<RouteProps> = ({ path, component: Component, fallback: Fallback }) => {
   const { currentRoute, structuralSystem } = useRouter();
   
+  // Handle exact route matches
   if (currentRoute === path) {
     return <Component />;
   }
   
-  if (Fallback) {
+  // Handle wildcard routes (catch-all)
+  if (path === '*' && Component) {
+    return <Component />;
+  }
+  
+  // Handle fallback for unmatched routes
+  if (Fallback && currentRoute !== path) {
     return <Fallback />;
   }
   

@@ -22,6 +22,7 @@ export default {
     '/dist/',
     '/editor-build/',
     '/editor-dist/',
+    '/example/node-example/tests/e2e/',
     '\\.d\\.ts$'
   ],
   

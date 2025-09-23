@@ -34,6 +34,24 @@ global.process = {
   argv: ['node', 'test.js']
 };
 
+// Mock fetch for tests
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+    headers: new Map(),
+  })
+);
+
+// Polyfill TextEncoder for Node.js tests
+if (typeof TextEncoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util');
+  global.TextEncoder = TextEncoder;
+  global.TextDecoder = TextDecoder;
+}
+
 // Global test utilities
 global.testUtils = {
   // Helper to create mock DOM elements
