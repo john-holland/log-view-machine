@@ -486,7 +486,7 @@ class OpenTelemetryManager {
         return this.errorRegistry.get(traceId);
     }
     // Start a new span with enhanced error handling
-    startSpan(name, options) {
+    startSpan(name, _options) {
         // Create a simple span object for now
         const spanId = this.generateSpanId();
         const traceId = this.generateTraceId();

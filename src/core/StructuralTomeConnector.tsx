@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, ReactNode } from 'react';
 import { ViewStateMachine } from './ViewStateMachine';
-import { StructuralSystem, AppStructureConfig } from './StructuralSystem';
+import { StructuralSystem } from './StructuralSystem';
 
 // Props for the structural tome connector
 interface StructuralTomeConnectorProps {
@@ -85,7 +85,7 @@ export const StructuralTomeConnector: React.FC<StructuralTomeConnectorProps> = (
         }
 
         // Create or get the machine
-        let machine = structuralSystem.getMachine(componentName);
+        let machine: ViewStateMachine<any> | null = structuralSystem.getMachine(componentName) || null;
         if (!machine) {
           machine = structuralSystem.createMachine(componentName, initialModel);
           if (!machine) {

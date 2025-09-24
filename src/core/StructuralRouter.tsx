@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { StructuralSystem, AppStructureConfig, RouteConfig, NavigationItem } from './StructuralSystem';
+import { StructuralSystem, AppStructureConfig, NavigationItem } from './StructuralSystem';
 
 // Router context
 export interface RouterContextType {
@@ -107,7 +107,7 @@ export const StructuralRouter: React.FC<StructuralRouterProps> = ({
 
 // Router header component
 const RouterHeader: React.FC = () => {
-  const { currentRoute, breadcrumbs, goBack } = useRouter();
+  const { breadcrumbs, goBack } = useRouter();
   
   return (
     <header className="router-header">
@@ -190,7 +190,7 @@ interface RouteProps {
 }
 
 export const Route: React.FC<RouteProps> = ({ path, component: Component, fallback: Fallback }) => {
-  const { currentRoute, structuralSystem } = useRouter();
+  const { currentRoute } = useRouter();
   
   // Handle exact route matches
   if (currentRoute === path) {

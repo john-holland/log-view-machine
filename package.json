@@ -5,12 +5,16 @@
   "description": "A powerful state machine library with fluent API, sub-machines, RobotCopy message broker, GraphQL integration, and structural system for application organization",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/index-browser.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index-browser.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/index.esm.js",
+      "types": "./dist/index-browser.d.ts"
     }
   },
   "files": [

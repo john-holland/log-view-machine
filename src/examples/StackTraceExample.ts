@@ -149,7 +149,7 @@ export class StackTraceExample {
     
     // Show the captured error
     const errorStats = openTelemetryManager.getErrorStats();
-    const deepError = errorStats.recentErrors?.find(e => e.message.includes('Deep error'));
+    const deepError = errorStats.recentErrors?.find((e: any) => e.message.includes('Deep error'));
     if (deepError) {
       console.log('📋 Deep Stack Error Captured:');
       console.log(`  Message: ${deepError.message}`);

@@ -29,11 +29,7 @@ export class TomeManager implements ITomeManager {
     for (const [machineKey, machineConfig] of Object.entries(config.machines)) {
       const machine = createViewStateMachine({
         machineId: machineConfig.id,
-        xstateConfig: machineConfig.xstateConfig,
-        context: {
-          ...config.context,
-          ...machineConfig.context
-        }
+        xstateConfig: machineConfig.xstateConfig
       });
       
       machines.set(machineKey, machine);
@@ -50,7 +46,7 @@ export class TomeManager implements ITomeManager {
       async start() {
         console.log(`🚀 Starting Tome: ${this.id}`);
         // Initialize all machines
-        for (const [key, machine] of this.machines) {
+        for (const [, machine] of this.machines) {
           await machine.start();
         }
       },
@@ -58,7 +54,7 @@ export class TomeManager implements ITomeManager {
       async stop() {
         console.log(`🛑 Stopping Tome: ${this.id}`);
         // Stop all machines
-        for (const [key, machine] of this.machines) {
+        for (const [, machine] of this.machines) {
           await machine.stop();
         }
       },
@@ -86,7 +82,7 @@ export class TomeManager implements ITomeManager {
       updateContext(updates: Record<string, any>) {
         this.context = { ...this.context, ...updates };
         // Update context for all machines
-        for (const [key, machine] of this.machines) {
+        for (const [, machine] of this.machines) {
           machine.updateContext(updates);
         }
       }
@@ -140,7 +136,7 @@ export class TomeManager implements ITomeManager {
         console.log(`  🛣️ Route: ${method} ${routing.basePath}${path} -> ${machineKey}`);
 
         // Create route handler
-        router[method.toLowerCase()](path, async (req, res) => {
+        (router as any)[method.toLowerCase()](path, async (req: any, res: any) => {
           try {
             const { event, data } = req.body;
             
@@ -257,7 +253,7 @@ export class TomeManager implements ITomeManager {
   getTomeStatus() {
     const status = [];
     for (const [id, tome] of this.tomes) {
-      const machineStatus = {};
+      const machineStatus: Record<string, any> = {};
       for (const [machineKey, machine] of tome.machines) {
         machineStatus[machineKey] = {
           state: machine.getState(),

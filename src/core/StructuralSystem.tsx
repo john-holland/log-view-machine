@@ -70,7 +70,8 @@ export interface AppStructureConfig {
 export class StructuralSystem {
   private config: AppStructureConfig;
   private machines: Map<string, ViewStateMachine<any>> = new Map();
-  private componentCache: Map<string, any> = new Map();
+  // Component cache for future use
+  // private _componentCache: Map<string, any> = new Map();
 
   constructor(config: AppStructureConfig) {
     this.config = config;
@@ -215,7 +216,7 @@ export class StructuralSystem {
     const errors: string[] = [];
 
     // Validate component-tome mappings
-    for (const [componentName, mapping] of Object.entries(this.config.ComponentTomeMapping)) {
+    for (const [componentName, _mapping] of Object.entries(this.config.ComponentTomeMapping)) {
       if (!this.config.TomeConfig.tomes[`${componentName}-tome`]) {
         errors.push(`Component ${componentName} has no corresponding tome configuration`);
       }
@@ -270,7 +271,7 @@ export class StructuralSystem {
     
     for (const event of tomeConfig.events) {
       events[event] = {
-        actions: assign((context: any, event: any) => ({
+        actions: assign((_context: any, event: any) => ({
           lastEvent: event.type,
           lastEventPayload: event.payload
         }))
@@ -300,14 +301,4 @@ export function createStructuralSystem(config: AppStructureConfig): StructuralSy
   return new StructuralSystem(config);
 }
 
-// Export types
-export type {
-  AppStructureNode,
-  ComponentTomeMapping,
-  RouteConfig,
-  NavigationItem,
-  RoutingConfig,
-  TomeDefinition,
-  TomeConfig,
-  AppStructureConfig
-};
+// Types are already exported above as interfaces

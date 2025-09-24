@@ -94,11 +94,64 @@ const config = [
           'react-dom',
           '@xstate/react',
           'xstate',
-          'graphql'
+          'graphql',
+          // OpenTelemetry packages - keep as external to avoid 'this is undefined' issues
+          '@opentelemetry/api',
+          '@opentelemetry/auto-instrumentations-node',
+          '@opentelemetry/exporter-jaeger',
+          '@opentelemetry/exporter-prometheus',
+          '@opentelemetry/resources',
+          '@opentelemetry/sdk-node',
+          '@opentelemetry/semantic-conventions',
+          '@opentelemetry/sdk-trace-node',
+          '@opentelemetry/sdk-metrics',
+          '@opentelemetry/exporter-trace-otlp-http',
+          '@opentelemetry/exporter-metrics-otlp-http',
+          // Node.js built-in modules
+          'path',
+          'tty',
+          'util',
+          'fs',
+          'net',
+          'events',
+          'stream',
+          'zlib',
+          'buffer',
+          'string_decoder',
+          'querystring',
+          'url',
+          'http',
+          'crypto',
+          'vm',
+          'assert',
+          'process',
+          'async_hooks',
+          'os',
+          'child_process',
+          'cluster',
+          'dgram',
+          'dns',
+          'https',
+          'http2',
+          'tls',
+          'readline',
+          'repl',
+          'timers',
+          'tty',
+          'worker_threads',
+          'worker_threads'
         ],
         plugins: [
-          resolve(),
-          commonjs(),
+          resolve({
+            preferBuiltins: true,
+            exportConditions: ['node', 'import', 'module', 'default']
+          }),
+          commonjs({
+            transformMixedEsModules: true,
+            requireReturnsDefault: 'auto',
+            esmExternals: true,
+            dynamicRequireTargets: []
+          }),
           json(),
           typescript({
             tsconfig: './tsconfig.build.json',
@@ -120,11 +173,36 @@ const config = [
           'react-dom',
           '@xstate/react',
           'xstate',
-          'graphql'
+          'graphql',
+          // OpenTelemetry packages
+          '@opentelemetry/api',
+          '@opentelemetry/auto-instrumentations-node',
+          '@opentelemetry/exporter-jaeger',
+          '@opentelemetry/exporter-prometheus',
+          '@opentelemetry/resources',
+          '@opentelemetry/sdk-node',
+          '@opentelemetry/semantic-conventions',
+          '@opentelemetry/sdk-trace-node',
+          '@opentelemetry/sdk-metrics',
+          '@opentelemetry/exporter-trace-otlp-http',
+          '@opentelemetry/exporter-metrics-otlp-http',
+          // Node.js built-in modules
+          'path', 'tty', 'util', 'fs', 'net', 'events', 'stream', 'zlib', 'buffer',
+          'string_decoder', 'querystring', 'url', 'http', 'crypto', 'vm', 'assert',
+          'process', 'async_hooks', 'os', 'child_process', 'cluster', 'dgram', 'dns',
+          'https', 'http2', 'tls', 'readline', 'repl', 'timers', 'worker_threads'
         ],
         plugins: [
-          resolve(),
-          commonjs(),
+          resolve({
+            preferBuiltins: true,
+            exportConditions: ['node', 'import', 'module', 'default']
+          }),
+          commonjs({
+            transformMixedEsModules: true,
+            requireReturnsDefault: 'auto',
+            esmExternals: true,
+            dynamicRequireTargets: []
+          }),
           json(),
           typescript({
             tsconfig: './tsconfig.build.json',
@@ -145,11 +223,36 @@ const config = [
       '@xstate/react',
       'xstate',
       'graphql',
-      'express'
+      'express',
+      // OpenTelemetry packages
+      '@opentelemetry/api',
+      '@opentelemetry/auto-instrumentations-node',
+      '@opentelemetry/exporter-jaeger',
+      '@opentelemetry/exporter-prometheus',
+      '@opentelemetry/resources',
+      '@opentelemetry/sdk-node',
+      '@opentelemetry/semantic-conventions',
+      '@opentelemetry/sdk-trace-node',
+      '@opentelemetry/sdk-metrics',
+      '@opentelemetry/exporter-trace-otlp-http',
+      '@opentelemetry/exporter-metrics-otlp-http',
+      // Node.js built-in modules
+      'path', 'tty', 'util', 'fs', 'net', 'events', 'stream', 'zlib', 'buffer',
+      'string_decoder', 'querystring', 'url', 'http', 'crypto', 'vm', 'assert',
+      'process', 'async_hooks', 'os', 'child_process', 'cluster', 'dgram', 'dns',
+      'https', 'http2', 'tls', 'readline', 'repl', 'timers', 'worker_threads'
     ],
     plugins: [
-      resolve(),
-      commonjs(),
+      resolve({
+        preferBuiltins: true,
+        exportConditions: ['node', 'import', 'module', 'default']
+      }),
+      commonjs({
+        transformMixedEsModules: true,
+        requireReturnsDefault: 'auto',
+        esmExternals: true,
+        dynamicRequireTargets: []
+      }),
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
@@ -173,17 +276,35 @@ const config = [
       'express',
       'cors',
       'helmet',
+      // All OpenTelemetry packages
       '@opentelemetry/api',
+      '@opentelemetry/auto-instrumentations-node',
+      '@opentelemetry/exporter-jaeger',
+      '@opentelemetry/exporter-prometheus',
+      '@opentelemetry/resources',
+      '@opentelemetry/sdk-node',
+      '@opentelemetry/semantic-conventions',
       '@opentelemetry/sdk-trace-node',
       '@opentelemetry/sdk-metrics',
       '@opentelemetry/exporter-trace-otlp-http',
       '@opentelemetry/exporter-metrics-otlp-http',
-      '@opentelemetry/resources',
-      '@opentelemetry/semantic-conventions'
+      // Node.js built-in modules
+      'path', 'tty', 'util', 'fs', 'net', 'events', 'stream', 'zlib', 'buffer',
+      'string_decoder', 'querystring', 'url', 'http', 'crypto', 'vm', 'assert',
+      'process', 'async_hooks', 'os', 'child_process', 'cluster', 'dgram', 'dns',
+      'https', 'http2', 'tls', 'readline', 'repl', 'timers', 'worker_threads'
     ],
     plugins: [
-      resolve(),
-      commonjs(),
+      resolve({
+        preferBuiltins: true,
+        exportConditions: ['node', 'import', 'module', 'default']
+      }),
+      commonjs({
+        transformMixedEsModules: true,
+        requireReturnsDefault: 'auto',
+        esmExternals: true,
+        dynamicRequireTargets: []
+      }),
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',

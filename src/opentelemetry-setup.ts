@@ -1,4 +1,4 @@
-import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 export interface OpenTelemetryConfig {
   serviceName: string;
@@ -164,7 +164,7 @@ export class OpenTelemetryManager {
   }
 
   // Start a new span with enhanced error handling
-  startSpan(name: string, options?: any) {
+  startSpan(name: string, _options?: any) {
     // Create a simple span object for now
     const spanId = this.generateSpanId();
     const traceId = this.generateTraceId();
