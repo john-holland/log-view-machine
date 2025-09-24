@@ -116,6 +116,13 @@ class RobotCopy {
             writable: true,
             value: void 0
         });
+        // Response handling
+        Object.defineProperty(this, "responseHandlers", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
         this.config = {
             unleashUrl: 'http://localhost:4242/api',
             unleashClientKey: 'default:development.unleash-insecure-api-token',
@@ -288,11 +295,26 @@ class RobotCopy {
     getConfig() {
         return { ...this.config };
     }
-    // Response handling
-    onResponse(channel, _handler) {
-        // This would be implemented to handle incoming responses
-        // For now, we'll just store the handler for future use
+    onResponse(channel, handler) {
+        // Store the handler for the specified channel
+        this.responseHandlers.set(channel, handler);
         console.log(`Registered response handler for channel: ${channel}`);
+    }
+    // Method to trigger response handlers (for testing or manual triggering)
+    triggerResponse(channel, response) {
+        const handler = this.responseHandlers.get(channel);
+        if (handler) {
+            console.log(`Triggering response handler for channel: ${channel}`, response);
+            handler(response);
+        }
+        else {
+            console.warn(`No response handler found for channel: ${channel}`);
+        }
+    }
+    // Method to remove response handlers
+    removeResponseHandler(channel) {
+        this.responseHandlers.delete(channel);
+        console.log(`Removed response handler for channel: ${channel}`);
     }
     // Machine registration for state machines
     registerMachine(name, machine, config = {}) {

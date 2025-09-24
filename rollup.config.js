@@ -5,37 +5,133 @@ import dts from 'rollup-plugin-dts';
 import json from '@rollup/plugin-json';
 
 const config = [
+  // Browser-compatible build (ESM only, no OpenTelemetry)
   {
-    input: 'src/index.ts',
-    output: [
-      {
-        file: 'dist/index.js',
-        format: 'cjs',
-        sourcemap: true
-      },
-      {
-        file: 'dist/index.esm.js',
-        format: 'esm',
-        sourcemap: true
-      }
-    ],
+    input: 'src/index-browser.ts',
+    output: {
+      file: 'dist/index.esm.js',
+      format: 'esm',
+      sourcemap: true
+    },
     external: [
       'react',
       'react-dom',
       '@xstate/react',
       'xstate',
-      'graphql'
+      'graphql',
+      // OpenTelemetry packages that should not be bundled for browser
+      '@opentelemetry/api',
+      '@opentelemetry/auto-instrumentations-node',
+      '@opentelemetry/exporter-jaeger',
+      '@opentelemetry/exporter-prometheus',
+      '@opentelemetry/resources',
+      '@opentelemetry/sdk-node',
+      '@opentelemetry/semantic-conventions',
+      '@opentelemetry/sdk-trace-node',
+      '@opentelemetry/sdk-metrics',
+      '@opentelemetry/exporter-trace-otlp-http',
+      '@opentelemetry/exporter-metrics-otlp-http',
+      // Node.js modules that should not be bundled for browser
+      'path',
+      'tty',
+      'util',
+      'fs',
+      'net',
+      'events',
+      'stream',
+      'zlib',
+      'buffer',
+      'string_decoder',
+      'querystring',
+      'url',
+      'http',
+      'crypto',
+      'vm',
+      'assert',
+      'process',
+      'util-deprecate',
+      'stream-browserify',
+      'readable-stream',
+      'destroy',
+      'morgan',
+      'winston',
+      'express',
+      'cors',
+      'helmet',
+      'stream-http',
+      'readable-stream'
     ],
     plugins: [
-      resolve(),
-      commonjs(),
+      resolve({
+        preferBuiltins: false,
+        browser: true,
+        exportConditions: ['browser', 'import', 'module', 'default']
+      }),
+      commonjs({
+        ignore: ['path', 'tty', 'util', 'fs', 'net', 'events', 'stream', 'zlib', 'buffer', 'string_decoder', 'querystring', 'url', 'http', 'crypto', 'vm', 'assert', 'process', 'util-deprecate', 'stream-browserify', 'readable-stream', 'destroy', 'morgan', 'winston', 'express', 'cors', 'helmet', 'stream-http'],
+        transformMixedEsModules: true,
+        requireReturnsDefault: 'auto',
+        esmExternals: true,
+        dynamicRequireTargets: []
+      }),
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: true
+        declaration: false
       })
     ]
   },
+      // Full build with OpenTelemetry (CommonJS)
+      {
+        input: 'src/index.ts',
+        output: {
+          file: 'dist/index.js',
+          format: 'cjs',
+          sourcemap: true
+        },
+        external: [
+          'react',
+          'react-dom',
+          '@xstate/react',
+          'xstate',
+          'graphql'
+        ],
+        plugins: [
+          resolve(),
+          commonjs(),
+          json(),
+          typescript({
+            tsconfig: './tsconfig.build.json',
+            declaration: true
+          })
+        ]
+      },
+      // TomeAPI Router (server-side)
+      {
+        input: 'src/server/TomeAPIRouter.ts',
+        output: {
+          file: 'dist/server/TomeAPIRouter.js',
+          format: 'cjs',
+          sourcemap: true
+        },
+        external: [
+          'express',
+          'react',
+          'react-dom',
+          '@xstate/react',
+          'xstate',
+          'graphql'
+        ],
+        plugins: [
+          resolve(),
+          commonjs(),
+          json(),
+          typescript({
+            tsconfig: './tsconfig.build.json',
+            declaration: true
+          })
+        ]
+      },
   {
     input: 'src/simple-server.ts',
     output: {
@@ -57,7 +153,7 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: true
+        declaration: false
       })
     ]
   },
@@ -91,7 +187,7 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: true
+        declaration: false
       })
     ]
   },
@@ -111,7 +207,7 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: true
+        declaration: false
       })
     ]
   },
@@ -138,9 +234,26 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: true
+        declaration: false
       })
     ]
+  },
+  // Generate TypeScript declaration files
+  {
+    input: 'src/index.ts',
+    output: {
+      file: 'dist/index.d.ts',
+      format: 'esm'
+    },
+    plugins: [dts()]
+  },
+  {
+    input: 'src/index-browser.ts',
+    output: {
+      file: 'dist/index-browser.d.ts',
+      format: 'esm'
+    },
+    plugins: [dts()]
   }
 ];
 

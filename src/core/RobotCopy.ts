@@ -239,10 +239,29 @@ export class RobotCopy {
   }
 
   // Response handling
-  onResponse(channel: string, _handler: (response: any) => void): void {
-    // This would be implemented to handle incoming responses
-    // For now, we'll just store the handler for future use
+  private responseHandlers: Map<string, (response: any) => void> = new Map();
+
+  onResponse(channel: string, handler: (response: any) => void): void {
+    // Store the handler for the specified channel
+    this.responseHandlers.set(channel, handler);
     console.log(`Registered response handler for channel: ${channel}`);
+  }
+
+  // Method to trigger response handlers (for testing or manual triggering)
+  triggerResponse(channel: string, response: any): void {
+    const handler = this.responseHandlers.get(channel);
+    if (handler) {
+      console.log(`Triggering response handler for channel: ${channel}`, response);
+      handler(response);
+    } else {
+      console.warn(`No response handler found for channel: ${channel}`);
+    }
+  }
+
+  // Method to remove response handlers
+  removeResponseHandler(channel: string): void {
+    this.responseHandlers.delete(channel);
+    console.log(`Removed response handler for channel: ${channel}`);
   }
 
   // Machine registration for state machines

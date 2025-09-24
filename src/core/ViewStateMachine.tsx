@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMachine } from '@xstate/react';
-import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
+import { createMachine, assign, interpret } from 'xstate';
 import { RobotCopy } from './RobotCopy';
 
 /**
@@ -523,13 +523,13 @@ export class ViewStateMachine<TModel = any> {
       clear: () => {
         // Server-side clear operation
       },
-      transition: (to: string) => {
+      transition: (_to: string) => {
         // Server-side transition
       },
-      send: (event: any) => {
+      send: (_event: any) => {
         // Server-side event sending
       },
-      on: (eventName: string, handler: () => void) => {
+      on: (_eventName: string, _handler: () => void) => {
         // Server-side event handling
       },
       subMachine: (machineId: string, config: ViewStateMachineConfig<any>) => {
@@ -541,15 +541,15 @@ export class ViewStateMachine<TModel = any> {
         return this.subMachines.get(machineId);
       },
       graphql: {
-        query: async (query: string, variables?: any) => {
+        query: async (_query: string, _variables?: any) => {
           // Server-side GraphQL query
           return {};
         },
-        mutation: async (mutation: string, variables?: any) => {
+        mutation: async (_mutation: string, _variables?: any) => {
           // Server-side GraphQL mutation
           return {};
         },
-        subscription: async (subscription: string, variables?: any) => {
+        subscription: async (_subscription: string, _variables?: any) => {
           // Server-side GraphQL subscription
           return {};
         },
@@ -647,13 +647,13 @@ export type ProxyRobotCopyStateViewStateMachineConfig<TModel = any> = ViewStateM
 
 export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<TModel> {
   private proxyRobotCopy: RobotCopy;
-  private proxyMachine: ProxyMachine;
   private proxyIncomingMessageHandlers: Map<string, (message: any) => void> = new Map();
   
   constructor(config: ProxyRobotCopyStateViewStateMachineConfig<TModel>) {
     super(config);
     this.proxyRobotCopy = config.robotCopy;
-    this.proxyMachine = new ProxyMachine(this.proxyRobotCopy);
+    // Initialize proxy machine for RobotCopy communication
+    new ProxyMachine(this.proxyRobotCopy);
     
     // Set up incoming message handlers
     if (config.incomingMessageHandlers) {
@@ -698,20 +698,20 @@ export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<T
     }
   }
 
-  render(model: TModel): React.ReactNode {
+  render(_model: TModel): React.ReactNode {
     throw new Error('ProxyStateMachine does not support rendering');
   }
 
-  useViewStateMachine(initialModel: TModel) {
+  useViewStateMachine(_initialModel: TModel) {
     throw new Error('ProxyStateMachine does not support useViewStateMachine');
     return {} as any; // This line will never be reached due to the throw
   }
 
-  compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
+  compose(_otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel> {
     throw new Error('ProxyStateMachine does not support compose');
   }
 
-  synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel> {
+  synchronizeWithTome(_tomeConfig: any): ViewStateMachine<TModel> {
     throw new Error('ProxyStateMachine does not support synchronizeWithTome');
   }
 

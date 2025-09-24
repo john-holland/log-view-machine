@@ -1,4 +1,5 @@
 import React from 'react';
+import { LazyTomeManager } from './TomeAdapters';
 
 /**
  * TomeConfig - Configuration for Tome routing and state management
@@ -213,7 +214,7 @@ export function createTomeConfig(config: Partial<TomeConfig>): TomeConfig & {
   getHealth(): any;
   route(path: string, method: string, data: any): any;
 } {
-  const { LazyTomeManager } = require('./TomeAdapters');
+  // LazyTomeManager is now imported at the top of the file
   
   const tomeConfig = {
     id: config.id || 'default-tome',
