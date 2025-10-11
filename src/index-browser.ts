@@ -14,6 +14,18 @@ export {
   type XStateActions
 } from './core/ViewStateMachine';
 
+// ViewStack and TomeBase exports
+export {
+  ViewStack,
+  type ViewStackEntry
+} from './core/ViewStack';
+
+export {
+  TomeBase,
+  MachineRouter,
+  type ViewKeyObserver
+} from './core/TomeBase';
+
 // Tracing exports
 export {
   Tracing,
