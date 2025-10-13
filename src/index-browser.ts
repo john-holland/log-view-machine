@@ -11,7 +11,10 @@ export {
   createNamedAction,
   type XStateAction,
   type ActionCreator,
-  type XStateActions
+  type XStateActions,
+  // Router and service exports
+  type RoutedSend,
+  type ServiceMeta
 } from './core/ViewStateMachine';
 
 // ViewStack and TomeBase exports

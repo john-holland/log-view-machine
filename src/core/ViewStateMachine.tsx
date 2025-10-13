@@ -2,6 +2,23 @@ import React from 'react';
 import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret } from 'xstate';
 import { RobotCopy } from './RobotCopy';
+import { MachineRouter } from './TomeBase';
+
+/**
+ * Routed send function type for services
+ * Allows services to communicate with other machines via the router
+ */
+export type RoutedSend = (target: string, event: string, payload?: any) => Promise<any>;
+
+/**
+ * Service meta parameter - provides context and utilities to services
+ */
+export interface ServiceMeta {
+    routedSend?: RoutedSend;
+    machineId: string;
+    router?: MachineRouter;
+    machine?: any;  // Reference to current machine for relative routing
+}
 
 /**
  * XState Action Types for better IDE support
@@ -163,6 +180,8 @@ export type ViewStateMachineConfig<TModel = any> = {
   logStates?: Record<string, StateHandler<TModel>>;
   tomeConfig?: any;
   subMachines?: Record<string, ViewStateMachineConfig<any>>;
+  predictableActionArguments?: boolean; // Make XState predictableActionArguments configurable
+  router?: MachineRouter;  // Optional router for inter-machine communication
 };
 
 export class ViewStateMachine<TModel = any> {
@@ -177,14 +196,26 @@ export class ViewStateMachine<TModel = any> {
   // Add RobotCopy support for incoming messages
   private robotCopy?: RobotCopy;
   private incomingMessageHandlers: Map<string, (message: any) => void> = new Map();
+  // Router support for inter-machine communication
+  private router?: MachineRouter;
+  private machineId: string;
+  private routedSend?: RoutedSend;
+  public parentMachine?: any;  // Reference to parent machine for relative routing
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
     this.tomeConfig = config.tomeConfig;
+    this.machineId = config.machineId;
+    
+    // Set router if provided
+    if (config.router) {
+      this.setRouter(config.router);
+    }
     
     // Create the XState machine
     const machineDefinition = createMachine({
       ...config.xstateConfig,
+      predictableActionArguments: config.predictableActionArguments ?? true, // Default to true, but allow override
       on: {
         ...config.xstateConfig.on,
         // Add our custom events
@@ -216,6 +247,11 @@ export class ViewStateMachine<TModel = any> {
           }))
         }
       }
+    }, {
+      // Pass actions from config to options so XState can properly resolve them
+      actions: config.xstateConfig.actions || {},
+      // Wrap services to provide meta parameter with routedSend
+      services: this.wrapServices(config.xstateConfig.services || {})
     });
 
     // Interpret the machine to create a service with send method
@@ -458,6 +494,67 @@ export class ViewStateMachine<TModel = any> {
     };
   }
 
+  /**
+   * Set the router for inter-machine communication
+   * Creates a routedSend function for services to use
+   */
+  setRouter(router: MachineRouter): void {
+    this.router = router;
+    if (router) {
+      this.routedSend = this.createRoutedSendForContext();
+    }
+  }
+
+  /**
+   * Create a routed send function that supports relative paths
+   * This function is passed to services via the meta parameter
+   */
+  private createRoutedSendForContext(): RoutedSend {
+    return async (target: string, event: string, payload?: any) => {
+      if (!this.router) {
+        throw new Error('Router not available for this machine');
+      }
+      
+      // Try relative resolution first (supports ., .., ./, ../)
+      let machine = this.router.resolveRelative(target, this);
+      
+      // Fallback to absolute resolution
+      if (!machine) {
+        machine = this.router.resolve(target);
+      }
+      
+      if (!machine) {
+        throw new Error(`Machine ${target} not found via router`);
+      }
+      
+      // Send the event to the resolved machine
+      return machine.send ? machine.send(event, payload) : { success: false, error: 'No send method' };
+    };
+  }
+
+  /**
+   * Wrap services to provide meta parameter with routedSend and other utilities
+   */
+  private wrapServices(services: any): any {
+    const wrappedServices: any = {};
+    
+    for (const [serviceName, serviceImpl] of Object.entries(services)) {
+      wrappedServices[serviceName] = async (context: any, event: any) => {
+        const meta: ServiceMeta = {
+          routedSend: this.routedSend,
+          machineId: this.machineId,
+          router: this.router,
+          machine: this  // Reference to current machine for relative routing
+        };
+        
+        // Call original service with meta as third parameter
+        return (serviceImpl as Function)(context, event, meta);
+      };
+    }
+    
+    return wrappedServices;
+  }
+
   // Event subscription methods for TomeConnector
   on(eventType: string, handler: (event: any) => void): void {
     if (this.machine && typeof this.machine.on === 'function') {
@@ -643,6 +740,7 @@ export type ProxyRobotCopyStateViewStateMachineConfig<TModel = any> = ViewStateM
   robotCopy: RobotCopy;
   // Support for incoming message handling
   incomingMessageHandlers?: Record<string, (message: any) => void>;
+  // predictableActionArguments is inherited from ViewStateMachineConfig
 };
 
 export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<TModel> {
@@ -723,13 +821,37 @@ export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<T
 
 export function createProxyRobotCopyStateMachine<TModel = any>(
   config: ProxyRobotCopyStateViewStateMachineConfig<TModel>
+): ProxyRobotCopyStateMachine<TModel>;
+export function createProxyRobotCopyStateMachine<TModel = any>(
+  config: Omit<ProxyRobotCopyStateViewStateMachineConfig<TModel>, 'predictableActionArguments'>,
+  predictableActionArguments?: boolean
+): ProxyRobotCopyStateMachine<TModel>;
+export function createProxyRobotCopyStateMachine<TModel = any>(
+  config: ProxyRobotCopyStateViewStateMachineConfig<TModel> | Omit<ProxyRobotCopyStateViewStateMachineConfig<TModel>, 'predictableActionArguments'>,
+  predictableActionArguments?: boolean
 ): ProxyRobotCopyStateMachine<TModel> {
-  return new ProxyRobotCopyStateMachine(config);
+  const fullConfig: ProxyRobotCopyStateViewStateMachineConfig<TModel> = {
+    ...config,
+    ...(predictableActionArguments !== undefined && { predictableActionArguments })
+  };
+  return new ProxyRobotCopyStateMachine(fullConfig);
 }
 
 // Helper function to create a ViewStateMachine
 export function createViewStateMachine<TModel = any>(
   config: ViewStateMachineConfig<TModel>
+): ViewStateMachine<TModel>;
+export function createViewStateMachine<TModel = any>(
+  config: Omit<ViewStateMachineConfig<TModel>, 'predictableActionArguments'>,
+  predictableActionArguments?: boolean
+): ViewStateMachine<TModel>;
+export function createViewStateMachine<TModel = any>(
+  config: ViewStateMachineConfig<TModel> | Omit<ViewStateMachineConfig<TModel>, 'predictableActionArguments'>,
+  predictableActionArguments?: boolean
 ): ViewStateMachine<TModel> {
-  return new ViewStateMachine(config);
+  const fullConfig: ViewStateMachineConfig<TModel> = {
+    ...config,
+    ...(predictableActionArguments !== undefined && { predictableActionArguments })
+  };
+  return new ViewStateMachine(fullConfig);
 } 

@@ -15,7 +15,6 @@ export type ViewKeyObserver = (key: string) => void;
  */
 export class MachineRouter {
     private machines: Map<string, any> = new Map();
-    private parent: any = null;
 
     constructor() {
         // Router for managing hierarchical machine communication
@@ -36,48 +35,106 @@ export class MachineRouter {
     }
 
     /**
-     * Set the parent router for upward routing
+     * Resolve a path to a machine (absolute paths only)
+     * For relative paths, use resolveRelative() with a context machine
      */
-    setParent(parent: any): void {
-        this.parent = parent;
+    resolve(path: string): any | null {
+        return this.machines.get(path) || null;
     }
 
     /**
-     * Resolve a path to a machine
-     * Supports: './' (child), '..' (parent), '.' (self)
+     * Resolve hierarchical paths like "Parent.Child.GrandChild"
      */
-    resolve(path: string): any | null {
-        // Self reference
+    resolveHierarchical(path: string): any | null {
+        const parts = path.split('.');
+        let current = this.machines.get(parts[0]);
+        
+        for (let i = 1; i < parts.length && current; i++) {
+            // Try to get sub-machine
+            if (current.subMachines && current.subMachines.get) {
+                current = current.subMachines.get(parts[i]);
+            } else if (current.router && current.router.machines) {
+                current = current.router.machines.get(parts[i]);
+            } else {
+                return null;
+            }
+        }
+        
+        return current;
+    }
+
+    /**
+     * Resolve relative paths from a context machine
+     * Supports: '.', '..', './', '../', '../../', etc.
+     */
+    resolveRelative(path: string, contextMachine: any): any | null {
+        // Handle absolute paths (no . or ..)
+        if (!path.startsWith('.')) {
+            return this.resolveHierarchical(path);
+        }
+        
+        // Handle current machine reference (.)
         if (path === '.') {
-            return this;
+            return contextMachine;
         }
-
-        // Parent reference
+        
+        // Handle parent machine reference (..)
         if (path === '..') {
-            return this.parent;
+            return contextMachine.parentMachine || null;
         }
-
-        // Child reference (relative path)
+        
+        // Handle relative child (./ prefix)
         if (path.startsWith('./')) {
-            const childPath = path.substring(2);
-            const parts = childPath.split('/');
-            
-            // Direct child
-            if (parts.length === 1) {
-                return this.machines.get(parts[0]) || null;
-            }
-            
-            // Nested child - resolve recursively
-            const firstChild = this.machines.get(parts[0]);
-            if (firstChild && firstChild.router) {
-                return firstChild.router.resolve('./' + parts.slice(1).join('/'));
-            }
-            
-            return null;
+            const subPath = path.substring(2);
+            return this.navigateFromMachine(contextMachine, subPath);
         }
+        
+        // Handle relative parent (../ prefix)
+        if (path.startsWith('../')) {
+            const parent = contextMachine.parentMachine;
+            if (!parent) {
+                throw new Error(`No parent machine found for relative path: ${path}`);
+            }
+            const remainingPath = path.substring(3);
+            if (!remainingPath) {
+                return parent;
+            }
+            return this.navigateFromMachine(parent, remainingPath);
+        }
+        
+        return null;
+    }
 
-        // Absolute or unrecognized path
-        return this.machines.get(path) || null;
+    /**
+     * Navigate from a specific machine following a path
+     * Supports '/', '.', and '..' as path separators
+     */
+    private navigateFromMachine(machine: any, path: string): any | null {
+        if (!path) return machine;
+        
+        const parts = path.split('/');
+        let current = machine;
+        
+        for (const part of parts) {
+            if (!part || part === '.') {
+                continue; // Empty or stay at current
+            } else if (part === '..') {
+                current = current.parentMachine;
+                if (!current) return null;
+            } else {
+                // Navigate to sub-machine
+                if (current.subMachines && current.subMachines.get) {
+                    current = current.subMachines.get(part);
+                } else if (current.router && current.router.machines) {
+                    current = current.router.machines.get(part);
+                } else {
+                    return null;
+                }
+                if (!current) return null;
+            }
+        }
+        
+        return current;
     }
 
     /**
@@ -212,7 +269,7 @@ export abstract class TomeBase {
     registerChild(path: string, tome: TomeBase): void {
         this.childTomes.set(path, tome);
         this.router.register(path, tome);
-        tome.router.setParent(this.router);
+        // Note: Parent-child relationships are handled via machine.parentMachine property
     }
 
     /**
