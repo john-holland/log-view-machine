@@ -1,4 +1,5 @@
-import React, { Component, ReactNode, ErrorInfo } from 'react';
+import React, { Component, ReactNode, ErrorInfo, useEffect } from 'react';
+import { useEditorTome } from '../editor/hooks/useEditorTome';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -9,8 +10,10 @@ interface ErrorBoundaryState {
 interface GenericEditorProps {
   title: string;
   description: string;
-  children: ReactNode;
+  children?: ReactNode;
+  componentId?: string;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  useTomeArchitecture?: boolean; // Feature flag for Tome integration
 }
 
 class ErrorBoundary extends Component<{ children: ReactNode; onError?: (error: Error, errorInfo: ErrorInfo) => void }, ErrorBoundaryState> {
@@ -99,12 +102,137 @@ class ErrorBoundary extends Component<{ children: ReactNode; onError?: (error: E
   }
 }
 
+/**
+ * GenericEditor Component (Tome-Integrated)
+ * 
+ * Enhanced editor with optional Tome architecture integration
+ * Uses EditorTome for state management when enabled
+ */
 const GenericEditor: React.FC<GenericEditorProps> = ({ 
   title, 
   description, 
-  children, 
-  onError 
+  children,
+  componentId,
+  onError,
+  useTomeArchitecture = false
 }) => {
+  // Use Tome architecture if enabled
+  const tomeState = useTomeArchitecture ? useEditorTome(componentId) : null;
+
+  // Handle errors from Tome
+  useEffect(() => {
+    if (tomeState?.error && onError) {
+      const error = new Error(tomeState.error);
+      onError(error, { componentStack: '' });
+    }
+  }, [tomeState?.error, onError]);
+
+  // Render with Tome integration
+  if (useTomeArchitecture && tomeState) {
+    return (
+      <div className="generic-editor" data-state={tomeState.editorState}>
+        <header className="editor-header">
+          <h1 className="editor-title">{title}</h1>
+          <p className="editor-description">{description}</p>
+          <div className="editor-status" style={{ fontSize: '12px', marginTop: '5px', opacity: 0.7 }}>
+            Editor: {tomeState.editorState} | Preview: {tomeState.previewState}
+            {tomeState.isDirty && ' • 📝 Unsaved changes'}
+          </div>
+        </header>
+        
+        <main className="editor-main">
+          <ErrorBoundary onError={onError}>
+            {children}
+            
+            {/* Show component editor if no children */}
+            {!children && tomeState.currentComponent && (
+              <div className="component-editor">
+                <h3>Editing: {tomeState.currentComponent.name}</h3>
+                <div style={{ marginTop: '10px' }}>
+                  <label>
+                    Component Content:
+                    <textarea
+                      value={tomeState.currentComponent.content || ''}
+                      onChange={(e) => tomeState.updateComponentContent(e.target.value)}
+                      style={{
+                        width: '100%',
+                        minHeight: '200px',
+                        marginTop: '5px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </label>
+                </div>
+                
+                {/* Preview area */}
+                {tomeState.previewData && (
+                  <div className="preview-area" style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc' }}>
+                    <h4>Preview:</h4>
+                    <div dangerouslySetInnerHTML={{ __html: tomeState.previewData.rendered }} />
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!children && !tomeState.currentComponent && (
+              <div style={{ padding: '20px', textAlign: 'center' }}>
+                <p>No component loaded</p>
+                <button onClick={tomeState.createNewComponent}>Create New Component</button>
+              </div>
+            )}
+          </ErrorBoundary>
+        </main>
+        
+        <footer className="editor-footer">
+          <div className="editor-actions" style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <button 
+              onClick={tomeState.saveComponent} 
+              disabled={!tomeState.isDirty || tomeState.editorState === 'saving'}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: tomeState.isDirty ? '#28a745' : '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: tomeState.isDirty ? 'pointer' : 'not-allowed'
+              }}
+            >
+              💾 {tomeState.editorState === 'saving' ? 'Saving...' : 'Save'}
+            </button>
+            <button 
+              onClick={tomeState.previewComponent}
+              disabled={tomeState.editorState !== 'editing'}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              👁️ {tomeState.previewState === 'rendering' ? 'Rendering...' : 'Preview'}
+            </button>
+            <button 
+              onClick={tomeState.cancelEditing}
+              disabled={tomeState.editorState === 'idle'}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              ❌ Cancel
+            </button>
+          </div>
+          <p>🔗 TomeConnector & ViewStateMachine {useTomeArchitecture && '(Tome Architecture Enabled)'}</p>
+        </footer>
+      </div>
+    );
+  }
+
+  // Original non-Tome version
   return (
     <div className="generic-editor">
       <header className="editor-header">
