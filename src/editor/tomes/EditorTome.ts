@@ -116,7 +116,8 @@ export class EditorTome extends TomeBase {
         if (!machine) {
             return null;
         }
-        return machine.getContext?.() || null;
+        const state = machine.getState?.();
+        return state?.context || null;
     }
 
     /**
