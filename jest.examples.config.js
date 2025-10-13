@@ -1,6 +1,6 @@
 export default {
   // Test environment
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   
   // Module file extensions
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json'],
@@ -10,42 +10,37 @@ export default {
     '^.+\\.(js|jsx|ts|tsx)$': 'ts-jest',
   },
   
-  // Test file patterns - exclude .d.ts files
+  // Test file patterns - only include example tests
   testMatch: [
-    '**/__tests__/**/*.(js|jsx|ts|tsx)',
-    '**/*.(test|spec).(js|jsx|ts|tsx)'
+    '**/example/**/__tests__/**/*.(js|jsx|ts|tsx)',
+    '**/example/**/*.(test|spec).(js|jsx|ts|tsx)'
   ],
   
-  // Exclude patterns - exclude example tests from core tests
+  // Exclude patterns
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/editor-build/',
     '/editor-dist/',
-    '/example/',  // Exclude all example tests from core test suite
+    '/example/node-example/tests/e2e/',  // Keep e2e tests separate
     '\\.d\\.ts$'
   ],
   
   // Module name mapping
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    // Mock problematic modules
     '^log-view-machine$': '<rootDir>/src/index.ts',
   },
   
-  // Setup files
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
   // Coverage configuration
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/index.{js,jsx,ts,tsx}',
-    '!src/examples/**/*',
+    'example/**/*.{js,jsx,ts,tsx}',
+    '!example/**/*.d.ts',
+    '!example/**/node_modules/**',
   ],
   
-  // Test timeout
-  testTimeout: 10000,
+  // Test timeout - examples may take longer
+  testTimeout: 30000,
   
   // Clear mocks between tests
   clearMocks: true,
@@ -75,3 +70,4 @@ export default {
     customExportConditions: ['node', 'node-addons'],
   },
 };
+
