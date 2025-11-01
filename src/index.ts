@@ -135,4 +135,9 @@ export {
 export {
   StackTraceExample,
   createStackTraceExample
-} from './examples/StackTraceExample'; 
+} from './examples/StackTraceExample';
+
+// Component exports - Note: GenericEditor requires CSS to be loaded separately
+// Import directly: import GenericEditor from 'log-view-machine/src/components/GenericEditor'
+// Or use EditorWrapper from your application which handles this
+// export { default as GenericEditor } from './components/GenericEditor'; 

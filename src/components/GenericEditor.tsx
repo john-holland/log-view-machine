@@ -1,5 +1,10 @@
-import React, { Component, ReactNode, ErrorInfo, useEffect } from 'react';
+import React, { Component, ReactNode, ErrorInfo, useEffect, useState } from 'react';
 import { useEditorTome } from '../editor/hooks/useEditorTome';
+import { DiffViewer } from './DiffViewer';
+import { LintResultsDisplay } from './LintResultsDisplay';
+import type { LintResult, LintSummary } from '../services/linter-service';
+// CSS import - webpack will handle this via css-loader
+import './GenericEditor.css';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -119,6 +124,16 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
   // Use Tome architecture if enabled
   const tomeState = useTomeArchitecture ? useEditorTome(componentId) : null;
 
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [lintResults, setLintResults] = useState<{ results: LintResult[]; summary: LintSummary } | null>(null);
+  const [reviewLink, setReviewLink] = useState('');
+  const [originalContent, setOriginalContent] = useState('');
+  const [isLinting, setIsLinting] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [commentFile, setCommentFile] = useState('');
+  const [commentLine, setCommentLine] = useState<number | null>(null);
+
   // Handle errors from Tome
   useEffect(() => {
     if (tomeState?.error && onError) {
@@ -126,6 +141,81 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
       onError(error, { componentStack: '' });
     }
   }, [tomeState?.error, onError]);
+
+  // Store original content when component loads
+  useEffect(() => {
+    if (tomeState?.currentComponent?.content && !originalContent) {
+      setOriginalContent(tomeState.currentComponent.content);
+    }
+  }, [tomeState?.currentComponent, originalContent]);
+
+  // Handle review button click
+  const handleReview = async () => {
+    if (!tomeState?.currentComponent) return;
+
+    setIsLinting(true);
+
+    try {
+      // Generate shareable review link
+      const link = `${window.location.origin}/review/${componentId}`;
+      setReviewLink(link);
+
+      // Run linter
+      const files = [{ 
+        name: 'component.tsx', 
+        content: tomeState.currentComponent.content || '' 
+      }];
+
+      const response = await fetch('/api/lint/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files }),
+      });
+
+      const lintData = await response.json();
+      setLintResults(lintData);
+
+      setShowReviewModal(true);
+    } catch (error) {
+      console.error('Failed to run linter:', error);
+      alert('Failed to run linter. Please try again.');
+    } finally {
+      setIsLinting(false);
+    }
+  };
+
+  // Handle submit for review
+  const handleSubmitForReview = () => {
+    console.log('📤 Submitting for review:', componentId);
+    // TODO: Call submission API
+    alert('Mod submitted for review!');
+    setShowReviewModal(false);
+  };
+
+  // Handle add comment
+  const handleAddComment = (fileName: string, line: number) => {
+    setCommentFile(fileName);
+    setCommentLine(line);
+    // Scroll to comment input
+    document.getElementById('comment-input')?.focus();
+  };
+
+  // Handle save comment
+  const handleSaveComment = () => {
+    if (!newComment.trim()) return;
+
+    console.log('💬 Adding comment:', {
+      file: commentFile,
+      line: commentLine,
+      text: newComment,
+      author: 'current-user', // TODO: Get from auth
+    });
+
+    // TODO: Save comment to backend
+    setNewComment('');
+    setCommentFile('');
+    setCommentLine(null);
+  };
 
   // Render with Tome integration
   if (useTomeArchitecture && tomeState) {
@@ -225,9 +315,139 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
             >
               ❌ Cancel
             </button>
+            <button
+              onClick={handleReview}
+              disabled={!tomeState.currentComponent || isLinting}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                marginLeft: '8px'
+              }}
+            >
+              {isLinting ? '🔍 Linting...' : '👀 Review'}
+            </button>
           </div>
           <p>🔗 TomeConnector & ViewStateMachine {useTomeArchitecture && '(Tome Architecture Enabled)'}</p>
         </footer>
+
+        {/* Review Modal */}
+        {showReviewModal && (
+          <div className="review-modal-overlay" onClick={() => setShowReviewModal(false)}>
+            <div className="review-modal-content" onClick={(e) => e.stopPropagation()}>
+              {/* Modal Header */}
+              <div className="review-modal-header">
+                <h2>👀 Review Changes</h2>
+                <button className="close-btn" onClick={() => setShowReviewModal(false)}>×</button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="review-modal-body">
+                {/* Review Link */}
+                <div className="review-link-section">
+                  <label><strong>Shareable Review Link:</strong></label>
+                  <div className="review-link-input-group">
+                    <input 
+                      type="text" 
+                      value={reviewLink} 
+                      readOnly 
+                      className="review-link-input"
+                    />
+                    <button
+                      className="copy-btn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(reviewLink);
+                        alert('Link copied!');
+                      }}
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                  <p className="help-text">Anyone with this link can view your mod</p>
+                </div>
+
+                {/* File Diff */}
+                <div className="diff-section">
+                  <h3>📄 File Changes</h3>
+                  <DiffViewer
+                    files={[{
+                      fileName: 'component.tsx',
+                      oldContent: originalContent,
+                      newContent: tomeState?.currentComponent?.content || '',
+                      language: 'typescript',
+                    }]}
+                    onAddComment={handleAddComment}
+                    showAddCommentButtons={false}
+                  />
+                </div>
+
+                {/* Lint Results */}
+                {lintResults && (
+                  <div className="lint-section">
+                    <h3>🔍 Lint Results</h3>
+                    <LintResultsDisplay
+                      results={lintResults.results}
+                      summary={lintResults.summary}
+                      onRuleClick={(ruleId) => {
+                        window.open(`/api/lint/rules/${ruleId}`, '_blank');
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Comment Section */}
+                <div className="comment-section">
+                  <h3>💬 Add Comment</h3>
+                  {commentLine && (
+                    <div className="comment-context">
+                      <span>Commenting on {commentFile}:{commentLine}</span>
+                      <button onClick={() => { setCommentFile(''); setCommentLine(null); }}>×</button>
+                    </div>
+                  )}
+                  <textarea
+                    id="comment-input"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment... (supports Markdown)"
+                    rows={4}
+                    className="comment-textarea"
+                  />
+                  <button
+                    className="save-comment-btn"
+                    onClick={handleSaveComment}
+                    disabled={!newComment.trim()}
+                  >
+                    💬 Save Comment
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="review-modal-footer">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowReviewModal(false)}
+                >
+                  Cancel
+                </button>
+                  <button
+                  className="btn-primary"
+                  onClick={handleSubmitForReview}
+                  disabled={!!(lintResults && lintResults.summary.errors > 0)}
+                  title={
+                    lintResults && lintResults.summary.errors > 0
+                      ? 'Fix linter errors before submitting'
+                      : 'Submit mod for review'
+                  }
+                >
+                  📤 Submit for Review
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
