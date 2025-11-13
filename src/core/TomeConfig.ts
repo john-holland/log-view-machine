@@ -42,6 +42,15 @@ export interface TomeRouteConfig {
   };
 }
 
+/**
+ * TomeRenderContainer type for wrapping rendered views
+ * Supports React components, element types, or render functions
+ */
+export type TomeRenderContainer = 
+  | React.ComponentType<{ children?: React.ReactNode; className?: string }>
+  | React.ElementType
+  | ((props: Partial<{ children?: React.ReactNode; className?: string }>) => React.ReactNode);
+
 export interface TomeConfig {
   id: string;
   name: string;
@@ -106,6 +115,7 @@ export interface TomeConfig {
   
   // UI Rendering support
   render?: () => React.ReactNode;
+  renderContainer?: TomeRenderContainer;
 }
 
 export interface TomeInstance {
@@ -167,6 +177,9 @@ export interface ISubMachine {
   sendToParent(message: any): Promise<any>;
   sendToChild(machineId: string, message: any): Promise<any>;
   broadcast(message: any): Promise<any>;
+
+  // View rendering (for view container)
+  renderContainer?(): React.ReactNode;
   
   // View rendering (for view machines)
   render?(): React.ReactNode;
@@ -260,7 +273,8 @@ export function createTomeConfig(config: Partial<TomeConfig>): TomeConfig & {
       tracing: config.monitoring?.tracing ?? true,
       healthChecks: config.monitoring?.healthChecks || ['/health']
     },
-    render: config.render
+    render: config.render,
+    renderContainer: config.renderContainer
   };
 
   let lazyTomeManager: any = null;

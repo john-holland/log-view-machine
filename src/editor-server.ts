@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import { RobotCopy } from './core/RobotCopy';
 import { openTelemetryManager } from './opentelemetry-setup';
 import { SpanStatusCode } from '@opentelemetry/api';
+import { editorTome } from './editor/tomes/EditorTome';
+import { initializeAuthService } from './services/auth-service';
+import fs from 'fs';
+import path from 'path';
 
 // Simple template processor for server-side rendering
 class TemplateProcessor {
@@ -55,13 +59,32 @@ const robotCopy = new RobotCopy({
   unleashEnvironment: process.env.UNLEASH_ENVIRONMENT || 'development'
 });
 
+// Initialize AuthService
+const authService = initializeAuthService({
+  jwtSecret: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
+});
+
+// Load component whitelist
+let componentWhitelist: any = { components: [] };
+try {
+  const whitelistPath = path.join(process.cwd(), 'src/config/component-whitelist.json');
+  if (fs.existsSync(whitelistPath)) {
+    componentWhitelist = JSON.parse(fs.readFileSync(whitelistPath, 'utf-8'));
+    console.log(`📋 Loaded component whitelist: ${componentWhitelist.components.length} components`);
+  }
+} catch (error) {
+  console.warn('📋 Could not load component whitelist, using empty list');
+}
+
 // Create Express app
 const app = express();
 
 // OpenTelemetry middleware for trace context propagation
 app.use((req, res, next) => {
   // Extract trace context from incoming request
-  const traceContext = openTelemetryManager.extractTraceContext(req.headers);
+  const traceContext = openTelemetryManager.extractTraceContext(req.headers as Record<string, string>);
   
   if (traceContext) {
     // If trace context exists, use it
@@ -153,6 +176,18 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Favicon endpoint - palette emoji 🎨
+app.get('/favicon.ico', (req, res) => {
+  // SVG favicon with palette emoji
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <text y="80" font-size="80">🎨</text>
+    </svg>
+  `;
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(svg);
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -173,6 +208,445 @@ app.get('/api/editor/status', (req, res) => {
       unleashUrl: robotCopy['config'].unleashUrl,
       unleashAppName: robotCopy['config'].unleashAppName,
       unleashEnvironment: robotCopy['config'].unleashEnvironment
+    },
+    tome: {
+      enabled: true,
+      machines: ['EditorMachine', 'PreviewMachine', 'TemplateMachine', 'HealthMachine']
+    }
+  });
+});
+
+// Tome-based Editor API endpoints
+
+/**
+ * List all components
+ */
+app.get('/api/tome/components', async (req, res) => {
+  try {
+    await editorTome.send('EditorMachine', 'LIST_COMPONENTS');
+    
+    // Get the components from the machine context
+    const context = editorTome.getMachineContext('EditorMachine');
+    res.json({ 
+      success: true, 
+      components: context?.components || [] 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Load a specific component
+ */
+app.get('/api/tome/components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await editorTome.send('EditorMachine', 'LOAD_COMPONENT', { componentId: id });
+    
+    // Wait a bit for the state transition
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const context = editorTome.getMachineContext('EditorMachine');
+    const state = editorTome.getMachineState('EditorMachine');
+    
+    if (state?.value === 'error') {
+      res.status(404).json({ 
+        success: false, 
+        error: context?.error || 'Component not found' 
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        component: context?.currentComponent,
+        state: state?.value
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Create a new component
+ */
+app.post('/api/tome/components', async (req, res) => {
+  try {
+    await editorTome.send('EditorMachine', 'CREATE_NEW');
+    
+    // Wait for state transition
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const context = editorTome.getMachineContext('EditorMachine');
+    res.json({ 
+      success: true, 
+      component: context?.currentComponent 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Save the current component
+ */
+app.put('/api/tome/components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const component = req.body;
+    
+    // First load the component if not already loaded
+    const context = editorTome.getMachineContext('EditorMachine');
+    if (context?.currentComponent?.id !== id) {
+      await editorTome.send('EditorMachine', 'LOAD_COMPONENT', { componentId: id });
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Update the component content in the machine context
+    const currentContext = editorTome.getMachineContext('EditorMachine');
+    if (currentContext) {
+      currentContext.currentComponent = component;
+    }
+    
+    // Trigger save
+    await editorTome.send('EditorMachine', 'SAVE');
+    
+    // Wait for save to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const updatedContext = editorTome.getMachineContext('EditorMachine');
+    res.json({ 
+      success: true, 
+      component: updatedContext?.currentComponent 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Delete a component
+ */
+app.delete('/api/tome/components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Load the component first
+    await editorTome.send('EditorMachine', 'LOAD_COMPONENT', { componentId: id });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Delete it
+    await editorTome.send('EditorMachine', 'DELETE');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    res.json({ 
+      success: true, 
+      message: 'Component deleted' 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Preview a component
+ */
+app.post('/api/tome/components/:id/preview', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Load component if needed
+    const context = editorTome.getMachineContext('EditorMachine');
+    if (context?.currentComponent?.id !== id) {
+      await editorTome.send('EditorMachine', 'LOAD_COMPONENT', { componentId: id });
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Request preview
+    await editorTome.send('EditorMachine', 'PREVIEW');
+    
+    // Wait for preview to render
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const previewContext = editorTome.getMachineContext('PreviewMachine');
+    res.json({ 
+      success: true, 
+      preview: previewContext?.previewData 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Get editor machine state
+ */
+app.get('/api/tome/state', (req, res) => {
+  try {
+    const editorState = editorTome.getMachineState('EditorMachine');
+    const previewState = editorTome.getMachineState('PreviewMachine');
+    const healthState = editorTome.getMachineState('HealthMachine');
+    
+    res.json({
+      success: true,
+      states: {
+        editor: editorState?.value,
+        preview: previewState?.value,
+        health: healthState?.value
+      },
+      contexts: {
+        editor: editorTome.getMachineContext('EditorMachine'),
+        preview: editorTome.getMachineContext('PreviewMachine'),
+        health: editorTome.getMachineContext('HealthMachine')
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Authentication API endpoints
+
+/**
+ * Google OAuth2 login
+ */
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ error: 'idToken required' });
+    }
+
+    const authToken = await authService.authenticateWithGoogle(idToken);
+    
+    if (!authToken) {
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
+
+    res.json({
+      success: true,
+      token: authToken.token,
+      expiresAt: authToken.expiresAt,
+      user: authToken.user
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Refresh auth token
+ */
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'token required' });
+    }
+
+    const newAuthToken = await authService.refreshToken(token);
+    
+    if (!newAuthToken) {
+      return res.status(401).json({ error: 'Token refresh failed' });
+    }
+
+    res.json({
+      success: true,
+      token: newAuthToken.token,
+      expiresAt: newAuthToken.expiresAt,
+      user: newAuthToken.user
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Developer mode: Switch user type
+ */
+app.post('/api/auth/dev/switch-user-type', async (req, res) => {
+  try {
+    // Check if developer mode is enabled
+    const isDeveloperMode = await robotCopy.isEnabled('developer-mode');
+    
+    if (!isDeveloperMode) {
+      return res.status(403).json({ error: 'Developer mode not enabled' });
+    }
+
+    const { token, userType } = req.body;
+    
+    if (!token || !userType) {
+      return res.status(400).json({ error: 'token and userType required' });
+    }
+
+    const newToken = authService.switchUserType(token, userType);
+
+    res.json({
+      success: true,
+      token: newToken,
+      message: `Switched to ${userType} mode (dev only, not persisted)`
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Component Whitelist API
+
+/**
+ * Get component whitelist
+ */
+app.get('/api/mods/whitelist', (req, res) => {
+  res.json({
+    success: true,
+    version: componentWhitelist.version,
+    components: componentWhitelist.components,
+    moddingRules: componentWhitelist.modding_rules
+  });
+});
+
+/**
+ * Check if component is moddable
+ */
+app.get('/api/mods/whitelist/:componentName', (req, res) => {
+  const { componentName } = req.params;
+  const component = componentWhitelist.components.find(
+    (c: any) => c.name === componentName
+  );
+
+  if (!component) {
+    return res.status(404).json({
+      success: false,
+      isModdable: false,
+      message: 'Component not in whitelist'
+    });
+  }
+
+  res.json({
+    success: true,
+    isModdable: component.isModdable,
+    component
+  });
+});
+
+// Donation API endpoints
+
+/**
+ * Process a donation
+ */
+app.post('/api/donate', async (req, res) => {
+  try {
+    const { portfolio, amount, userId } = req.body;
+
+    if (!portfolio || !amount) {
+      return res.status(400).json({ error: 'portfolio and amount required' });
+    }
+
+    const validPortfolios = ['developer', 'w3c_wai', 'aspca', 'audubon'];
+    if (!validPortfolios.includes(portfolio)) {
+      return res.status(400).json({ error: 'Invalid portfolio' });
+    }
+
+    // Calculate tokens (only for developer donations)
+    const tokensGranted = portfolio === 'developer' ? Math.floor(amount) : 0;
+
+    console.log(`💰 Processing donation: $${amount} to ${portfolio}, tokens: ${tokensGranted}`);
+
+    // TODO: Process actual payment via Solana/PayPal/TheGivingBlock
+    // TODO: Grant tokens to user if developer donation
+    // TODO: Record in charity_donations table
+
+    res.json({
+      success: true,
+      portfolio,
+      amount,
+      tokensGranted,
+      message: tokensGranted > 0 
+        ? `Thank you! ${tokensGranted} tokens granted` 
+        : 'Thank you for supporting charity!'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Process batch donations (all portfolios at once)
+ */
+app.post('/api/donate/batch', async (req, res) => {
+  try {
+    const { donations, userId } = req.body;
+
+    if (!donations || !Array.isArray(donations)) {
+      return res.status(400).json({ error: 'donations array required' });
+    }
+
+    const results = [];
+    let totalTokens = 0;
+
+    for (const donation of donations) {
+      const { portfolio, amount } = donation;
+      const tokensGranted = portfolio === 'developer' ? Math.floor(amount) : 0;
+      totalTokens += tokensGranted;
+
+      results.push({
+        portfolio,
+        amount,
+        tokensGranted
+      });
+
+      console.log(`💰 Batch donation: $${amount} to ${portfolio}`);
+    }
+
+    // TODO: Process all payments
+    // TODO: Grant total tokens to user
+
+    res.json({
+      success: true,
+      donations: results,
+      totalTokens,
+      message: `Thank you for donating! ${totalTokens} tokens granted`
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get donation statistics
+ */
+app.get('/api/donate/stats', (req, res) => {
+  // TODO: Query charity_donations table for real stats
+  res.json({
+    success: true,
+    stats: {
+      developer: { total: 0, count: 0 },
+      w3c_wai: { total: 0, count: 0 },
+      aspca: { total: 0, count: 0 },
+      audubon: { total: 0, count: 0 }
     }
   });
 });
@@ -255,13 +729,13 @@ app.post('/api/tracing/message', async (req, res) => {
       
       span.setStatus({ code: SpanStatusCode.OK });
       res.json({ success: true, result, traceId: req.traceId, spanId: req.spanId });
-    } catch (error) {
+    } catch (error: any) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
       throw error;
     } finally {
       span.end();
     }
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to send message', traceId: req.traceId, spanId: req.spanId });
   }
 });
@@ -339,6 +813,356 @@ app.get('/api/tracing/generate', (req, res) => {
       error: 'Failed to generate IDs',
       traceId: req.traceId,
       spanId: req.spanId
+    });
+  }
+});
+
+// ===== NEW PREMIUM MODDING PLATFORM API ENDPOINTS =====
+
+// Linter API
+import { linterService } from './services/linter-service';
+
+/**
+ * Lint check endpoint
+ */
+app.post('/api/lint/check', async (req, res) => {
+  try {
+    const { files } = req.body;
+
+    if (!files || !Array.isArray(files)) {
+      return res.status(400).json({
+        success: false,
+        error: 'files array is required',
+      });
+    }
+
+    console.log(`🔍 Linting ${files.length} file(s)...`);
+
+    const { results, summary } = await linterService.lintFiles(files);
+
+    res.json({
+      success: true,
+      results,
+      summary,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Auto-fix endpoint
+ */
+app.post('/api/lint/fix', async (req, res) => {
+  try {
+    const { files } = req.body;
+
+    if (!files || !Array.isArray(files)) {
+      return res.status(400).json({
+        success: false,
+        error: 'files array is required',
+      });
+    }
+
+    console.log(`🔧 Auto-fixing ${files.length} file(s)...`);
+
+    const { files: fixedFiles, fixed } = await linterService.autoFix(files);
+
+    res.json({
+      success: true,
+      files: fixedFiles,
+      fixed,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Get rule documentation
+ */
+app.get('/api/lint/rules/:ruleId', (req, res) => {
+  try {
+    const { ruleId } = req.params;
+    const documentation = linterService.getRuleDocumentation(ruleId);
+
+    res.json({
+      success: true,
+      ruleId,
+      documentation,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// PII Scanner API
+app.post('/api/pii/scan', async (req, res) => {
+  try {
+    const { content, filename } = req.body;
+    const piiScanner = initializePIIScanner();
+    const result = piiScanner.scanContent(content, filename);
+    
+    res.json({
+      success: true,
+      result
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+// Mod Review API
+app.get('/api/mods/review/queue', async (req, res) => {
+  try {
+    const modReviewService = initializeModReviewService();
+    const queue = await modReviewService.getReviewQueue();
+    
+    res.json({
+      success: true,
+      queue
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.post('/api/mods/review/action', async (req, res) => {
+  try {
+    const { submissionId, action, reviewerId, notes, piiOverride } = req.body;
+    const modReviewService = initializeModReviewService();
+    const result = await modReviewService.processReviewAction({
+      submissionId,
+      action,
+      reviewerId,
+      notes,
+      piiOverride
+    });
+    
+    res.json({
+      success: true,
+      result
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+// Token Ledger API
+app.get('/api/tokens/balance/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tokenLedger = initializeTokenLedgerService();
+    const balance = await tokenLedger.getBalance(userId);
+    
+    res.json({
+      success: true,
+      balance
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.post('/api/tokens/grant', async (req, res) => {
+  try {
+    const { userId, amount, source, reason } = req.body;
+    const tokenLedger = initializeTokenLedgerService();
+    const transaction = await tokenLedger.grantTokens(userId, amount, source, reason);
+    
+    res.json({
+      success: true,
+      transaction
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.get('/api/tokens/history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50, type } = req.query;
+    const tokenLedger = initializeTokenLedgerService();
+    const history = await tokenLedger.getTransactionHistory(
+      userId, 
+      parseInt(limit as string), 
+      type as string
+    );
+    
+    res.json({
+      success: true,
+      history
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+// Mod Install API
+app.post('/api/mods/install', async (req, res) => {
+  try {
+    const { userId, modId, authorId, tokenAmount } = req.body;
+    const tokenLedger = initializeTokenLedgerService();
+    const result = await tokenLedger.processModInstall(userId, modId, authorId, tokenAmount);
+    
+    res.json({
+      success: true,
+      result
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.post('/api/mods/uninstall', async (req, res) => {
+  try {
+    const { userId, modId } = req.body;
+    const tokenLedger = initializeTokenLedgerService();
+    const result = await tokenLedger.processModUninstall(userId, modId);
+    
+    res.json({
+      success: true,
+      result
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+// Solana Integration API
+app.get('/api/solana/status', async (req, res) => {
+  try {
+    const solanaService = initializeSolanaService({
+      network: 'devnet',
+      rpcUrl: 'https://api.devnet.solana.com',
+      programId: 'mock-program-id',
+      tokenMint: 'mock-token-mint'
+    });
+    
+    const status = await solanaService.getNetworkStatus();
+    
+    res.json({
+      success: true,
+      status
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.post('/api/solana/connect', async (req, res) => {
+  try {
+    const solanaService = initializeSolanaService({
+      network: 'devnet',
+      rpcUrl: 'https://api.devnet.solana.com',
+      programId: 'mock-program-id',
+      tokenMint: 'mock-token-mint'
+    });
+    
+    const connection = await solanaService.connectWallet();
+    
+    res.json({
+      success: true,
+      connection
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+// Admin API
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    // Mock user data for now
+    const users = [
+      {
+        id: 'user1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        tokens: 150,
+        status: 'premium',
+        joinedAt: '2024-01-15'
+      },
+      {
+        id: 'user2',
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        tokens: 75,
+        status: 'free',
+        joinedAt: '2024-01-16'
+      }
+    ];
+    
+    res.json({
+      success: true,
+      users
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.post('/api/admin/tokens/grant', async (req, res) => {
+  try {
+    const { email, amount, reason, notes } = req.body;
+    const tokenLedger = initializeTokenLedgerService();
+    
+    // In a real implementation, you'd look up the user by email
+    const userId = `user-${Date.now()}`;
+    const transaction = await tokenLedger.grantTokens(userId, amount, 'admin_grant', reason);
+    
+    res.json({
+      success: true,
+      transaction,
+      message: `Granted ${amount} tokens to ${email}`
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
     });
   }
 });
@@ -442,6 +1266,50 @@ app.get('/', (req, res) => {
     </body>
     </html>
   `);
+});
+
+// Premium Editor Route
+app.get('/editor/premium', (req, res) => {
+  const premiumEditorPath = path.join(process.cwd(), 'static/premium-editor.html');
+  
+  if (fs.existsSync(premiumEditorPath)) {
+    res.sendFile(premiumEditorPath);
+  } else {
+    res.status(404).send('Premium editor not found');
+  }
+});
+
+// Donation Page Route
+app.get('/donate', (req, res) => {
+  const donatePath = path.join(process.cwd(), 'static/donate.html');
+  
+  if (fs.existsSync(donatePath)) {
+    res.sendFile(donatePath);
+  } else {
+    res.status(404).send('Donation page not found');
+  }
+});
+
+// Mod Marketplace Route
+app.get('/marketplace', (req, res) => {
+  const marketplacePath = path.join(process.cwd(), 'static/marketplace.html');
+  
+  if (fs.existsSync(marketplacePath)) {
+    res.sendFile(marketplacePath);
+  } else {
+    res.status(404).send('Marketplace not found');
+  }
+});
+
+// Admin Panel Route
+app.get('/admin', (req, res) => {
+  const adminPath = path.join(process.cwd(), 'static/admin.html');
+  
+  if (fs.existsSync(adminPath)) {
+    res.sendFile(adminPath);
+  } else {
+    res.status(404).send('Admin panel not found');
+  }
 });
 
 // Wave Reader Editor Interface
@@ -739,78 +1607,186 @@ app.get('/wave-reader', (req, res) => {
             let currentFile = 'component.html';
 
             // Event handlers
-            function openComponent(componentId) {
-                console.log('🎯 Opening component:', componentId);
+            function openEditor(componentId) {
+                console.log('🎨 Opening WYSIWYG editor for component:', componentId);
                 currentComponent = componentId;
                 const component = componentData[componentId];
                 
                 if (component) {
                     console.log('📁 Component found:', component);
                     
-                    // Update UI
-                    const editorTitle = document.getElementById('editorTitle');
-                    const componentEditor = document.getElementById('componentEditor');
+                    // Create a new WYSIWYG editor window/modal
+                    const wysiwygContainer = document.createElement('div');
+                    wysiwygContainer.id = 'wysiwygEditor';
+                    wysiwygContainer.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;';
                     
-                    if (editorTitle && componentEditor) {
-                        editorTitle.textContent = \`\${component.name} Editor\`;
-                        console.log('📝 Editor title updated to:', component.name);
-                        
-                        componentEditor.classList.add('active');
-                        console.log('✅ Editor UI updated - active class added');
-                        
-                        // Debug: Check if the class was actually added
-                        console.log('🔍 Editor classes after update:', componentEditor.className);
-                        console.log('🔍 Editor display style:', window.getComputedStyle(componentEditor).display);
-                        
-                        // Populate file tree with actual component files
-                        const fileTree = document.getElementById('fileTree');
-                        if (fileTree) {
-                            fileTree.innerHTML = '';
-                            const availableFiles = Object.keys(component.files);
-                            
-                            availableFiles.forEach((filename, index) => {
-                                const fileItem = document.createElement('div');
-                                fileItem.className = 'file-item';
-                                fileItem.setAttribute('data-file', filename);
-                                fileItem.textContent = filename;
-                                
-                                // Make first file active by default
-                                if (index === 0) {
-                                    fileItem.classList.add('active');
-                                }
-                                
-                                // Add click handler
-                                fileItem.addEventListener('click', function() {
-                                    const clickedFilename = this.getAttribute('data-file');
-                                    loadFile(clickedFilename);
-                                });
-                                
-                                fileTree.appendChild(fileItem);
-                            });
-                            
-                            // Load first file
-                            if (availableFiles.length > 0) {
-                                loadFile(availableFiles[0]);
+                    const wysiwygContent = document.createElement('div');
+                    wysiwygContent.style.cssText = 'background: white; border-radius: 12px; padding: 30px; max-width: 1200px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);';
+                    
+                    wysiwygContent.innerHTML = 
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">' +
+                            '<h2 style="margin: 0; color: #1e293b;">🎨 WYSIWYG Editor - ' + component.name + '</h2>' +
+                            '<button id="closeWysiwyg" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">✕ Close</button>' +
+                        '</div>' +
+                        '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">' +
+                            '<h3 style="margin: 0 0 10px 0; color: #475569;">Component Properties</h3>' +
+                            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">' +
+                                '<div>' +
+                                    '<label style="display: block; margin-bottom: 5px; font-weight: 500; color: #64748b;">Component Name</label>' +
+                                    '<input type="text" value="' + component.name + '" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">' +
+                                '</div>' +
+                                '<div>' +
+                                    '<label style="display: block; margin-bottom: 5px; font-weight: 500; color: #64748b;">Type</label>' +
+                                    '<select id="componentType-' + componentId + '" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">' +
+                                        '<option value="react">React Component</option>' +
+                                        '<option value="html">HTML Template</option>' +
+                                        '<option value="vue">Vue Component</option>' +
+                                    '</select>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="background: white; border: 2px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; min-height: 300px;">' +
+                            '<h3 style="margin: 0 0 15px 0; color: #475569;">Visual Preview</h3>' +
+                            '<div id="wysiwygPreview-' + componentId + '" style="background: white; padding: 20px; border-radius: 4px; border: 2px solid #cbd5e1; min-height: 250px;">' +
+                                '<!-- Component preview will be rendered here -->' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">' +
+                            '<div>' +
+                                '<h3 style="margin: 0 0 10px 0; color: #475569;">Component Files</h3>' +
+                                '<ul style="list-style: none; padding: 0; margin: 0; margin-bottom: 15px;">' +
+                                    Object.keys(component.files).map(file => 
+                                        '<li style="padding: 8px 12px; background: #f8fafc; margin-bottom: 5px; border-radius: 4px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8fafc\'">' +
+                                            '📄 ' + file +
+                                        '</li>'
+                                    ).join('') +
+                                '</ul>' +
+                                '<button id="openPremiumBtn-' + componentId + '" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; margin-bottom: 10px;">' +
+                                    '✨ Open in Premium Editor' +
+                                '</button>' +
+                            '</div>' +
+                            '<div>' +
+                                '<h3 style="margin: 0 0 10px 0; color: #475569;">Actions</h3>' +
+                                '<button id="saveBtn-' + componentId + '" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; font-size: 14px; font-weight: 500;">' +
+                                    '💾 Save Component' +
+                                '</button>' +
+                                '<button id="previewBtn-' + componentId + '" style="width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; font-size: 14px; font-weight: 500;">' +
+                                    '👁️ Preview in Browser' +
+                                '</button>' +
+                                '<button id="exportBtn-' + componentId + '" style="width: 100%; padding: 12px; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">' +
+                                    '📤 Export Component' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
+                    
+                    wysiwygContainer.appendChild(wysiwygContent);
+                    document.body.appendChild(wysiwygContainer);
+                    
+                    // Render the component preview
+                    const previewContainer = document.getElementById('wysiwygPreview-' + componentId);
+                    if (previewContainer) {
+                        // Get all file contents as preview
+                        const filesHtml = Object.entries(component.files).map(function([filename, content]) {
+                            // For HTML files, render them
+                            if (filename.endsWith('.html')) {
+                                return '<div style="margin-bottom: 20px;">' +
+                                    '<h4 style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">📄 ' + filename + '</h4>' +
+                                    '<div style="background: #f8fafc; padding: 15px; border-radius: 4px; border: 1px solid #e2e8f0;">' +
+                                        content +
+                                    '</div>' +
+                                '</div>';
                             }
-                        }
+                            // For other files, show as code preview
+                            return '<div style="margin-bottom: 20px;">' +
+                                '<h4 style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">📄 ' + filename + '</h4>' +
+                                '<pre style="background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5;">' + 
+                                    content.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                                '</pre>' +
+                            '</div>';
+                        }).join('');
                         
-                        // Update component cards
-                        document.querySelectorAll('.component-card').forEach(card => {
-                            card.classList.remove('clicked');
-                        });
-                        const clickedCard = document.querySelector(\`[data-component="\${componentId}"]\`);
-                        if (clickedCard) {
-                            clickedCard.classList.add('clicked');
-                        }
-                    } else {
-                        console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
-                        console.log('🔍 DOM state check:');
-                        console.log('  - document.getElementById("editorTitle"):', document.getElementById('editorTitle'));
-                        console.log('  - document.getElementById("componentEditor"):', document.getElementById('componentEditor'));
-                        console.log('  - document.readyState:', document.readyState);
+                        previewContainer.innerHTML = filesHtml || '<p style="color: #94a3b8; text-align: center; padding: 40px;">No preview available</p>';
                     }
-                } else {
-                    console.error('❌ Component not found:', componentId);
+                    
+                    // Close button handler
+                    document.getElementById('closeWysiwyg').addEventListener('click', function() {
+                        document.body.removeChild(wysiwygContainer);
+                    });
+                    
+                    // Close on background click
+                    wysiwygContainer.addEventListener('click', function(e) {
+                        if (e.target === wysiwygContainer) {
+                            document.body.removeChild(wysiwygContainer);
+                        }
+                    });
+                    
+                    // Preview in Browser button handler
+                    document.getElementById('previewBtn-' + componentId).addEventListener('click', function() {
+                        console.log('👁️ Opening preview in new window for:', componentId);
+                        
+                        // Create a preview HTML document with all component files
+                        const cssFiles = Object.entries(component.files)
+                            .filter(function([name]) { return name.endsWith('.css'); })
+                            .map(function([_, content]) { return content; })
+                            .join('\\n');
+                            
+                        const htmlFiles = Object.entries(component.files)
+                            .filter(function([name]) { return name.endsWith('.html'); })
+                            .map(function([_, content]) { return content; })
+                            .join('\\n');
+                            
+                        const jsFiles = Object.entries(component.files)
+                            .filter(function([name]) { return name.endsWith('.js'); })
+                            .map(function([_, content]) { return content; })
+                            .join('\\n');
+                        
+                        const previewHtml = 
+                            '<!DOCTYPE html>' +
+                            '<html lang="en">' +
+                            '<head>' +
+                                '<meta charset="UTF-8">' +
+                                '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+                                '<title>Preview - ' + component.name + '</title>' +
+                                '<style>' +
+                                    'body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }' +
+                                    '.component-preview { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }' +
+                                    cssFiles +
+                                '</style>' +
+                            '</head>' +
+                            '<body>' +
+                                '<h1>Component Preview: ' + component.name + '</h1>' +
+                                '<div class="component-preview">' +
+                                    htmlFiles +
+                                '</div>' +
+                                '<script>' +
+                                    jsFiles +
+                                '</script>' +
+                            '</body>' +
+                            '</html>';
+                        
+                        // Open in new window
+                        const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                        previewWindow.document.write(previewHtml);
+                        previewWindow.document.close();
+                    });
+                    
+                    // Save button handler
+                    document.getElementById('saveBtn-' + componentId).addEventListener('click', function() {
+                        alert('💾 Save functionality coming soon! Will integrate with EditorTome.');
+                    });
+                    
+                    // Export button handler
+                    document.getElementById('exportBtn-' + componentId).addEventListener('click', function() {
+                        alert('📤 Export functionality coming soon!');
+                    });
+                    
+                    // Open in Premium Editor button handler
+                    document.getElementById('openPremiumBtn-' + componentId).addEventListener('click', function() {
+                        console.log('✨ Opening in Premium Editor:', componentId);
+                        window.open('/editor/premium?component=' + componentId, '_blank', 'width=1400,height=900');
+                    });
+                    } else {
+                    alert('❌ Component not found: ' + componentId);
                 }
             }
 
@@ -861,12 +1837,74 @@ app.get('/wave-reader', (req, res) => {
 
             function viewFiles(componentId) {
                 console.log('📂 Viewing files for component:', componentId);
+                currentComponent = componentId;
                 const component = componentData[componentId];
                 
                 if (component) {
-                    const fileList = Object.keys(component.files).join(', ');
-                    const message = \`📁 Files for \${component.name}:\n\n\${fileList}\n\nClick "Open Editor" to view and edit these files.\`;
-                    alert(message);
+                    console.log('📁 Component found:', component);
+                    
+                    // Update UI
+                    const editorTitle = document.getElementById('editorTitle');
+                    const componentEditor = document.getElementById('componentEditor');
+                    
+                    if (editorTitle && componentEditor) {
+                        editorTitle.textContent = \`\${component.name} Files\`;
+                        console.log('📝 Editor title updated to:', component.name);
+                        
+                        componentEditor.classList.add('active');
+                        console.log('✅ Editor UI updated - active class added');
+                        
+                        // Populate file tree with actual component files
+                        const fileTree = document.getElementById('fileTree');
+                        if (fileTree) {
+                            fileTree.innerHTML = '';
+                            const availableFiles = Object.keys(component.files);
+                            
+                            availableFiles.forEach((filename, index) => {
+                                const fileItem = document.createElement('div');
+                                fileItem.className = 'file-item';
+                                fileItem.setAttribute('data-file', filename);
+                                fileItem.textContent = filename;
+                                
+                                // Make first file active by default
+                                if (index === 0) {
+                                    fileItem.classList.add('active');
+                                }
+                                
+                                // Add click handler
+                                fileItem.addEventListener('click', function() {
+                                    const clickedFilename = this.getAttribute('data-file');
+                                    loadFile(clickedFilename);
+                                });
+                                
+                                fileTree.appendChild(fileItem);
+                            });
+                            
+                            // Load first file
+                            if (availableFiles.length > 0) {
+                                loadFile(availableFiles[0]);
+                            }
+                        }
+                        
+                        // Update component cards
+                        document.querySelectorAll('.component-card').forEach(card => {
+                            card.classList.remove('clicked');
+                        });
+                        const clickedCard = document.querySelector(\`[data-component="\${componentId}"]\`);
+                        if (clickedCard) {
+                            clickedCard.classList.add('clicked');
+                        }
+                        
+                        // Scroll to the component editor
+                        setTimeout(() => {
+                            componentEditor.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'start' 
+                            });
+                        }, 100);
+                    } else {
+                        console.error('❌ Required DOM elements not found:', { editorTitle, componentEditor });
+                    }
                 } else {
                     alert('❌ Component not found: ' + componentId);
                 }
@@ -880,7 +1918,7 @@ app.get('/wave-reader', (req, res) => {
                     
                     if (target.matches('[data-action="open-editor"]')) {
                         const componentId = target.getAttribute('data-component');
-                        openComponent(componentId);
+                        openEditor(componentId);
                     } else if (target.matches('[data-action="view-files"]')) {
                         const componentId = target.getAttribute('data-component');
                         viewFiles(componentId);
@@ -940,6 +1978,11 @@ app.use('*', (req, res) => {
 // Start server
 async function startServer() {
   try {
+    // Initialize EditorTome before starting server
+    console.log('📚 Initializing EditorTome...');
+    await editorTome.initialize();
+    console.log('📚 EditorTome initialized successfully');
+
     // Start listening
     app.listen(EDITOR_CONFIG.port, () => {
       console.log(`🚀 TomeConnector Editor Server running on port ${EDITOR_CONFIG.port}`);
@@ -947,6 +1990,8 @@ async function startServer() {
       console.log(`🎛️  Editor status at http://localhost:${EDITOR_CONFIG.port}/api/editor/status`);
       console.log(`⚙️  Pact features at http://localhost:${EDITOR_CONFIG.port}/api/pact/features`);
       console.log(`🔍 Tracing at http://localhost:${EDITOR_CONFIG.port}/api/tracing/status`);
+      console.log(`📚 Tome API at http://localhost:${EDITOR_CONFIG.port}/api/tome/components`);
+      console.log(`📊 Tome state at http://localhost:${EDITOR_CONFIG.port}/api/tome/state`);
     });
   } catch (error) {
     console.error('Failed to start editor server:', error);

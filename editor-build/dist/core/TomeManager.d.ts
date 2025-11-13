@@ -46,7 +46,7 @@ export declare class TomeManager implements ITomeManager {
         name: string;
         description: string | undefined;
         version: string | undefined;
-        machines: {};
+        machines: Record<string, any>;
         context: Record<string, any>;
     }[];
     /**

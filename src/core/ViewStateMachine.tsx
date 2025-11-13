@@ -201,6 +201,7 @@ export class ViewStateMachine<TModel = any> {
   private machineId: string;
   private routedSend?: RoutedSend;
   public parentMachine?: any;  // Reference to parent machine for relative routing
+  private renderContainer?: any;  // Container for wrapping rendered views
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
@@ -680,9 +681,18 @@ export class ViewStateMachine<TModel = any> {
     return this;
   }
 
+  /**
+   * Set the render container for wrapping views
+   * todo: consider using React.ComponentType<{ children?: React.ReactNode }>
+   */
+  setRenderContainer(container: any): ViewStateMachine<TModel> {
+    this.renderContainer = container;
+    return this;
+  }
+
   // Render the composed view
   render(model: TModel): React.ReactNode {
-    return (
+    const composedView = (
       <div className="composed-view">
         {this.viewStack.map((view, index) => (
           <div key={index} className="view-container">
@@ -698,6 +708,13 @@ export class ViewStateMachine<TModel = any> {
         ))}
       </div>
     );
+
+    // If renderContainer is set, wrap the composed view
+    if (this.renderContainer) {
+      return React.createElement(this.renderContainer, { className: 'view-container' }, composedView);
+    }
+
+    return composedView;
   }
 }
 

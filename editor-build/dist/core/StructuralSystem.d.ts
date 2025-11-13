@@ -57,7 +57,6 @@ export interface AppStructureConfig {
 export declare class StructuralSystem {
     private config;
     private machines;
-    private componentCache;
     constructor(config: AppStructureConfig);
     getAppStructure(): AppStructureNode;
     getComponentTomeMapping(): ComponentTomeMapping;
@@ -78,4 +77,3 @@ export declare class StructuralSystem {
 }
 export declare function useStructuralSystem(config: AppStructureConfig): StructuralSystem;
 export declare function createStructuralSystem(config: AppStructureConfig): StructuralSystem;
-export type { AppStructureNode, ComponentTomeMapping, RouteConfig, NavigationItem, RoutingConfig, TomeDefinition, TomeConfig, AppStructureConfig };

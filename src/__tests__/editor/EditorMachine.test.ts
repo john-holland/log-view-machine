@@ -1,98 +1,286 @@
 import { createEditorMachine } from '../../editor/machines/editor-machine';
 import { MachineRouter } from '../../core/TomeBase';
+import { storageService } from '../../editor/services/storage-service';
 
 describe('EditorMachine', () => {
-    let machine: any;
     let router: MachineRouter;
+    let editorMachine: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        // Clear storage before each test
+        await storageService.clearAll();
+        
+        // Create a new router and machine
         router = new MachineRouter();
-        machine = createEditorMachine(router);
+        editorMachine = createEditorMachine(router);
+        
+        // Register the machine
+        router.register('EditorMachine', editorMachine);
+        
+        // Start the machine
+        await editorMachine.start();
     });
 
-    afterEach(() => {
-        if (machine) {
-            machine.stop?.();
-        }
+    afterEach(async () => {
+        // Stop the machine
+        editorMachine.stop?.();
+        
+        // Clear storage
+        await storageService.clearAll();
     });
 
-    it('should create editor machine with initial state', () => {
-        expect(machine).toBeDefined();
-        expect(machine.machineId).toBe('editor-machine');
+    describe('Initialization', () => {
+        it('should start in idle state', () => {
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('idle');
+        });
+
+        it('should have empty initial context', () => {
+            const state = editorMachine.getState();
+            expect(state?.context.currentComponent).toBeNull();
+            expect(state?.context.components).toEqual([]);
+            expect(state?.context.isDirty).toBe(false);
+            expect(state?.context.error).toBeNull();
+        });
     });
 
-    it('should start in idle state', async () => {
-        await machine.start();
-        const state = machine.getState();
-        expect(state.value).toBe('idle');
+    describe('CREATE_NEW event', () => {
+        it('should transition to editing state when CREATE_NEW is sent', async () => {
+            editorMachine.send('CREATE_NEW');
+            
+            // Wait for transition
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('editing');
+        });
+
+        it('should create a new component with default values', async () => {
+            editorMachine.send('CREATE_NEW');
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const state = editorMachine.getState();
+            const component = state?.context.currentComponent;
+            
+            expect(component).toBeDefined();
+            expect(component.name).toBe('New Component');
+            expect(component.type).toBe('generic');
+            expect(component.content).toBe('');
+            expect(component.id).toMatch(/^new-/);
+        });
+
+        it('should mark the editor as dirty after creating new component', async () => {
+            editorMachine.send('CREATE_NEW');
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const state = editorMachine.getState();
+            expect(state?.context.isDirty).toBe(true);
+        });
     });
 
-    it('should transition to loading when LOAD_COMPONENT sent', async () => {
-        await machine.start();
-        
-        machine.send('LOAD_COMPONENT', { componentId: '123' });
-        
-        // Give it a moment to transition
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        const state = machine.getState();
-        // Will be in loading or editing (after service completes)
-        expect(['loading', 'editing']).toContain(state.value);
+    describe('LOAD_COMPONENT event', () => {
+        it('should transition to loading state when LOAD_COMPONENT is sent', () => {
+            editorMachine.send('LOAD_COMPONENT', { componentId: 'test-1' });
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('loading');
+        });
+
+        it('should load an existing component from storage', async () => {
+            // Create a test component in storage
+            const testComponent = await storageService.createComponent('Test Component', 'test');
+            
+            // Load it
+            editorMachine.send('LOAD_COMPONENT', { componentId: testComponent.id });
+            
+            // Wait for async operation
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('editing');
+            expect(state?.context.currentComponent.id).toBe(testComponent.id);
+            expect(state?.context.currentComponent.name).toBe('Test Component');
+        });
+
+        it('should transition to error state if component not found', async () => {
+            editorMachine.send('LOAD_COMPONENT', { componentId: 'non-existent' });
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('error');
+            expect(state?.context.error).toBeDefined();
+        });
     });
 
-    it('should transition to editing when CREATE_NEW sent', async () => {
-        await machine.start();
-        
-        machine.send('CREATE_NEW');
-        
-        const state = machine.getState();
-        expect(state.value).toBe('editing');
+    describe('SAVE event', () => {
+        it('should save component to storage', async () => {
+            // Create new component
+            editorMachine.send('CREATE_NEW');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Save it
+            editorMachine.send('SAVE');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('editing');
+            expect(state?.context.isDirty).toBe(false);
+            expect(state?.context.lastSaved).toBeDefined();
+        });
+
+        it('should persist component data across sessions', async () => {
+            // Create and save a component
+            editorMachine.send('CREATE_NEW');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const state1 = editorMachine.getState();
+            const componentId = state1?.context.currentComponent.id;
+            
+            editorMachine.send('SAVE');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Create a new machine instance
+            const newMachine = createEditorMachine(router);
+            await newMachine.start();
+            
+            // Load the saved component
+            newMachine.send('LOAD_COMPONENT', { componentId });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state2 = newMachine.getState();
+            expect(state2?.context.currentComponent.id).toBe(componentId);
+            
+            // Cleanup
+            newMachine.stop?.();
+        });
     });
 
-    it('should mark component as dirty when COMPONENT_CHANGE sent', async () => {
-        await machine.start();
-        
-        // Create new component
-        machine.send('CREATE_NEW');
-        
-        // Change component
-        machine.send('COMPONENT_CHANGE');
-        
-        const state = machine.getState();
-        expect(state.context.isDirty).toBe(true);
+    describe('LIST_COMPONENTS event', () => {
+        it('should list all components from storage', async () => {
+            // Create some test components
+            await storageService.createComponent('Component 1', 'type1');
+            await storageService.createComponent('Component 2', 'type2');
+            
+            // List them
+            editorMachine.send('LIST_COMPONENTS');
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.context.components).toHaveLength(2);
+        });
+
+        it('should return to idle state after listing', async () => {
+            editorMachine.send('LIST_COMPONENTS');
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('idle');
+        });
     });
 
-    it('should have router available for services', () => {
-        expect(machine.router).toBeDefined();
-        expect(machine.router).toBe(router);
+    describe('COMPONENT_CHANGE event', () => {
+        it('should mark component as dirty when changed', async () => {
+            editorMachine.send('CREATE_NEW');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Save first to clear dirty flag
+            editorMachine.send('SAVE');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            expect(editorMachine.getState()?.context.isDirty).toBe(false);
+            
+            // Make a change
+            editorMachine.send('COMPONENT_CHANGE');
+            
+            const state = editorMachine.getState();
+            expect(state?.context.isDirty).toBe(true);
+        });
     });
 
-    it('should reset to idle on CANCEL from editing', async () => {
-        await machine.start();
-        
-        // Enter editing state
-        machine.send('CREATE_NEW');
-        expect(machine.getState().value).toBe('editing');
-        
-        // Cancel
-        machine.send('CANCEL');
-        
-        const state = machine.getState();
-        expect(state.value).toBe('idle');
+    describe('CANCEL event', () => {
+        it('should return to idle state and clear component', async () => {
+            editorMachine.send('CREATE_NEW');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            editorMachine.send('CANCEL');
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('idle');
+            expect(state?.context.currentComponent).toBeNull();
+            expect(state?.context.isDirty).toBe(false);
+        });
     });
 
-    it('should clear component on cancel', async () => {
-        await machine.start();
-        
-        // Create new component
-        machine.send('CREATE_NEW');
-        let state = machine.getState();
-        expect(state.context.currentComponent).toBeTruthy();
-        
-        // Cancel
-        machine.send('CANCEL');
-        state = machine.getState();
-        expect(state.context.currentComponent).toBeNull();
+    describe('DELETE event', () => {
+        it('should delete component from storage', async () => {
+            // Create and save a component
+            const component = await storageService.createComponent('To Delete', 'test');
+            
+            // Load it
+            editorMachine.send('LOAD_COMPONENT', { componentId: component.id });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Delete it
+            editorMachine.send('DELETE');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Verify it's deleted
+            const exists = await storageService.exists(component.id);
+            expect(exists).toBe(false);
+        });
+
+        it('should return to idle state after deletion', async () => {
+            const component = await storageService.createComponent('To Delete', 'test');
+            
+            editorMachine.send('LOAD_COMPONENT', { componentId: component.id });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            editorMachine.send('DELETE');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('idle');
+        });
+    });
+
+    describe('Error handling', () => {
+        it('should provide RETRY action from error state', async () => {
+            // Trigger an error by loading non-existent component
+            editorMachine.send('LOAD_COMPONENT', { componentId: 'non-existent' });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            expect(editorMachine.getState()?.value).toBe('error');
+            
+            // Create the component
+            await storageService.saveComponent({
+                id: 'non-existent',
+                name: 'Now Exists',
+                type: 'test',
+                content: '',
+                metadata: { created: Date.now(), modified: Date.now() }
+            });
+            
+            // Retry
+            editorMachine.send('RETRY');
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('editing');
+        });
+
+        it('should provide RESET action from error state', async () => {
+            editorMachine.send('LOAD_COMPONENT', { componentId: 'non-existent' });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            editorMachine.send('RESET');
+            
+            const state = editorMachine.getState();
+            expect(state?.value).toBe('idle');
+            expect(state?.context.error).toBeNull();
+        });
     });
 });
-

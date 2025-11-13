@@ -76,7 +76,8 @@ export {
 export type {
   TomeConfig,
   TomeInstance,
-  ISubMachine
+  ISubMachine,
+  TomeRenderContainer
 } from './core/TomeConfig';
 
 // TomeAdapter exports
@@ -136,6 +137,17 @@ export {
   StackTraceExample,
   createStackTraceExample
 } from './examples/StackTraceExample';
+
+// TomeRenderer exports
+export {
+  TomeRenderer,
+  useTomeRenderer
+} from './core/TomeRenderer';
+
+// ErrorBoundary export - lightweight error boundary without ace-editor dependency
+export {
+  ErrorBoundary
+} from './components/ErrorBoundary';
 
 // Component exports - Note: GenericEditor requires CSS to be loaded separately
 // Import directly: import GenericEditor from 'log-view-machine/src/components/GenericEditor'

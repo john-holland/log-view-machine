@@ -1,0 +1,11 @@
+🔧 Initializing OpenTelemetry...
+  📡 Service: tome-connector-editor
+  🌍 Environment: development
+  🔗 Endpoint: http://localhost:4318
+  🔍 Stack Traces: Enabled
+✅ OpenTelemetry initialized successfully (simplified mode)
+📚 Initializing EditorTome...
+📚 EditorTome: Initializing editor system...
+🏥 HealthMachine: Starting monitoring
+📚 EditorTome: Initialization complete
+📚 EditorTome initialized successfully

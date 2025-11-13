@@ -88,8 +88,20 @@ export {
 export type {
   TomeConfig,
   TomeInstance,
-  ISubMachine
+  ISubMachine,
+  TomeRenderContainer
 } from './core/TomeConfig';
+
+// TomeRenderer exports
+export {
+  TomeRenderer,
+  useTomeRenderer
+} from './core/TomeRenderer';
+
+// ErrorBoundary export - lightweight error boundary without ace-editor dependency
+export {
+  ErrorBoundary
+} from './components/ErrorBoundary';
 
 // TomeAdapter exports
 export {

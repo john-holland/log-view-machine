@@ -37,7 +37,7 @@ export declare class OpenTelemetryManager {
     extractStackTrace(error: Error): StackTraceInfo;
     captureError(error: Error, context?: Record<string, any>): string;
     getErrorContext(traceId: string): ErrorContext | undefined;
-    startSpan(name: string, options?: any): {
+    startSpan(name: string, _options?: any): {
         name: string;
         traceId: string;
         spanId: string;

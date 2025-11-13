@@ -6,6 +6,7 @@ export interface MessageMetadata {
   backend: 'kotlin' | 'node';
   action: string;
   data?: any;
+  backendDisabled?: boolean;
 }
 
 export interface TraceInfo {

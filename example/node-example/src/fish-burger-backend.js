@@ -14,6 +14,9 @@ import { v4 as uuidv4 } from 'uuid';
 // Import logging configuration
 import { createLogger, createPerformanceLogger, dumpActiveLogs } from './logging-config.js';
 
+// Import Fish Burger specific RobotCopy extensions (moved from core)
+import { FishBurgerRobotCopyExtensions, createFishBurgerExtensions } from './fish-burger-robotcopy-extensions.js';
+
 // Initialize structured logging
 const logger = createLogger('fish-burger-backend', {
   level: process.env.LOG_LEVEL || 'info',

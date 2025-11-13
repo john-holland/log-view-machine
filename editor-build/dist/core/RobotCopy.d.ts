@@ -4,6 +4,9 @@ export interface RobotCopyConfig {
     unleashClientKey?: string;
     unleashAppName?: string;
     unleashEnvironment?: string;
+    apiPath?: string;
+    traceApiPath?: string;
+    messageApiPath?: string;
     kotlinBackendUrl?: string;
     nodeBackendUrl?: string;
     enableTracing?: boolean;
@@ -27,10 +30,6 @@ export declare class RobotCopy {
     getTraceMessages(traceId: string): MessageMetadata[];
     getFullTrace(traceId: string): import("./Tracing").TraceInfo;
     sendMessage(action: string, data?: any): Promise<any>;
-    startCooking(orderId: string, ingredients: string[]): Promise<any>;
-    updateProgress(orderId: string, cookingTime: number, temperature: number): Promise<any>;
-    completeCooking(orderId: string): Promise<any>;
-    integrateWithViewStateMachine(viewStateMachine: any): RobotCopy;
     getTrace(traceId: string): Promise<any>;
     getMessageFromBackend(messageId: string): Promise<any>;
     getMessageHistory(): MessageMetadata[];
@@ -38,7 +37,10 @@ export declare class RobotCopy {
     clearHistory(): void;
     updateConfig(newConfig: Partial<RobotCopyConfig>): void;
     getConfig(): RobotCopyConfig;
-    onResponse(channel: string, _handler: (response: any) => void): void;
+    private responseHandlers;
+    onResponse(channel: string, handler: (response: any) => void): void;
+    triggerResponse(channel: string, response: any): void;
+    removeResponseHandler(channel: string): void;
     registerMachine(name: string, machine: any, config?: any): void;
     getRegisteredMachines(): Map<string, any>;
     getRegisteredMachine(name: string): any;

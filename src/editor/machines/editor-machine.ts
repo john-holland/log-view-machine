@@ -1,5 +1,6 @@
 import { createViewStateMachine, ServiceMeta, MachineRouter } from '../../core/ViewStateMachine';
 import { MachineRouter as RouterType } from '../../core/TomeBase';
+import { storageService } from '../services/storage-service';
 
 /**
  * EditorMachine
@@ -85,48 +86,35 @@ export const createEditorMachine = (router?: RouterType) => {
                 listComponentsService: async (context: any, event: any, meta: ServiceMeta) => {
                     console.log('📝 EditorMachine: Listing components...');
                     
-                    // TODO: Fetch from storage service
-                    // For now, return mock data
-                    return {
-                        components: [
-                            { id: '1', name: 'Component 1', type: 'button' },
-                            { id: '2', name: 'Component 2', type: 'input' }
-                        ]
-                    };
+                    // Fetch from storage service
+                    const components = await storageService.listComponents();
+                    return { components };
                 },
                 
                 loadComponentService: async (context: any, event: any, meta: ServiceMeta) => {
                     console.log('📝 EditorMachine: Loading component:', event.componentId);
                     
-                    // TODO: Use routed send to storage machine when implemented
-                    // if (meta.routedSend) {
-                    //     const response = await meta.routedSend('../StorageMachine', 'GET_COMPONENT', {
-                    //         id: event.componentId
-                    //     });
-                    //     return response.component;
-                    // }
+                    // Load from storage service
+                    const component = await storageService.getComponent(event.componentId);
                     
-                    // Mock component data
-                    return {
-                        id: event.componentId,
-                        name: `Component ${event.componentId}`,
-                        type: 'generic',
-                        content: '<div>Component content</div>',
-                        metadata: {
-                            created: Date.now(),
-                            modified: Date.now()
-                        }
-                    };
+                    if (!component) {
+                        throw new Error(`Component not found: ${event.componentId}`);
+                    }
+                    
+                    return component;
                 },
                 
                 saveComponentService: async (context: any, event: any, meta: ServiceMeta) => {
                     console.log('📝 EditorMachine: Saving component:', context.currentComponent);
                     
+                    // Save to storage service
+                    const saved = await storageService.saveComponent(context.currentComponent);
+                    
                     // Notify preview machine about save
                     if (meta.routedSend) {
                         try {
                             await meta.routedSend('../PreviewMachine', 'COMPONENT_SAVED', {
-                                component: context.currentComponent
+                                component: saved
                             });
                             console.log('📝 EditorMachine: Notified PreviewMachine of save');
                         } catch (error: any) {
@@ -139,7 +127,7 @@ export const createEditorMachine = (router?: RouterType) => {
                         try {
                             await meta.routedSend('../HealthMachine', 'OPERATION_COMPLETE', {
                                 operation: 'save',
-                                componentId: context.currentComponent?.id,
+                                componentId: saved.id,
                                 timestamp: Date.now()
                             });
                         } catch (error: any) {
@@ -147,22 +135,18 @@ export const createEditorMachine = (router?: RouterType) => {
                         }
                     }
                     
-                    // Save component (mock for now)
-                    const saved = {
-                        ...context.currentComponent,
-                        metadata: {
-                            ...context.currentComponent?.metadata,
-                            modified: Date.now()
-                        }
-                    };
-                    
                     return saved;
                 },
                 
                 deleteComponentService: async (context: any, event: any, meta: ServiceMeta) => {
                     console.log('📝 EditorMachine: Deleting component:', context.componentId);
                     
-                    // TODO: Delete from storage
+                    // Delete from storage
+                    const deleted = await storageService.deleteComponent(context.componentId);
+                    
+                    if (!deleted) {
+                        throw new Error(`Failed to delete component: ${context.componentId}`);
+                    }
                     
                     // Notify preview to clear
                     if (meta.routedSend) {

@@ -10,6 +10,7 @@ export async function createProxyMachines(db, robotCopy) {
   const httpApiProxy = createProxyRobotCopyStateMachine({
     machineId: 'http-api-proxy',
     robotCopy: robotCopy,
+    apiPath: '/api/fish-burger/',
     xstateConfig: {
       initial: 'idle',
       states: {

@@ -11,7 +11,8 @@ const config = [
     output: {
       file: 'dist/index.esm.js',
       format: 'esm',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     external: [
       'react',
@@ -87,7 +88,8 @@ const config = [
         output: {
           file: 'dist/index.js',
           format: 'cjs',
-          sourcemap: true
+          sourcemap: true,
+          inlineDynamicImports: true
         },
         external: [
           'react',
@@ -165,7 +167,8 @@ const config = [
         output: {
           file: 'dist/server/TomeAPIRouter.js',
           format: 'cjs',
-          sourcemap: true
+          sourcemap: true,
+          inlineDynamicImports: true
         },
         external: [
           'express',
@@ -215,7 +218,8 @@ const config = [
     output: {
       file: 'dist/server.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     external: [
       'react',
@@ -265,7 +269,8 @@ const config = [
     output: {
       file: 'dist/examples/OpenTelemetryIntegrationExample.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     external: [
       'react',
@@ -317,7 +322,8 @@ const config = [
     output: {
       file: 'dist/examples/StackTraceExample.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     external: [
       '@opentelemetry/api'
@@ -337,7 +343,8 @@ const config = [
     output: {
       file: 'editor-dist/editor-server.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     external: [
       'react',

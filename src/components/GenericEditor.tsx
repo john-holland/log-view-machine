@@ -1,128 +1,39 @@
-import React, { Component, ReactNode, ErrorInfo, useEffect, useState } from 'react';
+import React, { ReactNode, ErrorInfo, useEffect, useState, lazy, Suspense } from 'react';
 import { useEditorTome } from '../editor/hooks/useEditorTome';
-import { DiffViewer } from './DiffViewer';
+import { ErrorBoundary } from './ErrorBoundary';
 import { LintResultsDisplay } from './LintResultsDisplay';
 import type { LintResult, LintSummary } from '../services/linter-service';
 // CSS import - webpack will handle this via css-loader
 import './GenericEditor.css';
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-  errorInfo?: ErrorInfo;
-}
+// Lazy load DiffViewer to avoid bundling ace-editor when not needed
+// This prevents ace-editor from being loaded in the extension unless the review modal is opened
+const DiffViewer = lazy(() => import('./DiffViewer').then(module => ({ default: module.DiffViewer })));
 
 interface GenericEditorProps {
   title: string;
   description: string;
   children?: ReactNode;
   componentId?: string;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  useTomeArchitecture?: boolean; // Feature flag for Tome integration
-}
-
-class ErrorBoundary extends Component<{ children: ReactNode; onError?: (error: Error, errorInfo: ErrorInfo) => void }, ErrorBoundaryState> {
-  constructor(props: { children: ReactNode; onError?: (error: Error, errorInfo: ErrorInfo) => void }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    this.props.onError?.(error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="generic-editor error-editor">
-          <header className="editor-header error-header">
-            <h1 className="editor-title">🚨 Error Boundary</h1>
-            <p className="editor-description">Something went wrong while rendering this component</p>
-          </header>
-          
-          <main className="editor-main">
-            <div className="error-content">
-              <div className="error-icon">⚠️</div>
-              <h2>Component Error Detected</h2>
-              <p>An error occurred while rendering this component. The error boundary has caught it and prevented the entire app from crashing.</p>
-              
-              <div className="error-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => this.setState({ hasError: false, error: undefined, errorInfo: undefined })}
-                >
-                  🔄 Try Again
-                </button>
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => window.location.reload()}
-                >
-                  🔄 Reload Page
-                </button>
-              </div>
-              
-              <details className="error-details">
-                <summary className="error-summary">
-                  🔍 View Error Details
-                </summary>
-                <div className="error-stack-container">
-                  <div className="error-stack-section">
-                    <h4>Error Message:</h4>
-                    <pre className="error-stack">
-                      {this.state.error?.toString() || 'Unknown error'}
-                    </pre>
-                  </div>
-                  
-                  {this.state.errorInfo?.componentStack && (
-                    <div className="error-stack-section">
-                      <h4>Component Stack:</h4>
-                      <pre className="error-stack">
-                        {this.state.errorInfo.componentStack}
-                      </pre>
-                    </div>
-                  )}
-                  
-                  <div className="error-stack-section">
-                    <h4>Error Time:</h4>
-                    <p>{new Date().toLocaleString()}</p>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </main>
-          
-          <footer className="editor-footer">
-            <p>🔗 TomeConnector Error Boundary - Keeping your app stable</p>
-          </footer>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
+  onError?: (error: Error, errorInfo?: ErrorInfo) => void;
 }
 
 /**
  * GenericEditor Component (Tome-Integrated)
  * 
- * Enhanced editor with optional Tome architecture integration
- * Uses EditorTome for state management when enabled
+ * Enhanced editor with full Tome architecture integration.
+ * Always uses EditorTome for state management - this is the editor UI component.
+ * Components can use tome architecture without this UI by using ErrorBoundary directly.
  */
 const GenericEditor: React.FC<GenericEditorProps> = ({ 
   title, 
   description, 
   children,
   componentId,
-  onError,
-  useTomeArchitecture = false
+  onError
 }) => {
-  // Use Tome architecture if enabled
-  const tomeState = useTomeArchitecture ? useEditorTome(componentId) : null;
+  // Always use Tome architecture - GenericEditor IS the editor UI
+  const tomeState = useEditorTome(componentId);
 
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -217,10 +128,9 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
     setCommentLine(null);
   };
 
-  // Render with Tome integration
-  if (useTomeArchitecture && tomeState) {
-    return (
-      <div className="generic-editor" data-state={tomeState.editorState}>
+  // Always render with Tome integration - GenericEditor always uses tome architecture
+  return (
+    <div className="generic-editor" data-state={tomeState.editorState}>
         <header className="editor-header">
           <h1 className="editor-title">{title}</h1>
           <p className="editor-description">{description}</p>
@@ -330,7 +240,7 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
               {isLinting ? '🔍 Linting...' : '👀 Review'}
             </button>
           </div>
-          <p>🔗 TomeConnector & ViewStateMachine {useTomeArchitecture && '(Tome Architecture Enabled)'}</p>
+          <p>🔗 TomeConnector & ViewStateMachine (Editor UI Enabled)</p>
         </footer>
 
         {/* Review Modal */}
@@ -368,19 +278,21 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
                   <p className="help-text">Anyone with this link can view your mod</p>
                 </div>
 
-                {/* File Diff */}
+                {/* File Diff - Lazy loaded to avoid bundling ace-editor unless needed */}
                 <div className="diff-section">
                   <h3>📄 File Changes</h3>
-                  <DiffViewer
-                    files={[{
-                      fileName: 'component.tsx',
-                      oldContent: originalContent,
-                      newContent: tomeState?.currentComponent?.content || '',
-                      language: 'typescript',
-                    }]}
-                    onAddComment={handleAddComment}
-                    showAddCommentButtons={false}
-                  />
+                  <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Loading diff viewer...</div>}>
+                    <DiffViewer
+                      files={[{
+                        fileName: 'component.tsx',
+                        oldContent: originalContent,
+                        newContent: tomeState?.currentComponent?.content || '',
+                        language: 'typescript',
+                      }]}
+                      onAddComment={handleAddComment}
+                      showAddCommentButtons={false}
+                    />
+                  </Suspense>
                 </div>
 
                 {/* Lint Results */}
@@ -450,27 +362,6 @@ const GenericEditor: React.FC<GenericEditorProps> = ({
         )}
       </div>
     );
-  }
-
-  // Original non-Tome version
-  return (
-    <div className="generic-editor">
-      <header className="editor-header">
-        <h1 className="editor-title">{title}</h1>
-        <p className="editor-description">{description}</p>
-      </header>
-      
-      <main className="editor-main">
-        <ErrorBoundary onError={onError}>
-          {children}
-        </ErrorBoundary>
-      </main>
-      
-      <footer className="editor-footer">
-        <p>🔗 TomeConnector & ViewStateMachine</p>
-      </footer>
-    </div>
-  );
 };
 
 export default GenericEditor;

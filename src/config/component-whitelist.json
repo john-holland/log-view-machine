@@ -1,0 +1,259 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-19",
+  "whitelistedComponents": {
+    "wave-tabs": {
+      "name": "Wave Tabs",
+      "description": "Tab-based navigation and content management",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 10,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    },
+    "settings": {
+      "name": "Settings",
+      "description": "Configuration and settings management",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 8,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    },
+    "selector-input": {
+      "name": "Selector Input",
+      "description": "Input selection and management tools",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 6,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    },
+    "scan-for-input": {
+      "name": "Scan for Input",
+      "description": "Input detection and scanning functionality",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 8,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    },
+    "go-button": {
+      "name": "Go Button",
+      "description": "Navigation and action button components",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 5,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    },
+    "selector-hierarchy": {
+      "name": "Selector Hierarchy",
+      "description": "Component selection and hierarchy management",
+      "moddable": true,
+      "badge": "Moddable ✅",
+      "fileRules": {
+        "maxSizes": {
+          "html": 51200,
+          "css": 25600,
+          "js": 102400,
+          "ts": 102400,
+          "tsx": 102400
+        },
+        "allowedTypes": ["html", "css", "js", "ts", "tsx", "json"],
+        "restrictedAPIs": [
+          "eval",
+          "Function",
+          "chrome.*",
+          "browser.*",
+          "window.eval",
+          "setTimeout",
+          "setInterval",
+          "new Function"
+        ],
+        "allowedAPIs": [
+          "console.log",
+          "console.error",
+          "console.warn",
+          "document.querySelector",
+          "document.getElementById",
+          "addEventListener",
+          "removeEventListener"
+        ]
+      },
+      "moddingRules": {
+        "maxFiles": 7,
+        "requirePreview": true,
+        "allowExternalResources": false,
+        "sandboxMode": true
+      }
+    }
+  },
+  "globalRules": {
+    "maxTotalSize": 1048576,
+    "requireAuthentication": true,
+    "allowVersioning": true,
+    "autoSave": true,
+    "historyLimit": 50
+  }
+}

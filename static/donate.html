@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Wave Reader - Donate</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🎨</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .donation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .donation-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .donation-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            font-size: 48px;
+        }
+
+        .card-title {
+            flex: 1;
+        }
+
+        .card-title h2 {
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .card-title p {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .amount-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .amount-input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .quick-amount {
+            padding: 10px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .quick-amount:hover {
+            background: #e2e8f0;
+        }
+
+        .quick-amount.selected {
+            background: #dbeafe;
+            border-color: #2563eb;
+            color: #1e40af;
+        }
+
+        .token-display {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .token-count {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+
+        .token-label {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .ghost-indicator {
+            font-size: 3rem;
+            display: none;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        .ghost-indicator.show {
+            display: block;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .donate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .donate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .donate-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .developer-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .developer-card .card-title h2,
+        .developer-card .card-title p {
+            color: white;
+        }
+
+        .developer-card .amount-input,
+        .developer-card .token-display {
+            background: rgba(255,255,255,0.9);
+        }
+
+        .developer-card .donate-btn {
+            background: white;
+            color: #f5576c;
+        }
+
+        .developer-card .donate-btn:hover {
+            background: #fff;
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .total-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .total-tokens {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+
+        .total-label {
+            font-size: 1.2rem;
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+
+        .donate-all-btn {
+            padding: 20px 60px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+        }
+
+        .donate-all-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(245, 87, 108, 0.4);
+        }
+
+        .donate-all-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💝 Support Wave Reader</h1>
+            <p>Choose where your donation goes. Earn tokens for developer support!</p>
+        </div>
+
+        <div class="donation-grid">
+            <!-- Developer Portfolio -->
+            <div class="donation-card developer-card">
+                <div class="card-header">
+                    <div class="card-icon">👨‍💻</div>
+                    <div class="card-title">
+                        <h2>Wave Reader</h2>
+                        <p>Support development</p>
+                    </div>
+                </div>
+                <input type="number" class="amount-input" data-portfolio="developer" placeholder="$0" min="0" step="1">
+                <div class="quick-amounts">
+                    <div class="quick-amount" data-amount="5">$5</div>
+                    <div class="quick-amount" data-amount="10">$10</div>
+                    <div class="quick-amount" data-amount="25">$25</div>
+                    <div class="quick-amount" data-amount="50">$50</div>
+                </div>
+                <div class="token-display">
+                    <div class="token-count" id="devTokens">0</div>
+                    <div class="token-label">Tokens Earned</div>
+                    <div class="ghost-indicator" id="devGhost">👻</div>
+                </div>
+                <button class="donate-btn" data-portfolio="developer">
+                    💰 Donate to Development
+                </button>
+            </div>
+
+            <!-- W3C WAI Portfolio -->
+            <div class="donation-card">
+                <div class="card-header">
+                    <div class="card-icon">♿</div>
+                    <div class="card-title">
+                        <h2>W3C WAI</h2>
+                        <p>Web accessibility initiative</p>
+                    </div>
+                </div>
+                <input type="number" class="amount-input" data-portfolio="w3c" placeholder="$0" min="0" step="1">
+                <div class="quick-amounts">
+                    <div class="quick-amount" data-amount="5">$5</div>
+                    <div class="quick-amount" data-amount="10">$10</div>
+                    <div class="quick-amount" data-amount="25">$25</div>
+                    <div class="quick-amount" data-amount="50">$50</div>
+                </div>
+                <div class="token-display">
+                    <div class="token-count">0</div>
+                    <div class="token-label">Tokens (charity only)</div>
+                </div>
+                <button class="donate-btn" data-portfolio="w3c">
+                    💙 Donate to W3C WAI
+                </button>
+            </div>
+
+            <!-- ASPCA Portfolio -->
+            <div class="donation-card">
+                <div class="card-header">
+                    <div class="card-icon">🐕</div>
+                    <div class="card-title">
+                        <h2>ASPCA</h2>
+                        <p>Animal welfare</p>
+                    </div>
+                </div>
+                <input type="number" class="amount-input" data-portfolio="aspca" placeholder="$0" min="0" step="1">
+                <div class="quick-amounts">
+                    <div class="quick-amount" data-amount="5">$5</div>
+                    <div class="quick-amount" data-amount="10">$10</div>
+                    <div class="quick-amount" data-amount="25">$25</div>
+                    <div class="quick-amount" data-amount="50">$50</div>
+                </div>
+                <div class="token-display">
+                    <div class="token-count">0</div>
+                    <div class="token-label">Tokens (charity only)</div>
+                </div>
+                <button class="donate-btn" data-portfolio="aspca">
+                    🐾 Donate to ASPCA
+                </button>
+            </div>
+
+            <!-- Audubon Society Portfolio -->
+            <div class="donation-card">
+                <div class="card-header">
+                    <div class="card-icon">🦅</div>
+                    <div class="card-title">
+                        <h2>Audubon Society</h2>
+                        <p>Bird conservation</p>
+                    </div>
+                </div>
+                <input type="number" class="amount-input" data-portfolio="audubon" placeholder="$0" min="0" step="1">
+                <div class="quick-amounts">
+                    <div class="quick-amount" data-amount="5">$5</div>
+                    <div class="quick-amount" data-amount="10">$10</div>
+                    <div class="quick-amount" data-amount="25">$25</div>
+                    <div class="quick-amount" data-amount="50">$50</div>
+                </div>
+                <div class="token-display">
+                    <div class="token-count">0</div>
+                    <div class="token-label">Tokens (charity only)</div>
+                </div>
+                <button class="donate-btn" data-portfolio="audubon">
+                    🦅 Donate to Audubon
+                </button>
+            </div>
+        </div>
+
+        <!-- Total Section -->
+        <div class="total-section">
+            <div class="total-tokens" id="totalTokens">0</div>
+            <div class="total-label">Total Tokens You'll Earn</div>
+            <div class="ghost-indicator" id="totalGhost">👻</div>
+            <button class="donate-all-btn" id="donateAllBtn" disabled>
+                🎁 Complete All Donations
+            </button>
+            <p style="margin-top: 20px; color: #64748b; font-size: 0.9rem;">
+                💡 Only developer donations earn tokens • Charity donations support great causes
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const portfolios = {
+            developer: { amount: 0, tokens: 0 },
+            w3c: { amount: 0, tokens: 0 },
+            aspca: { amount: 0, tokens: 0 },
+            audubon: { amount: 0, tokens: 0 }
+        };
+
+        // Update token calculations
+        function updateTokens() {
+            // Only developer donations earn tokens
+            const devAmount = portfolios.developer.amount;
+            const devTokens = Math.floor(devAmount); // $1 = 1 token
+            
+            portfolios.developer.tokens = devTokens;
+            
+            // Update developer token display
+            document.getElementById('devTokens').textContent = devTokens;
+            
+            // Show/hide ghost for developer if 0 tokens
+            const devGhost = document.getElementById('devGhost');
+            if (devTokens === 0 && devAmount === 0) {
+                devGhost.classList.add('show');
+            } else {
+                devGhost.classList.remove('show');
+            }
+
+            // Update total tokens
+            const totalTokens = devTokens;
+            document.getElementById('totalTokens').textContent = totalTokens;
+            
+            // Show/hide total ghost
+            const totalGhost = document.getElementById('totalGhost');
+            const totalDonation = Object.values(portfolios).reduce((sum, p) => sum + p.amount, 0);
+            
+            if (totalTokens === 0 && totalDonation > 0) {
+                totalGhost.classList.add('show');
+            } else {
+                totalGhost.classList.remove('show');
+            }
+
+            // Enable donate all button if any amount entered
+            document.getElementById('donateAllBtn').disabled = totalDonation === 0;
+        }
+
+        // Amount input handlers
+        document.querySelectorAll('.amount-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const portfolio = this.dataset.portfolio;
+                const amount = parseFloat(this.value) || 0;
+                portfolios[portfolio].amount = amount;
+                updateTokens();
+            });
+        });
+
+        // Quick amount buttons
+        document.querySelectorAll('.quick-amount').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const amount = parseInt(this.dataset.amount);
+                const card = this.closest('.donation-card');
+                const input = card.querySelector('.amount-input');
+                
+                // Toggle selection
+                card.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                input.value = amount;
+                input.dispatchEvent(new Event('input'));
+            });
+        });
+
+        // Individual donate buttons
+        document.querySelectorAll('.donate-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const portfolio = this.dataset.portfolio;
+                const amount = portfolios[portfolio].amount;
+
+                if (amount === 0) {
+                    alert('Please enter a donation amount');
+                    return;
+                }
+
+                console.log(`Processing ${portfolio} donation: $${amount}`);
+                
+                // TODO: Call donation API
+                // const response = await fetch('/api/donate', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({
+                //         portfolio,
+                //         amount,
+                //         tokens: portfolios[portfolio].tokens
+                //     })
+                // });
+
+                const portfolioNames = {
+                    developer: 'Wave Reader Development',
+                    w3c: 'W3C WAI',
+                    aspca: 'ASPCA',
+                    audubon: 'Audubon Society'
+                };
+
+                const tokensMessage = portfolio === 'developer' 
+                    ? ` and earned ${portfolios[portfolio].tokens} tokens! 🎉` 
+                    : ' (charity donation - no tokens)';
+
+                alert(`Thank you for donating $${amount} to ${portfolioNames[portfolio]}${tokensMessage}`);
+                
+                // Reset this portfolio
+                const card = this.closest('.donation-card');
+                card.querySelector('.amount-input').value = '';
+                portfolios[portfolio].amount = 0;
+                updateTokens();
+            });
+        });
+
+        // Donate all button
+        document.getElementById('donateAllBtn').addEventListener('click', async function() {
+            const donations = Object.entries(portfolios)
+                .filter(([_, p]) => p.amount > 0)
+                .map(([name, p]) => ({ portfolio: name, amount: p.amount, tokens: p.tokens }));
+
+            if (donations.length === 0) {
+                return;
+            }
+
+            console.log('Processing all donations:', donations);
+            
+            // TODO: Call batch donation API
+            // const response = await fetch('/api/donate/batch', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ donations })
+            // });
+
+            const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
+            const totalTokens = portfolios.developer.tokens;
+
+            alert(`Thank you for your generous donation of $${totalAmount}!\\n\\nYou've earned ${totalTokens} tokens! 🎉`);
+            
+            // Reset all
+            document.querySelectorAll('.amount-input').forEach(input => input.value = '');
+            Object.keys(portfolios).forEach(key => {
+                portfolios[key].amount = 0;
+                portfolios[key].tokens = 0;
+            });
+            updateTokens();
+        });
+
+        // Initialize
+        updateTokens();
+    </script>
+</body>
+</html>
+
