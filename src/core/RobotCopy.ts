@@ -6,6 +6,9 @@ export interface RobotCopyConfig {
   unleashClientKey?: string;
   unleashAppName?: string;
   unleashEnvironment?: string;
+  apiPath?: string;
+  traceApiPath?: string;
+  messageApiPath?: string;
   kotlinBackendUrl?: string;
   nodeBackendUrl?: string;
   enableTracing?: boolean;
@@ -24,6 +27,9 @@ export class RobotCopy {
       unleashClientKey: 'default:development.unleash-insecure-api-token',
       unleashAppName: 'fish-burger-frontend',
       unleashEnvironment: 'development',
+      apiPath: '/api/',
+      traceApiPath: '/api/trace/',
+      messageApiPath: '/api/message/',
       kotlinBackendUrl: 'http://localhost:8080',
       nodeBackendUrl: 'http://localhost:3001',
       enableTracing: true,
@@ -38,10 +44,12 @@ export class RobotCopy {
   private async initializeUnleashToggles() {
     // Simulate Unleash toggle initialization
     // In real implementation, this would fetch from Unleash API
+    // Default to false for backend requests - should be overridden by app-specific toggle service
     this.unleashToggles.set('fish-burger-kotlin-backend', false);
     this.unleashToggles.set('fish-burger-node-backend', true);
     this.unleashToggles.set('enable-tracing', true);
     this.unleashToggles.set('enable-datadog', true);
+    this.unleashToggles.set('enable-backend-api-requests', false);
   }
 
   async isEnabled(toggleName: string, _context: any = {}): Promise<boolean> {
@@ -92,6 +100,7 @@ export class RobotCopy {
     const spanId = this.generateSpanId();
     const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
+    const apiPath = this.config.apiPath;
 
     // Track the message
     this.trackMessage(messageId, traceId, spanId, {
@@ -100,6 +109,36 @@ export class RobotCopy {
       data,
     });
 
+    const backendEnabled = await this.isEnabled('enable-backend-api-requests');
+
+    if (!backendEnabled) {
+      const mockResult = {
+        success: true,
+        messageId,
+        traceId,
+        spanId,
+        data: {
+          requestedAction: action,
+          requestPayload: data,
+        },
+        backendDisabled: true,
+      };
+
+      this.trackMessage(
+        `${messageId}_response`,
+        traceId,
+        spanId,
+        {
+          backend,
+          action: `${action}_response`,
+          data: mockResult,
+          backendDisabled: true,
+        }
+      );
+
+      return mockResult;
+    }
+
     // Prepare headers for tracing
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -107,7 +146,7 @@ export class RobotCopy {
     };
 
     try {
-      const response = await fetch(`${backendUrl}/api/fish-burger/${action}`, {
+      const response = await fetch(`${backendUrl}${apiPath}${action}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -154,41 +193,26 @@ export class RobotCopy {
     }
   }
 
-  async startCooking(orderId: string, ingredients: string[]): Promise<any> {
-    return this.sendMessage('start', { orderId, ingredients });
-  }
-
-  async updateProgress(orderId: string, cookingTime: number, temperature: number): Promise<any> {
-    return this.sendMessage('progress', { orderId, cookingTime, temperature });
-  }
-
-  async completeCooking(orderId: string): Promise<any> {
-    return this.sendMessage('complete', { orderId });
-  }
-
-  // Integration with ViewStateMachine
-  integrateWithViewStateMachine(viewStateMachine: any): RobotCopy {
-    // Register message handlers for ViewStateMachine
-    viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message: any) => {
-      return this.startCooking(message.orderId, message.ingredients);
-    });
-
-    viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message: any) => {
-      return this.updateProgress(message.orderId, message.cookingTime, message.temperature);
-    });
-
-    viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message: any) => {
-      return this.completeCooking(message.orderId);
-    });
-
-    return this;
-  }
+  // Fish Burger example methods have been moved to:
+  // example/node-example/src/fish-burger-robotcopy-extensions.js
+  // This keeps the core RobotCopy class clean and app-agnostic
 
   async getTrace(traceId: string): Promise<any> {
     const backendUrl = await this.getBackendUrl();
+    const traceApiPath = this.config.traceApiPath;
+    const backendEnabled = await this.isEnabled('enable-backend-api-requests');
+
+    if (!backendEnabled) {
+      return {
+        traceId,
+        backendDisabled: true,
+        messages: [],
+        fetchedAt: new Date().toISOString(),
+      };
+    }
 
     try {
-      const response = await fetch(`${backendUrl}/api/trace/${traceId}`);
+      const response = await fetch(`${backendUrl}${traceApiPath}${traceId}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -201,9 +225,10 @@ export class RobotCopy {
 
   async getMessageFromBackend(messageId: string): Promise<any> {
     const backendUrl = await this.getBackendUrl();
+    const messageApiPath = this.config.messageApiPath;
 
     try {
-      const response = await fetch(`${backendUrl}/api/message/${messageId}`);
+      const response = await fetch(`${backendUrl}${messageApiPath}${messageId}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
