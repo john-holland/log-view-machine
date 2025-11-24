@@ -3,6 +3,7 @@ import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret } from 'xstate';
 import { RobotCopy } from './RobotCopy';
 import { MachineRouter } from './TomeBase';
+import { TomeRenderContainer } from './TomeConfig';
 
 /**
  * Routed send function type for services
@@ -189,6 +190,8 @@ export class ViewStateMachine<TModel = any> {
   private stateHandlers: Map<string, StateHandler<TModel>>;
   private serverStateHandlers: Map<string, (context: ServerStateContext<TModel>) => void> = new Map();
   private viewStack: React.ReactNode[] = [];
+  private renderContainer?: any;  // Container for wrapping rendered views
+  
   private logEntries: any[] = [];
   private tomeConfig?: any;
   private isTomeSynchronized: boolean = false;
@@ -201,7 +204,6 @@ export class ViewStateMachine<TModel = any> {
   private machineId: string;
   private routedSend?: RoutedSend;
   public parentMachine?: any;  // Reference to parent machine for relative routing
-  private renderContainer?: any;  // Container for wrapping rendered views
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
@@ -212,6 +214,41 @@ export class ViewStateMachine<TModel = any> {
     if (config.router) {
       this.setRouter(config.router);
     }
+    
+    // Transform actions to handle custom { type: 'function', fn: ... } format
+    const transformActions = (actions: any): any => {
+      if (!actions || typeof actions !== 'object') {
+        return actions;
+      }
+      
+      const transformed: any = {};
+      for (const [key, value] of Object.entries(actions)) {
+        // Check if value is an object with type: 'function' and fn property
+        const actionObj = value as any;
+        if (actionObj && typeof actionObj === 'object' && actionObj.type === 'function' && typeof actionObj.fn === 'function') {
+          // Transform { type: 'function', fn: ... } to just the function
+          // When predictableActionArguments is false, XState expects the function signature (context, event, meta)
+          // But our custom format uses ({ context, event, send, log }) so we need to adapt
+          transformed[key] = (context: any, event: any, meta: any) => {
+            // Create a send function from meta if available
+            const send = meta?.state?.machine?.send?.bind(meta.state.machine) || (() => {});
+            const log = (message: string, data?: any) => {
+              if (console && typeof console.log === 'function') {
+                console.log(message, data);
+              }
+            };
+            
+            // Call the original fn with the expected signature
+            return actionObj.fn({ context, event, send, log, meta });
+          };
+        } else {
+          transformed[key] = value;
+        }
+      }
+      return transformed;
+    };
+    
+    const transformedActions = transformActions(config.xstateConfig.actions || {});
     
     // Create the XState machine
     const machineDefinition = createMachine({
@@ -249,8 +286,8 @@ export class ViewStateMachine<TModel = any> {
         }
       }
     }, {
-      // Pass actions from config to options so XState can properly resolve them
-      actions: config.xstateConfig.actions || {},
+      // Pass transformed actions to options so XState can properly resolve them
+      actions: transformedActions,
       // Wrap services to provide meta parameter with routedSend
       services: this.wrapServices(config.xstateConfig.services || {})
     });
@@ -390,13 +427,22 @@ export class ViewStateMachine<TModel = any> {
   subscribe(callback: (state: any) => void): () => void {
     // Subscribe to state changes - the service must be started first
     if (this.machine && typeof this.machine.subscribe === 'function') {
-      return this.machine.subscribe(callback);
-    } else {
-      // Fallback: create a simple subscription that calls the callback with current state
-      const currentState = this.getState();
-      callback(currentState);
-      return () => {}; // Return empty unsubscribe function
+      const subscription = this.machine.subscribe(callback);
+
+      if (typeof subscription === 'function') {
+        return subscription;
+      }
+
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        return () => subscription.unsubscribe();
+      }
     }
+
+    // Fallback: create a simple subscription that calls the callback with current state
+    const currentState = this.getState();
+    console.warn(`🌊 ViewStateMachine: No subscription available: ${currentState}`);
+    callback(currentState);
+    return () => {}; // Return empty unsubscribe function
   }
 
   // State context methods
@@ -528,8 +574,19 @@ export class ViewStateMachine<TModel = any> {
         throw new Error(`Machine ${target} not found via router`);
       }
       
+      // Format event for XState: if payload provided, merge into event object
+      const formattedEvent = payload 
+        ? { type: event, ...payload }
+        : event;
+      
       // Send the event to the resolved machine
-      return machine.send ? machine.send(event, payload) : { success: false, error: 'No send method' };
+      if (machine.send) {
+        machine.send(formattedEvent);
+        // Return a simple success response since XState send doesn't return a value
+        return { success: true, event, target };
+      }
+      
+      return { success: false, error: 'No send method' };
     };
   }
 
@@ -566,9 +623,14 @@ export class ViewStateMachine<TModel = any> {
   }
 
   // Direct send method for TomeConnector
-  send(event: any): void {
+  send(event: any, payload?: any): void {
     if (this.machine && typeof this.machine.send === 'function') {
-      this.machine.send(event);
+      const formattedEvent =
+        typeof event === 'string'
+          ? (payload ? { type: event, ...payload } : event)
+          : event;
+
+      this.machine.send(formattedEvent);
     } else {
       console.warn('Machine not started or send method not available');
     }
@@ -588,6 +650,13 @@ export class ViewStateMachine<TModel = any> {
       return this.machine.getSnapshot();
     }
     return null;
+  }
+
+  // Stop the machine service
+  stop(): void {
+    if (this.machine && typeof this.machine.stop === 'function') {
+      this.machine.stop();
+    }
   }
 
   async executeServerState(stateName: string, model: TModel): Promise<string> {
@@ -685,7 +754,7 @@ export class ViewStateMachine<TModel = any> {
    * Set the render container for wrapping views
    * todo: consider using React.ComponentType<{ children?: React.ReactNode }>
    */
-  setRenderContainer(container: any): ViewStateMachine<TModel> {
+  setRenderContainer(container: TomeRenderContainer | any): ViewStateMachine<TModel> {
     this.renderContainer = container;
     return this;
   }
