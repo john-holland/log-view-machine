@@ -350,7 +350,7 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
-  const handleError = (error: Error, errorInfo: ErrorInfo) => {
+  const handleError = (error: Error, errorInfo?: ErrorInfo) => {
     console.error('App-level error:', error, errorInfo);
     
     // Send error event to the main machine

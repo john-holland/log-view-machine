@@ -108,6 +108,13 @@ export class SolanaService {
     }
 
     /**
+     * Get config
+     */
+    getConfig(): SolanaConfig {
+        return this.config;
+    }
+
+    /**
      * Get token account info
      */
     async getTokenAccount(owner: string): Promise<TokenAccount | null> {
@@ -120,7 +127,7 @@ export class SolanaService {
             // For now, return mock data
             return {
                 address: `token-account-${owner}`,
-                mint: this.config.tokenMint,
+                mint: this.getConfig().tokenMint,
                 owner: owner,
                 amount: 1000, // Mock amount
                 decimals: 9
@@ -137,7 +144,7 @@ export class SolanaService {
         try {
             // In a real implementation, this would query the token mint
             return {
-                mint: this.config.tokenMint,
+                mint: this.getConfig().tokenMint,
                 name: 'Wave Reader Token',
                 symbol: 'WVR',
                 decimals: 9,
@@ -233,7 +240,7 @@ export class SolanaService {
             // In a real implementation, this would create a new token account
             const tokenAccount: TokenAccount = {
                 address: `new-token-account-${Date.now()}`,
-                mint: this.config.tokenMint,
+                mint: this.getConfig().tokenMint,
                 owner: owner,
                 amount: 0,
                 decimals: 9
@@ -315,7 +322,7 @@ export class SolanaService {
             // In a real implementation, this would query the RPC for network status
             return {
                 connected: true,
-                network: this.config.network,
+                network: this.getConfig().network,
                 blockHeight: Math.floor(Math.random() * 1000000),
                 slot: Math.floor(Math.random() * 1000000)
             };
@@ -367,71 +374,3 @@ export class SolanaService {
 export const initializeSolanaService = (config: SolanaConfig): SolanaService => {
     return new SolanaService(config);
 };
-
-/**
- * Mock Solana service for development
- */
-export class MockSolanaService extends SolanaService {
-    private mockBalance: number = 1000;
-    private mockTransactions: SolanaTransaction[] = [];
-
-    constructor() {
-        super({
-            network: 'devnet',
-            rpcUrl: 'https://api.devnet.solana.com',
-            programId: 'mock-program-id',
-            tokenMint: 'mock-token-mint'
-        });
-    }
-
-    async connectWallet(): Promise<WalletConnection> {
-        this.walletConnection = {
-            publicKey: 'mock-public-key',
-            connected: true,
-            walletType: 'phantom'
-        };
-        return this.walletConnection;
-    }
-
-    async getTokenAccount(owner: string): Promise<TokenAccount | null> {
-        return {
-            address: `mock-token-account-${owner}`,
-            mint: this.config.tokenMint,
-            owner: owner,
-            amount: this.mockBalance,
-            decimals: 9
-        };
-    }
-
-    async transferTokens(
-        to: string,
-        amount: number,
-        memo?: string
-    ): Promise<SolanaTransaction> {
-        if (amount > this.mockBalance) {
-            throw new Error('Insufficient balance');
-        }
-
-        this.mockBalance -= amount;
-        
-        const transaction: SolanaTransaction = {
-            signature: `mock-transfer-${Date.now()}`,
-            blockTime: Math.floor(Date.now() / 1000),
-            slot: Math.floor(Math.random() * 1000000),
-            status: 'success',
-            amount: amount,
-            from: this.walletConnection?.publicKey || 'unknown',
-            to: to
-        };
-
-        this.mockTransactions.unshift(transaction);
-        return transaction;
-    }
-
-    async getTransactionHistory(
-        account: string,
-        limit: number = 50
-    ): Promise<SolanaTransaction[]> {
-        return this.mockTransactions.slice(0, limit);
-    }
-}

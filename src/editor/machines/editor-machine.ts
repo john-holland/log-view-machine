@@ -150,7 +150,11 @@ export const createEditorMachine = (router?: RouterType) => {
                     
                     // Notify preview to clear
                     if (meta.routedSend) {
-                        await meta.routedSend('../PreviewMachine', 'CLEAR');
+                        try {
+                            await meta.routedSend('../PreviewMachine', 'CLEAR');
+                        } catch (error: any) {
+                            console.warn('📝 EditorMachine: Could not notify PreviewMachine to clear:', error.message);
+                        }
                     }
                     
                     return { success: true, id: context.componentId };
@@ -184,6 +188,7 @@ export const createEditorMachine = (router?: RouterType) => {
                             modified: Date.now()
                         }
                     };
+                    context.componentId = context.currentComponent.id;
                     context.isDirty = true;
                 },
                 setComponent: (context: any, event: any) => {
@@ -203,6 +208,7 @@ export const createEditorMachine = (router?: RouterType) => {
                 markSaved: (context: any, event: any) => {
                     console.log('📝 EditorMachine: Marking saved');
                     context.currentComponent = event.data;
+                    context.componentId = event.data?.id || context.componentId;
                     context.isDirty = false;
                     context.lastSaved = Date.now();
                 },

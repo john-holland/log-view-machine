@@ -57,19 +57,39 @@ export const createPreviewMachine = (router?: MachineRouter) => {
                     const componentToRender = event.component || context.componentData;
                     
                     // Send to template machine for processing
-                    if (meta.routedSend && componentToRender) {
+                    if (meta.routedSend && componentToRender && componentToRender.content) {
                         try {
-                            const response = await meta.routedSend('../TemplateMachine', 'PROCESS_TEMPLATE', {
+                            // Send event to template machine
+                            await meta.routedSend('../TemplateMachine', 'PROCESS_TEMPLATE', {
                                 template: componentToRender.content || '',
                                 variables: componentToRender.metadata || {}
                             });
-                            console.log('👁️ PreviewMachine: Template processed:', response);
                             
-                            return {
-                                rendered: response.processed || response,
-                                component: componentToRender,
-                                timestamp: Date.now()
-                            };
+                            // Wait for template machine to process and get result from its context
+                            if (meta.router) {
+                                const templateMachine = meta.router.resolve('TemplateMachine');
+                                if (templateMachine && templateMachine.getState) {
+                                    // Poll for processed result (with timeout)
+                                    const maxAttempts = 20;
+                                    const pollInterval = 25;
+                                    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                                        await new Promise(resolve => setTimeout(resolve, pollInterval));
+                                        
+                                        const templateState = templateMachine.getState();
+                                        if (templateState?.context?.processedResult?.processed) {
+                                            const processed = templateState.context.processedResult.processed;
+                                            console.log('👁️ PreviewMachine: Template processed:', processed);
+                                            
+                                            return {
+                                                rendered: processed,
+                                                component: componentToRender,
+                                                timestamp: Date.now()
+                                            };
+                                        }
+                                    }
+                                    console.warn('👁️ PreviewMachine: Template processing timeout');
+                                }
+                            }
                         } catch (error: any) {
                             console.warn('👁️ PreviewMachine: Template processing failed, using raw content:', error.message);
                         }
@@ -86,12 +106,20 @@ export const createPreviewMachine = (router?: MachineRouter) => {
             actions: {
                 updateComponentData: (context: any, event: any) => {
                     console.log('👁️ PreviewMachine: Updating component data');
-                    context.componentData = event.component;
+                    if (event?.component) {
+                        context.componentData = event.component;
+                    } else {
+                        console.warn('👁️ PreviewMachine: Missing component data in event');
+                    }
                 },
                 setPreviewData: (context: any, event: any) => {
                     console.log('👁️ PreviewMachine: Setting preview data');
-                    context.previewData = event.data;
-                    context.lastRendered = Date.now();
+                    if (event?.data) {
+                        context.previewData = event.data;
+                        context.lastRendered = Date.now();
+                    } else {
+                        console.warn('👁️ PreviewMachine: No preview data provided');
+                    }
                 },
                 clearPreview: (context: any) => {
                     console.log('👁️ PreviewMachine: Clearing preview');

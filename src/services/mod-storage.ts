@@ -275,7 +275,7 @@ export class ModStorageService {
       const currentPath = this.getCurrentPath(userId, modId);
       for (const [filename, content] of Object.entries(files)) {
         const filePath = path.join(currentPath, filename);
-        fs.writeFileSync(filePath, content, 'utf8');
+        fs.writeFileSync(filePath, content as string, 'utf8');
       }
 
       // Update metadata

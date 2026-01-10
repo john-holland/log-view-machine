@@ -59,8 +59,9 @@ export const createHealthMachine = (router?: MachineRouter) => {
                     // Determine health status based on metrics
                     let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
                     
-                    const errorRate = metrics.requestCount > 0 
-                        ? metrics.errorCount / metrics.requestCount 
+                    const totalRequests = metrics.requestCount + metrics.errorCount;
+                    const errorRate = totalRequests > 0 
+                        ? metrics.errorCount / totalRequests 
                         : 0;
                     
                     if (errorRate > 0.5) {
@@ -96,6 +97,11 @@ export const createHealthMachine = (router?: MachineRouter) => {
                     context.startTime = null;
                 },
                 recordOperation: (context: any, event: any) => {
+                    if (!event || !event.operation) {
+                        console.warn('🏥 HealthMachine: Missing operation data, ignoring event');
+                        return;
+                    }
+
                     console.log('🏥 HealthMachine: Recording operation:', event.operation);
                     context.metrics.requestCount++;
                     context.metrics.lastOperation = event.operation;

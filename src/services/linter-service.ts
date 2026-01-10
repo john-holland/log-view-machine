@@ -47,10 +47,10 @@ export interface FileToLint {
 export class LinterService {
   private eslint: ESLint;
   private cache: Map<string, LintResult[]> = new Map();
+  private eslintConfig: ESLint.Options;
 
   constructor() {
-    // Initialize ESLint with custom configuration
-    this.eslint = new ESLint({
+    this.eslintConfig = {
       baseConfig: {
         env: {
           browser: true,
@@ -80,7 +80,9 @@ export class LinterService {
       },
       useEslintrc: false,
       fix: false,
-    });
+    } as ESLint.Options;
+    // Initialize ESLint with custom configuration
+    this.eslint = new ESLint(this.eslintConfig);
   }
 
   /**
@@ -295,8 +297,8 @@ export class LinterService {
 
     for (const file of files) {
       const eslintWithFix = new ESLint({
-        baseConfig: this.eslint['options'].baseConfig,
-        useEslintrc: false,
+        baseConfig: this.eslintConfig.baseConfig,
+        //useEslintrc: false,
         fix: true,
       });
 

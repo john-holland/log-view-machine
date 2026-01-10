@@ -78,7 +78,14 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: false,
+        filterRoot: process.cwd(),
+        compilerOptions: {
+          skipLibCheck: true
+        },
+        outputToFilesystem: false,
+        noForceEmit: true,
+        exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx']
       })
     ]
   },
@@ -157,7 +164,14 @@ const config = [
           json(),
           typescript({
             tsconfig: './tsconfig.build.json',
-            declaration: true
+            declaration: true,
+            filterRoot: process.cwd(),
+            compilerOptions: {
+              skipLibCheck: true
+            },
+            exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
+            outputToFilesystem: false,
+            noForceEmit: true
           })
         ]
       },
@@ -209,7 +223,14 @@ const config = [
           json(),
           typescript({
             tsconfig: './tsconfig.build.json',
-            declaration: true
+            declaration: true,
+            filterRoot: process.cwd(),
+            compilerOptions: {
+              skipLibCheck: true
+            },
+            exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
+            outputToFilesystem: false,
+            noForceEmit: true
           })
         ]
       },
@@ -260,7 +281,14 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: false,
+        filterRoot: process.cwd(),
+        compilerOptions: {
+          skipLibCheck: true
+        },
+        outputToFilesystem: false,
+        noForceEmit: true,
+        exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx']
       })
     ]
   },
@@ -313,7 +341,14 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: false,
+        filterRoot: process.cwd(),
+        compilerOptions: {
+          skipLibCheck: true
+        },
+        outputToFilesystem: false,
+        noForceEmit: true,
+        exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx']
       })
     ]
   },
@@ -334,7 +369,14 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: false,
+        filterRoot: process.cwd(),
+        compilerOptions: {
+          skipLibCheck: true
+        },
+        outputToFilesystem: false,
+        noForceEmit: true,
+        exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx']
       })
     ]
   },
@@ -362,7 +404,14 @@ const config = [
       json(),
       typescript({
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: false,
+        filterRoot: process.cwd(),
+        compilerOptions: {
+          skipLibCheck: true
+        },
+        outputToFilesystem: false,
+        noForceEmit: true,
+        exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx']
       })
     ]
   },

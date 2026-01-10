@@ -16,6 +16,8 @@ export const createTemplateMachine = (router?: MachineRouter) => {
             initial: 'idle',
             context: {
                 currentTemplate: null,
+                currentVariables: {},
+                currentComponent: null,
                 processedResult: null,
                 validationErrors: [],
                 error: null
@@ -23,7 +25,10 @@ export const createTemplateMachine = (router?: MachineRouter) => {
             states: {
                 idle: {
                     on: {
-                        PROCESS_TEMPLATE: { target: 'processing' }
+                        PROCESS_TEMPLATE: { 
+                            target: 'processing',
+                            actions: ['storeTemplateData']
+                        }
                     }
                 },
                 processing: {
@@ -48,11 +53,11 @@ export const createTemplateMachine = (router?: MachineRouter) => {
                 }
             },
             services: {
-                processTemplateService: async (context: any, event: any, meta: ServiceMeta) => {
-                    console.log('🔧 TemplateMachine: Processing template...');
+                processTemplateService: async (context: any, _event: any, _meta: ServiceMeta) => {
+                    console.log('🔧 TemplateMachine: Processing template...', { template: context.currentTemplate, variables: context.currentVariables });
                     
-                    const template = event.template || context.currentTemplate;
-                    const variables = event.variables || {};
+                    const template = context.currentTemplate || _event?.template || '';
+                    const variables = context.currentVariables || _event?.variables || {};
                     
                     // Simple template processing (replace {{variable}} with values)
                     let processed = template;
@@ -62,7 +67,7 @@ export const createTemplateMachine = (router?: MachineRouter) => {
                     });
                     
                     // Remove any JSX-specific syntax for preview
-                    processed = processed.replace(/<[^>]*\s+value=\{.*?\}[^>]*>/g, (match) => {
+                    processed = processed.replace(/<[^>]*\s+value=\{.*?\}[^>]*>/g, (match: string) => {
                         return match.replace(/\s+value=\{.*?\}/g, '');
                     });
                     
@@ -74,7 +79,7 @@ export const createTemplateMachine = (router?: MachineRouter) => {
                     };
                 },
                 
-                validateTemplateService: async (context: any, event: any, meta: ServiceMeta) => {
+                validateTemplateService: async (context: any, _event: any, _meta: ServiceMeta) => {
                     console.log('🔧 TemplateMachine: Validating template...');
                     
                     const processed = context.processedResult?.processed;
@@ -94,10 +99,23 @@ export const createTemplateMachine = (router?: MachineRouter) => {
                 }
             },
             actions: {
+                storeTemplateData: (context: any, event: any) => {
+                    console.log('🔧 TemplateMachine: Storing template data');
+                    const component = event?.component || context.currentComponent;
+
+                    if (!event?.template && component?.content) {
+                        context.currentTemplate = component.content;
+                    } else {
+                        context.currentTemplate = event.template || context.currentTemplate;
+                    }
+
+                    context.currentVariables = event?.variables || component?.metadata || {};
+                    context.currentComponent = component || null;
+                },
                 setProcessedResult: (context: any, event: any) => {
                     console.log('🔧 TemplateMachine: Setting processed result');
                     context.processedResult = event.data;
-                    context.currentTemplate = event.data?.template;
+                    context.currentTemplate = event.data?.template || context.currentTemplate;
                 },
                 clearValidationErrors: (context: any) => {
                     context.validationErrors = [];
@@ -113,6 +131,7 @@ export const createTemplateMachine = (router?: MachineRouter) => {
                 resetTemplate: (context: any) => {
                     console.log('🔧 TemplateMachine: Resetting template');
                     context.currentTemplate = null;
+                    context.currentComponent = null;
                     context.processedResult = null;
                     context.validationErrors = [];
                     context.error = null;

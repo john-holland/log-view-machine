@@ -38,8 +38,8 @@ export class MachineRouter {
      * Resolve a path to a machine (absolute paths only)
      * For relative paths, use resolveRelative() with a context machine
      */
-    resolve(path: string): any | null {
-        return this.machines.get(path) || null;
+    resolve(path: string): any | undefined {
+        return this.machines.get(path) || undefined;
     }
 
     /**
@@ -91,15 +91,30 @@ export class MachineRouter {
         
         // Handle relative parent (../ prefix)
         if (path.startsWith('../')) {
-            const parent = contextMachine.parentMachine;
-            if (!parent) {
-                throw new Error(`No parent machine found for relative path: ${path}`);
+            let remainingPath = path;
+            let currentMachine = contextMachine;
+
+            while (remainingPath.startsWith('../') || remainingPath.startsWith('..')) {
+                remainingPath = remainingPath.startsWith('../') ?
+                    remainingPath.substring(3) :
+                    remainingPath.substring(2);
+
+                if (currentMachine.parentMachine) {
+                    currentMachine = currentMachine.parentMachine;
+                } else {
+                    console.warn(`🌊 TomeBase: No parent available for relative path: ${path} fall back to absolute resolution for: ${remainingPath}`);
+                    // No parent available, fall back to absolute resolution
+                    return remainingPath
+                        ? this.resolveHierarchical(remainingPath)
+                        : null;
+                }
             }
-            const remainingPath = path.substring(3);
+
             if (!remainingPath) {
-                return parent;
+                return currentMachine;
             }
-            return this.navigateFromMachine(parent, remainingPath);
+
+            return this.navigateFromMachine(currentMachine, remainingPath);
         }
         
         return null;

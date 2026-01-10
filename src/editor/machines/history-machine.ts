@@ -87,22 +87,26 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
             log('History: Recorded change')
           ]
         },
-        UNDO: {
-          guard: 'canUndo',
-          actions: [
-            'performUndo',
-            'updateCanUndoRedo',
-            log('History: Performed undo')
-          ]
-        },
-        REDO: {
-          guard: 'canRedo',
-          actions: [
-            'performRedo',
-            'updateCanUndoRedo',
-            log('History: Performed redo')
-          ]
-        },
+        UNDO: [
+          {
+            cond: 'canUndo',
+            actions: [
+              'performUndo',
+              'updateCanUndoRedo',
+              log('History: Performed undo')
+            ]
+          }
+        ],
+        REDO: [
+          {
+            cond: 'canRedo',
+            actions: [
+              'performRedo',
+              'updateCanUndoRedo',
+              log('History: Performed redo')
+            ]
+          }
+        ],
         CLEAR: {
           actions: [
             'clearHistory',
@@ -140,42 +144,46 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
             }),
             log('History: Recording completed')
           ]
+        }
+      },
+      on: {
+        RECORD_CHANGE: {
+          actions: [
+            'recordChange',
+            'updateCanUndoRedo',
+            log('History: Recorded additional change')
+          ]
         },
-        on: {
-          RECORD_CHANGE: {
-            actions: [
-              'recordChange',
-              'updateCanUndoRedo',
-              log('History: Recorded additional change')
-            ]
-          },
-          UNDO: {
-            guard: 'canUndo',
+        UNDO: [
+          {
+            cond: 'canUndo',
             actions: [
               'performUndo',
               'updateCanUndoRedo',
               log('History: Performed undo during recording')
             ]
-          },
-          REDO: {
-            guard: 'canRedo',
+          }
+        ],
+        REDO: [
+          {
+            cond: 'canRedo',
             actions: [
               'performRedo',
               'updateCanUndoRedo',
               log('History: Performed redo during recording')
             ]
-          },
-          CLEAR: {
-            target: 'idle',
-            actions: [
-              'clearHistory',
-              'updateCanUndoRedo',
-              assign({
-                isRecording: false
-              }),
-              log('History: Cleared history during recording')
-            ]
           }
+        ],
+        CLEAR: {
+          target: 'idle',
+          actions: [
+            'clearHistory',
+            'updateCanUndoRedo',
+            assign({
+              isRecording: false
+            }),
+            log('History: Cleared history during recording')
+          ]
         }
       }
     },
@@ -217,8 +225,8 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
           metadata
         };
 
-        // Add to past, clear future
-        const newPast = [...history.past, history.present].filter(Boolean);
+        // Add to past, clear future - filter out null values
+        const newPast = [...history.past, history.present].filter((entry): entry is HistoryEntry => entry !== null);
         if (newPast.length > history.maxHistorySize) {
           newPast.shift(); // Remove oldest entry
         }
@@ -228,7 +236,7 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
           past: newPast,
           present: newEntry,
           future: [] // Clear future when new change is recorded
-        };
+        } as HistoryState;
       }
     }),
 
@@ -238,14 +246,14 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
 
         const previousEntry = history.past[history.past.length - 1];
         const newPast = history.past.slice(0, -1);
-        const newFuture = [history.present, ...history.future].filter(Boolean);
+        const newFuture = [history.present, ...history.future].filter((entry): entry is HistoryEntry => entry !== null);
 
         return {
           ...history,
           past: newPast,
           present: previousEntry,
           future: newFuture
-        };
+        } as HistoryState;
       }
     }),
 
@@ -254,7 +262,7 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
         if (history.future.length === 0) return history;
 
         const nextEntry = history.future[0];
-        const newPast = [...history.past, history.present].filter(Boolean);
+        const newPast = [...history.past, history.present].filter((entry): entry is HistoryEntry => entry !== null);
         const newFuture = history.future.slice(1);
 
         return {
@@ -262,7 +270,7 @@ export const historyMachine = createMachine<HistoryContext, HistoryEvents>({
           past: newPast,
           present: nextEntry,
           future: newFuture
-        };
+        } as HistoryState;
       }
     }),
 
