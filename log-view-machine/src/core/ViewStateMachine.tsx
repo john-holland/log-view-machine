@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
 import { RobotCopy } from './RobotCopy';
@@ -11,12 +11,32 @@ export interface LogEntry {
   metadata?: any;
 }
 
+/** Optional view storage config: RxDB schema and find/findOne specs to populate model. */
+export type ViewStorageConfig = {
+  schema?: any;
+  find?: Record<string, unknown>[] | Record<string, unknown>;
+  findOne?: Record<string, unknown>;
+  /** Collection name for find/findOne (default when not set is left to db facade). */
+  collection?: string;
+  /** Collection name for log entries (default 'logEntries'). */
+  logCollection?: string;
+  /** Schema applied to log entry metadata when inserting (enforces type/property inclusion). */
+  logMetadataSchema?: any;
+};
+
 // Types for the fluent API
 export type StateContext<TModel = any> = {
   state: string;
   model: TModel;
   transitions: any[];
-  log: (message: string, metadata?: any) => Promise<void>;
+  /** Single document from findOne; undefined when no findOne or no db. */
+  result?: unknown;
+  /** Array from find; [] when no find or no db. */
+  results: unknown[];
+  /** RxDB database instance or facade when view storage is configured; undefined otherwise. */
+  db?: any;
+  /** config is spread onto the log entry (override any property); schema applies to metadata. */
+  log: (message: string, metadata?: any, config?: Partial<LogEntry>) => Promise<void>;
   view: (component: React.ReactNode) => React.ReactNode;
   clear: () => void;
   transition: (to: string) => void;
@@ -38,13 +58,21 @@ export type StateHandler<TModel = any> = (context: StateContext<TModel>) => Prom
 export type ViewStateMachineConfig<TModel = any> = {
   machineId: string;
   xstateConfig: any;
+  /** Optional: stable key for React key / render slot; default uses machineId. */
+  renderKey?: string;
   logStates?: Record<string, StateHandler<TModel>>;
   tomeConfig?: any;
   subMachines?: Record<string, ViewStateMachineConfig<any>>;
+  /** Optional RxDB database (or facade) for view storage; passed to StateContext and machine context. */
+  db?: any;
+  /** Optional view storage config: schema, find, findOne to populate model from db. */
+  viewStorage?: ViewStorageConfig;
 };
 
 export class ViewStateMachine<TModel = any> {
   private machine: any;
+  /** Machine definition for useMachine (XState v5 expects machine, not service). */
+  private machineDefinition: AnyStateMachine;
   private stateHandlers: Map<string, StateHandler<TModel>>;
   private serverStateHandlers: Map<string, (context: ServerStateContext<TModel>) => void> = new Map();
   private viewStack: React.ReactNode[] = [];
@@ -55,14 +83,33 @@ export class ViewStateMachine<TModel = any> {
   // Add RobotCopy support for incoming messages
   private robotCopy?: RobotCopy;
   private incomingMessageHandlers: Map<string, (message: any) => void> = new Map();
+  private db?: any;
+  private viewStorage?: ViewStorageConfig;
+  /** Per-state view storage config (merged with viewStorage when running that state's handler). */
+  private stateViewStorage: Map<string, Partial<ViewStorageConfig>> = new Map();
+  private machineId: string;
+  private configRenderKey?: string;
+  private renderKeyClearCount = 0;
+  private viewKeyListeners: Array<(key: string) => void> = [];
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
+    this.machineId = config.machineId;
+    this.configRenderKey = config.renderKey;
     this.tomeConfig = config.tomeConfig;
-    
-    // Create the XState machine
+    this.db = config.db;
+    this.viewStorage = config.viewStorage;
+
+    const initialContext = {
+      ...(config.xstateConfig.context ?? {}),
+      ...(config.db !== undefined ? { db: config.db } : {}),
+    };
+
+    // Create the XState machine (predictableActionArguments in config per XState v5)
     const machineDefinition = createMachine({
       ...config.xstateConfig,
+      context: initialContext,
+      predictableActionArguments: true,
       on: {
         ...config.xstateConfig.on,
         // Add our custom events
@@ -96,7 +143,8 @@ export class ViewStateMachine<TModel = any> {
       }
     });
 
-    // Interpret the machine to create a service with send method
+    this.machineDefinition = machineDefinition as AnyStateMachine;
+    // Interpret the machine to create a service for non-React API (start, getSnapshot, on, send)
     this.machine = interpret(machineDefinition);
 
     // Register log state handlers if provided
@@ -151,8 +199,40 @@ export class ViewStateMachine<TModel = any> {
   }
 
   // Fluent API methods
-  withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel> {
+  withState(
+    stateName: string,
+    handler: StateHandler<TModel>,
+    config?: Partial<ViewStorageConfig>
+  ): ViewStateMachine<TModel> {
+    if (config) {
+      this.stateViewStorage.set(stateName, { ...this.stateViewStorage.get(stateName), ...config });
+      this.viewStorage = { ...this.viewStorage, ...config };
+    }
     this.stateHandlers.set(stateName, handler);
+    return this;
+  }
+
+  /** Set view storage config (RxDB schema, find, findOne). Chain after withState or use alone. */
+  withViewStorage(config: ViewStorageConfig): ViewStateMachine<TModel> {
+    this.viewStorage = { ...this.viewStorage, ...config };
+    return this;
+  }
+
+  /** Register RxDB schema for view storage; enforces shape on insert. Chain after withState. */
+  schema(schema: any): ViewStateMachine<TModel> {
+    this.viewStorage = { ...this.viewStorage, schema };
+    return this;
+  }
+
+  /** Query RxDB with specs; results update view model when state is entered. Chain after withState. */
+  find(specs: Record<string, unknown>[] | Record<string, unknown>): ViewStateMachine<TModel> {
+    this.viewStorage = { ...this.viewStorage, find: specs };
+    return this;
+  }
+
+  /** Query RxDB for one document; result updates view model. Chain after withState. */
+  findOne(spec: Record<string, unknown>): ViewStateMachine<TModel> {
+    this.viewStorage = { ...this.viewStorage, findOne: spec };
     return this;
   }
 
@@ -197,44 +277,118 @@ export class ViewStateMachine<TModel = any> {
     return this.subMachines.get(machineId);
   }
 
-  // State context methods
-  private createStateContext(state: any, model: TModel): StateContext<TModel> {
+  /**
+   * Run find and findOne against db when effectiveStorage has specs.
+   * Expects db to expose collections with .find(selector).exec() and .findOne(selector).exec() (RxDB-style).
+   */
+  private async runFindFindOne(
+    effectiveStorage: Partial<ViewStorageConfig> | undefined
+  ): Promise<{ result: unknown; results: unknown[] }> {
+    const out = { result: undefined as unknown, results: [] as unknown[] };
+    if (!this.db || !effectiveStorage) return out;
+    const collectionName = effectiveStorage.collection ?? 'views';
+    const coll = this.db[collectionName] ?? (typeof this.db.get === 'function' ? this.db.get(collectionName) : null);
+    if (!coll) return out;
+    try {
+      if (effectiveStorage.find != null) {
+        const spec = effectiveStorage.find as Record<string, unknown>;
+        const selector = spec && typeof spec === 'object' && 'selector' in spec ? (spec.selector as object) : spec;
+        const query = coll.find && typeof coll.find === 'function' ? coll.find(selector) : null;
+        out.results = query && typeof query.exec === 'function' ? await query.exec() : [];
+      }
+      if (effectiveStorage.findOne != null) {
+        const spec = effectiveStorage.findOne as Record<string, unknown>;
+        const selector = spec && typeof spec === 'object' && 'selector' in spec ? (spec.selector as object) : spec;
+        const query = coll.findOne && typeof coll.findOne === 'function' ? coll.findOne(selector) : null;
+        const one = query && typeof query.exec === 'function' ? await query.exec() : null;
+        out.result = one ?? undefined;
+      }
+    } catch (_e) {
+      out.results = [];
+      out.result = undefined;
+    }
+    return out;
+  }
+
+  /** Enforce schema on metadata: ensure required fields from schema exist; coerce types if possible. No-op if no schema. */
+  private applyLogMetadataSchema(metadata: any, schema: any): any {
+    if (!schema || typeof schema !== 'object') return metadata;
+    const out = { ...metadata };
+    const props = schema.properties ?? schema;
+    if (typeof props === 'object') {
+      for (const [key, desc] of Object.entries(props)) {
+        if (out[key] === undefined && (desc as any).default !== undefined) out[key] = (desc as any).default;
+      }
+    }
+    return out;
+  }
+
+  // State context methods (sendFromHook: when using useViewStateMachine, use hook's send so one interpreter)
+  private createStateContext(
+    state: any,
+    model: TModel,
+    sendFromHook?: (event: any) => void,
+    result?: unknown,
+    results: unknown[] = [],
+    effectiveStorage?: Partial<ViewStorageConfig>
+  ): StateContext<TModel> {
+    const sendEvent = sendFromHook ?? ((event: any) => this.machine.send(event));
+    const logCollection = effectiveStorage?.logCollection ?? 'logEntries';
+    const logMetadataSchema = effectiveStorage?.logMetadataSchema;
     return {
       state: state.value,
       model,
       transitions: state.history?.events || [],
-      log: async (message: string, metadata?: any) => {
-        const logEntry = {
+      result,
+      results: results ?? [],
+      ...(this.db !== undefined ? { db: this.db } : {}),
+      log: async (message: string, metadata?: any, config?: Partial<LogEntry>) => {
+        const baseLogEntry: LogEntry = {
           id: Date.now().toString(),
           timestamp: new Date().toISOString(),
           level: 'INFO',
           message,
-          metadata: metadata || {}
+          metadata: metadata ?? {}
+        };
+        let metadataOut = baseLogEntry.metadata ?? {};
+        if (logMetadataSchema) metadataOut = this.applyLogMetadataSchema(metadataOut, logMetadataSchema);
+        const logEntry: LogEntry & Record<string, unknown> = {
+          ...baseLogEntry,
+          metadata: metadataOut,
+          ...config
         };
         this.logEntries.push(logEntry);
-        this.machine.send({ type: 'LOG_ADDED', payload: logEntry });
+        sendEvent({ type: 'LOG_ADDED', payload: logEntry });
         console.log(`[${state.value}] ${message}`, metadata);
+        if (this.db && logCollection) {
+          try {
+            const dbColl = this.db[logCollection] ?? (typeof this.db.get === 'function' ? this.db.get(logCollection) : null);
+            if (dbColl && typeof dbColl.insert === 'function') await dbColl.insert(logEntry);
+          } catch (_err) {
+            // already pushed to logEntries and emitted LOG_ADDED
+          }
+        }
       },
       view: (component: React.ReactNode) => {
         if (!this.isTomeSynchronized && this.tomeConfig) {
           console.warn('Warning: view() called from Tome without synchronized ViewStateMachine. This may cause architectural issues.');
         }
         this.viewStack.push(component);
-        this.machine.send({ type: 'VIEW_ADDED', payload: component });
+        sendEvent({ type: 'VIEW_ADDED', payload: component });
         return component;
       },
       clear: () => {
         this.viewStack = [];
-        this.machine.send({ type: 'VIEW_CLEARED' });
+        sendEvent({ type: 'VIEW_CLEARED' });
       },
       transition: (to: string) => {
-        this.machine.send({ type: 'TRANSITION', payload: { to } });
+        sendEvent({ type: 'TRANSITION', payload: { to } });
       },
       send: (event: any) => {
-        this.machine.send(event);
+        sendEvent(event);
       },
       on: (eventName: string, handler: () => void) => {
-        // Register event handlers for state activations
+        // Register event handlers on the service (when using hook, this.machine is separate; prefer hook send for transitions)
         this.machine.on(eventName, handler);
       },
       // Sub-machine methods
@@ -265,19 +419,31 @@ export class ViewStateMachine<TModel = any> {
     };
   }
 
-  // React hook for using the machine
+  // React hook for using the machine (pass machine definition; @xstate/react v5/v6 expects machine, not service)
   useViewStateMachine(initialModel: TModel) {
-    const [state, send] = useMachine(this.machine);
-    
-    const context = this.createStateContext(state, initialModel);
-    
-    // Execute state handler if exists
-    React.useEffect(() => {
-      const handler = this.stateHandlers.get(state.value);
-      if (handler) {
-        handler(context);
-      }
+    const [state, send] = useMachine(this.machineDefinition);
+    const [context, setContext] = useState<StateContext<TModel> | null>(null);
+
+    // Execute state handler: compute effectiveStorage, run find/findOne, create context, then run handler
+    useEffect(() => {
+      let cancelled = false;
+      const stateKey = typeof state.value === 'string' ? state.value : (state.value as any)?.toString?.() ?? String(state.value);
+      const effectiveStorage: Partial<ViewStorageConfig> = {
+        ...this.viewStorage,
+        ...this.stateViewStorage.get(stateKey)
+      };
+      (async () => {
+        const { result, results } = await this.runFindFindOne(effectiveStorage);
+        if (cancelled) return;
+        const ctx = this.createStateContext(state, initialModel, send, result, results, effectiveStorage);
+        setContext(ctx);
+        const handler = this.stateHandlers.get(stateKey);
+        if (handler) handler(ctx);
+      })();
+      return () => { cancelled = true; };
     }, [state.value]);
+
+    const stableContext = context ?? this.createStateContext(state, initialModel, send, undefined, [], undefined);
 
     return {
       state: state.value,
@@ -286,19 +452,23 @@ export class ViewStateMachine<TModel = any> {
       logEntries: this.logEntries,
       viewStack: this.viewStack,
       subMachines: this.subMachines,
-      // Expose fluent API methods
-      log: context.log,
-      view: context.view,
-      clear: context.clear,
-      transition: context.transition,
-      subMachine: context.subMachine,
-      getSubMachine: context.getSubMachine
+      result: stableContext.result,
+      results: stableContext.results,
+      log: stableContext.log,
+      view: stableContext.view,
+      clear: stableContext.clear,
+      transition: stableContext.transition,
+      subMachine: stableContext.subMachine,
+      getSubMachine: stableContext.getSubMachine
     };
   }
 
-  // Event subscription methods for TomeConnector
+  // Event subscription methods for TomeConnector (XState v5 actor may not have .on; guard for compatibility)
   on(eventType: string, handler: (event: any) => void): void {
-    this.machine.on(eventType, handler);
+    if (this.machine && typeof (this.machine as any).on === 'function') {
+      (this.machine as any).on(eventType, handler);
+    }
+    // XState v5 uses subscribe() instead of on(); event forwarding can be extended via subscribe(snapshot => ...) if needed
   }
 
   // Direct send method for TomeConnector
@@ -323,6 +493,34 @@ export class ViewStateMachine<TModel = any> {
       return this.machine.getSnapshot();
     }
     return null;
+  }
+
+  /** Returns a stable key for this machine in the render tree (e.g. React key). Updates when clear() is called. */
+  getRenderKey(): string {
+    const base = this.configRenderKey ?? this.machineId;
+    return this.renderKeyClearCount > 0 ? `${base}-clear${this.renderKeyClearCount}` : base;
+  }
+
+  /** Subscribes to render-key updates; returns unsubscribe. Callback is invoked when the key changes (e.g. after clear()). */
+  observeViewKey(callback: (key: string) => void): () => void {
+    callback(this.getRenderKey());
+    this.viewKeyListeners.push(callback);
+    return () => {
+      const i = this.viewKeyListeners.indexOf(callback);
+      if (i !== -1) this.viewKeyListeners.splice(i, 1);
+    };
+  }
+
+  private notifyViewKeyListeners(): void {
+    const key = this.getRenderKey();
+    this.viewKeyListeners.forEach((cb) => cb(key));
+  }
+
+  /** Stops the machine service. */
+  stop(): void {
+    if (this.machine && typeof (this.machine as any).stop === 'function') {
+      (this.machine as any).stop();
+    }
   }
 
   async executeServerState(stateName: string, model: TModel): Promise<string> {
@@ -548,7 +746,11 @@ export class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateMachine<T
     throw new Error('ProxyStateMachine does not support synchronizeWithTome');
   }
 
-  withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel> {
+  withState(
+    stateName: string,
+    handler: StateHandler<TModel>,
+    _config?: Partial<ViewStorageConfig>
+  ): ViewStateMachine<TModel> {
     this.registerIncomingHandler(stateName, handler);
     return this;
   }

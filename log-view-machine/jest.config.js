@@ -18,6 +18,7 @@ export default {
     '**/__tests__/**/*.(ts|tsx)',
     '**/*.(test|spec).(ts|tsx)'
   ],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   
   // Coverage configuration
   collectCoverageFrom: [
