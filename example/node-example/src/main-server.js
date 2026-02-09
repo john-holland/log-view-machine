@@ -14,9 +14,7 @@ import winston from 'winston';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine } from 'log-view-machine';
-// Note: TomeManager and TomeConfig are not exported from the main package
-// We'll need to create these locally or import from the correct location
+import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, TomeManager, FishBurgerTomeConfig } from 'log-view-machine';
 import { setupDatabase } from './database/setup.js';
 import { createGraphQLSchema } from './graphql/schema.js';
 import { createProxyMachines } from './machines/proxy-machines.js';
@@ -109,12 +107,29 @@ const db = await setupDatabase();
 // Create RobotCopy instance
 const robotCopy = createRobotCopy();
 
-// Create TomeManager (commented out - not available in current package)
-// const tomeManager = createTomeManager(app);
+// Root Cave for node-example: route/entry describe where each feature is exposed (path → handler/Tome).
+const nodeExampleSpelunk = {
+  childCaves: {
+    'fish-burger-api': {
+      route: '/api/fish-burger',
+      tomeId: 'fish-burger-tome',
+      tomes: { fishBurger: {} },
+    },
+    'fish-burger-demo': {
+      route: '/fish-burger-demo',
+    },
+    'generic-editor': {
+      route: '/editor',
+    },
+  },
+};
+const cave = Cave('node-example', nodeExampleSpelunk);
+await cave.initialize();
 
-// Register tomes (commented out - not available in current package)
-// await tomeManager.registerTome(FishBurgerTomeConfig);
-// await tomeManager.registerTome(EditorTomeConfig);
+// TomeManager with Express app; register fish-burger Tome
+const tomeManager = new TomeManager(app);
+const fishBurgerTome = await tomeManager.registerTome(FishBurgerTomeConfig);
+fishBurgerTome.synchronizeWithCave(cave);
 
 // Create state machines
 const stateMachines = await createStateMachines(db, robotCopy);
@@ -164,6 +179,60 @@ apolloServer.applyMiddleware({ app, path: '/graphql' });
 
 // Setup REST routes
 setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, logger);
+
+// Fish Burger API: delegate to registered fish-burger Tome
+app.post('/api/fish-burger/start', async (req, res) => {
+  try {
+    const { orderId, ingredients } = req.body || {};
+    logger.info('Fish burger start', { orderId, ingredients });
+    const traceId = req.headers['x-trace-id'] || `trace-${Date.now()}`;
+    await tomeManager.sendTomeMessage('fish-burger-tome', 'cookingMachine', 'START_COOKING', { orderId, ingredients });
+    const state = tomeManager.getTomeMachineState('fish-burger-tome', 'cookingMachine');
+    res.json({
+      success: true,
+      messageId: `msg-${Date.now()}`,
+      traceId,
+      state: state?.value ?? 'processing',
+      context: { orderId: orderId || null, ingredients: ingredients || [] },
+    });
+  } catch (err) {
+    logger.error('Fish burger start error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+app.post('/api/fish-burger/progress', (req, res) => {
+  try {
+    const { orderId, cookingTime, temperature } = req.body || {};
+    logger.info('Fish burger progress', { orderId, cookingTime, temperature });
+    tomeManager.updateTomeContext('fish-burger-tome', { orderId, cookingTime, temperature });
+    res.json({
+      success: true,
+      messageId: `msg-${Date.now()}`,
+      state: 'processing',
+      context: { orderId, cookingTime, temperature },
+    });
+  } catch (err) {
+    logger.error('Fish burger progress error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+app.post('/api/fish-burger/complete', async (req, res) => {
+  try {
+    const { orderId } = req.body || {};
+    logger.info('Fish burger complete', { orderId });
+    await tomeManager.sendTomeMessage('fish-burger-tome', 'cookingMachine', 'COMPLETE_COOKING', { orderId });
+    const state = tomeManager.getTomeMachineState('fish-burger-tome', 'cookingMachine');
+    res.json({
+      success: true,
+      messageId: `msg-${Date.now()}`,
+      state: state?.value ?? 'completed',
+      context: { orderId: orderId || null },
+    });
+  } catch (err) {
+    logger.error('Fish burger complete error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Add tome management routes
 app.get('/api/tomes', (req, res) => {

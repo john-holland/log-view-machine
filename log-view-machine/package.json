@@ -1,6 +1,6 @@
 {
   "name": "log-view-machine",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "A powerful state machine library with fluent API, sub-machines, RobotCopy message broker, GraphQL integration, and structural system for application organization",
   "main": "dist/index.js",
@@ -27,6 +27,7 @@
   },
   "peerDependencies": {
     "@xstate/react": "^3.0.0",
+    "express": "^4.0.0",
     "graphql": "^16.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",

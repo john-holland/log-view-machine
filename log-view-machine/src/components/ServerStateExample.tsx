@@ -190,9 +190,9 @@ const ServerStateExample: React.FC = () => {
     clientState: 'idle',
   });
 
-  // Initialize RobotCopy integration
+  // Initialize RobotCopy integration (optional; e.g. fish-burger wrapper provides it)
   useEffect(() => {
-    robotCopy.integrateWithViewStateMachine(serverStateExampleMachine);
+    robotCopy.integrateWithViewStateMachine?.(serverStateExampleMachine);
   }, [robotCopy]);
 
   const handleStartOrder = async () => {

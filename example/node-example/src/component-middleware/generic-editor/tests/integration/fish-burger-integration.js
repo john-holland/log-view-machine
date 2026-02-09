@@ -4,7 +4,7 @@
  * Connects Fish Burger UI to Generic Editor backend using RobotCopy proxy machines
  */
 
-import { createRobotCopy } from 'log-view-machine';
+import { createFishBurgerRobotCopy } from '../../../fish-burger-robotcopy.js';
 
 /**
  * Fish Burger Tome Configuration
@@ -29,7 +29,7 @@ export class FishBurgerTomeConfig {
 export class FishBurgerTome {
   constructor(config = new FishBurgerTomeConfig()) {
     this.config = config;
-    this.robotCopy = createRobotCopy();
+    this.robotCopy = createFishBurgerRobotCopy();
     this.state = {
       orderId: null,
       ingredients: [],

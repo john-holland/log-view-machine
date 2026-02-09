@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createViewStateMachine } from 'log-view-machine';
-import { RobotCopy, createRobotCopy } from 'log-view-machine';
+import { createFishBurgerRobotCopy } from '../fish-burger-robotcopy';
 
 // Fish Burger State Machine with tracing
 const fishBurgerMachine = createViewStateMachine({
@@ -157,7 +157,7 @@ const fishBurgerMachine = createViewStateMachine({
 });
 
 const FishBurgerWithTracing: React.FC = () => {
-  const [robotCopy] = useState(() => createRobotCopy());
+  const [robotCopy] = useState(() => createFishBurgerRobotCopy());
   const [backendType, setBackendType] = useState<'kotlin' | 'node'>('node');
   const [tracingEnabled, setTracingEnabled] = useState(true);
   const [currentTrace, setCurrentTrace] = useState<any>(null);
@@ -290,8 +290,8 @@ const FishBurgerWithTracing: React.FC = () => {
   };
 
   return (
-    <div className="fish-burger-with-tracing">
-      <div className="header">
+    <div className="fish-burger-with-tracing demo-container">
+      <div className="demo-header header">
         <h2>Fish Burger with Tracing & Unleash</h2>
         <div className="status">
           <p>Backend: {backendType}</p>
@@ -322,7 +322,7 @@ const FishBurgerWithTracing: React.FC = () => {
         </button>
       </div>
 
-      <div className="content">
+      <div className="demo-content content">
         {/* Render current view */}
         {viewStack.length > 0 && (
           <div className="current-view">
@@ -375,7 +375,7 @@ const FishBurgerWithTracing: React.FC = () => {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .fish-burger-with-tracing {
           padding: 20px;
           max-width: 1200px;

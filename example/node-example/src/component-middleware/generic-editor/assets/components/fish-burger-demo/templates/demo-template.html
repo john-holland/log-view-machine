@@ -6,10 +6,19 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http: https: ws: wss:;">
     <title>Fish Burger Demo - Generic Editor Components</title>
     
+    <!-- Editor chrome (view-identity); canonical: log-view-machine editor-wrapper.css -->
+    <link rel="stylesheet" href="/assets/css/core/editor-wrapper.css">
     <!-- External CSS -->
     <link rel="stylesheet" href="/assets/css/fish-burger-demo/demo-styles.css">
 </head>
 <body>
+    <div class="editor-wrapper" data-component-id="fish-burger-demo">
+        <header class="editor-wrapper-header">
+            <h2 class="editor-wrapper-title">Fish Burger Demo</h2>
+            <p class="editor-wrapper-description">Built with Generic Editor Components</p>
+            <p class="editor-wrapper-meta">Tome Architecture | Component: fish-burger-demo</p>
+        </header>
+        <main class="editor-wrapper-content">
     <div class="fish-burger-demo">
         <div class="demo-header">
             <h1>🍔 Fish Burger Demo</h1>
@@ -171,6 +180,11 @@
                 <p>Cart component will be loaded here...</p>
             </div>
         </div>
+    </div>
+        </main>
+        <footer class="editor-wrapper-footer">
+            Wave Reader | Tome Architecture Enabled
+        </footer>
     </div>
 
     <!-- External JavaScript -->

@@ -17,6 +17,8 @@ export class GenericEditorConfig {
     this.enablePersistence = options.enablePersistence !== false;
     this.persistenceConfig = options.persistenceConfig || {};
     this.enableFishBurgerIntegration = options.enableFishBurgerIntegration !== false;
+    /** When true, use EditorWrapper from log-view-machine as the editor UI wrapper (3-panel tabbed layout). For React integration. */
+    this.enableEditorWrapper = options.enableEditorWrapper !== false;
   }
 }
 

@@ -1,4 +1,3 @@
-import { ViewStateMachine } from './ViewStateMachine';
 import { Tracing, createTracing, MessageMetadata } from './Tracing';
 
 export interface RobotCopyConfig {
@@ -10,6 +9,12 @@ export interface RobotCopyConfig {
   nodeBackendUrl?: string;
   enableTracing?: boolean;
   enableDataDog?: boolean;
+  /** Toggle name that when enabled means use Kotlin backend; when disabled use Node. If omitted, getBackendUrl uses nodeBackendUrl. */
+  backendSelectorToggle?: string;
+  /** Path prefix for sendMessage (e.g. '/api/fish-burger'). Default '/api'. */
+  apiBasePath?: string;
+  /** Optional initial toggle map; merged into toggles so the library does not hard-code toggle names. */
+  initialToggles?: Record<string, boolean>;
 }
 
 export class RobotCopy {
@@ -22,12 +27,13 @@ export class RobotCopy {
     this.config = {
       unleashUrl: 'http://localhost:4242/api',
       unleashClientKey: 'default:development.unleash-insecure-api-token',
-      unleashAppName: 'fish-burger-frontend',
+      unleashAppName: 'log-view-machine',
       unleashEnvironment: 'development',
       kotlinBackendUrl: 'http://localhost:8080',
       nodeBackendUrl: 'http://localhost:3001',
       enableTracing: true,
       enableDataDog: true,
+      apiBasePath: '/api',
       ...config,
     };
 
@@ -36,25 +42,35 @@ export class RobotCopy {
   }
 
   private async initializeUnleashToggles() {
-    // Simulate Unleash toggle initialization
-    // In real implementation, this would fetch from Unleash API
-    this.unleashToggles.set('fish-burger-kotlin-backend', false);
-    this.unleashToggles.set('fish-burger-node-backend', true);
+    // Apply optional initial toggles from config; otherwise only generic toggles
+    if (this.config.initialToggles && Object.keys(this.config.initialToggles).length > 0) {
+      for (const [name, value] of Object.entries(this.config.initialToggles)) {
+        this.unleashToggles.set(name, value);
+      }
+    }
     this.unleashToggles.set('enable-tracing', true);
     this.unleashToggles.set('enable-datadog', true);
   }
 
-  async isEnabled(toggleName: string, context: any = {}): Promise<boolean> {
+  async isEnabled(toggleName: string, _context: any = {}): Promise<boolean> {
     return this.unleashToggles.get(toggleName) || false;
   }
 
   async getBackendUrl(): Promise<string> {
-    const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+    const toggleName = this.config.backendSelectorToggle;
+    if (!toggleName) {
+      return this.config.nodeBackendUrl!;
+    }
+    const useKotlin = await this.isEnabled(toggleName);
     return useKotlin ? this.config.kotlinBackendUrl! : this.config.nodeBackendUrl!;
   }
 
   async getBackendType(): Promise<'kotlin' | 'node'> {
-    const useKotlin = await this.isEnabled('fish-burger-kotlin-backend');
+    const toggleName = this.config.backendSelectorToggle;
+    if (!toggleName) {
+      return 'node';
+    }
+    const useKotlin = await this.isEnabled(toggleName);
     return useKotlin ? 'kotlin' : 'node';
   }
 
@@ -106,8 +122,9 @@ export class RobotCopy {
       ...this.tracing.createTracingHeaders(traceId, spanId, messageId, await this.isEnabled('enable-datadog')),
     };
 
+    const basePath = (this.config.apiBasePath ?? '/api').replace(/\/$/, '');
     try {
-      const response = await fetch(`${backendUrl}/api/fish-burger/${action}`, {
+      const response = await fetch(`${backendUrl}${basePath}/${action}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -154,38 +171,7 @@ export class RobotCopy {
     }
   }
 
-  async startCooking(orderId: string, ingredients: string[]): Promise<any> {
-    return this.sendMessage('start', { orderId, ingredients });
-  }
-
-  async updateProgress(orderId: string, cookingTime: number, temperature: number): Promise<any> {
-    return this.sendMessage('progress', { orderId, cookingTime, temperature });
-  }
-
-  async completeCooking(orderId: string): Promise<any> {
-    return this.sendMessage('complete', { orderId });
-  }
-
-  // Integration with ViewStateMachine
-  integrateWithViewStateMachine(viewStateMachine: any): RobotCopy {
-    // Register message handlers for ViewStateMachine
-    viewStateMachine.registerRobotCopyHandler('START_COOKING', async (message: any) => {
-      return this.startCooking(message.orderId, message.ingredients);
-    });
-
-    viewStateMachine.registerRobotCopyHandler('UPDATE_PROGRESS', async (message: any) => {
-      return this.updateProgress(message.orderId, message.cookingTime, message.temperature);
-    });
-
-    viewStateMachine.registerRobotCopyHandler('COMPLETE_COOKING', async (message: any) => {
-      return this.completeCooking(message.orderId);
-    });
-
-    return this;
-  }
-
   async getTrace(traceId: string): Promise<any> {
-    const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
 
     try {
@@ -201,7 +187,6 @@ export class RobotCopy {
   }
 
   async getMessageFromBackend(messageId: string): Promise<any> {
-    const backend = await this.getBackendType();
     const backendUrl = await this.getBackendUrl();
 
     try {
@@ -241,7 +226,7 @@ export class RobotCopy {
   }
 
   // Response handling
-  onResponse(channel: string, handler: (response: any) => void): void {
+  onResponse(channel: string, _handler: (response: any) => void): void {
     // This would be implemented to handle incoming responses
     // For now, we'll just store the handler for future use
     console.log(`Registered response handler for channel: ${channel}`);

@@ -5,7 +5,8 @@ export {
   createProxyRobotCopyStateMachine,
   type ViewStateMachineConfig,
   type StateContext,
-  type StateHandler
+  type StateHandler,
+  type ViewStorageConfig
 } from './core/ViewStateMachine';
 
 // Tracing exports
@@ -44,6 +45,9 @@ export {
 export {
   TomeManager
 } from './core/TomeManager';
+
+// Browser-safe Tome creation (no Express)
+export { createTome } from './core/createTome';
 
 // TomeConfig exports
 export {
@@ -91,4 +95,38 @@ export {
 export {
   DefaultStructuralConfig,
   createStructuralConfig
-} from './core/DefaultStructuralConfig'; 
+} from './core/DefaultStructuralConfig';
+
+// Cave exports
+export {
+  Cave,
+  createCave,
+  type Spelunk,
+  type CaveConfig,
+  type CaveInstance,
+  type RenderTarget
+} from './core/Cave';
+
+// useCave, useTome, useViewStateMachineInstance (React hooks for Cave/Tome/VSM with observeViewKey)
+export {
+  useCave,
+  useTome,
+  useViewStateMachineInstance,
+  type UseViewStateMachineInstanceOptions
+} from './core/useCaveTomeVSM';
+
+// DuckDB backend storage exports
+export {
+  createDuckDBStorage,
+  createDuckDBStorageSync,
+  DuckDBStorageStub,
+  type DuckDBStorageAdapter
+} from './core/DuckDBStorage';
+
+// Editor components (EditorWrapper from wave-reader alignment)
+export {
+  default as EditorWrapper,
+  type EditorWrapperProps,
+  type EditorWrapperRouter
+} from './components/EditorWrapper';
+export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary'; 

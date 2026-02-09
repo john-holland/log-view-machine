@@ -1,6 +1,6 @@
 {
   "name": "log-view-machine-workspace",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Log View Machine - A powerful state machine library with examples",
   "private": true,
   "workspaces": [

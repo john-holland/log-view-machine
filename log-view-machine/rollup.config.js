@@ -24,7 +24,8 @@ const config = [
       'react-dom',
       '@xstate/react',
       'xstate',
-      'graphql'
+      'graphql',
+      'express'
     ],
     plugins: [
       resolve(),

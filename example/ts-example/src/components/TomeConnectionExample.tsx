@@ -474,7 +474,7 @@ const TomeConnectionExample: React.FC = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .tome-connection-example {
           padding: 20px;
           max-width: 1400px;

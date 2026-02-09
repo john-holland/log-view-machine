@@ -51,7 +51,15 @@ npm install
 npm run dev
 ```
 
-The application will be available at http://localhost:5173
+The application will be available at http://localhost:5173.
+
+**Tracing demo (fish-burger):** The "Start Cooking" flow calls `/api/fish-burger/*`. Those requests are proxied to `http://localhost:3000`. For the API to respond, run the node-example backend on port 3000 in another terminal:
+
+```bash
+cd ../node-example && node src/main-server.js
+```
+
+Then use the app at http://localhost:5173 (Vite proxies `/api` to the backend).
 
 ## Package Dependency
 

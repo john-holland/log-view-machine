@@ -5,12 +5,26 @@
  * allowing each tome to insert gracefully into a routing hierarchy.
  */
 
+/** Safe env read for Node; returns undefined in browser so config can use fallbacks. */
+function getEnv(name: string): string | undefined {
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    return typeof (globalThis as any).process !== 'undefined' && (globalThis as any).process.env
+      ? (globalThis as any).process.env[name]
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface TomeMachineConfig {
   id: string;
   name: string;
   description?: string;
   xstateConfig: any;
   context?: Record<string, any>;
+  /** Optional state handlers for view rendering (browser Tomes). Passed to createViewStateMachine. */
+  logStates?: Record<string, (context: any) => Promise<any>>;
   dependencies?: string[];
 }
 
@@ -44,7 +58,9 @@ export interface TomeConfig {
   name: string;
   description?: string;
   version?: string;
-  
+  /** Optional: stable key for React key / render slot; default uses id. */
+  renderKey?: string;
+
   // Machine configurations
   machines: Record<string, TomeMachineConfig>;
   
@@ -108,7 +124,14 @@ export interface TomeInstance {
   machines: Map<string, any>;
   router?: any;
   context: Record<string, any>;
-  
+  /** True when this Tome has been synchronized with a Cave (e.g. via synchronizeWithCave). */
+  readonly isCaveSynchronized: boolean;
+
+  /** Returns a stable key for this Tome in the render tree (e.g. React key). */
+  getRenderKey(): string;
+  /** Subscribes to render-key updates; returns unsubscribe. */
+  observeViewKey(callback: (key: string) => void): () => void;
+
   // Methods
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -116,6 +139,8 @@ export interface TomeInstance {
   sendMessage(machineId: string, event: string, data?: any): Promise<any>;
   getState(machineId: string): any;
   updateContext(updates: Record<string, any>): void;
+  /** Mark this Tome as synchronized with a Cave. */
+  synchronizeWithCave(cave?: unknown): void;
 }
 
 export interface TomeManager {
@@ -139,6 +164,7 @@ export function createTomeConfig(config: Partial<TomeConfig>): TomeConfig {
     name: config.name || 'Default Tome',
     description: config.description || 'A configured tome with routing support',
     version: config.version || '1.0.0',
+    renderKey: config.renderKey,
     machines: config.machines || {},
     routing: {
       basePath: config.routing?.basePath || '/api',
@@ -246,7 +272,7 @@ export const FishBurgerTomeConfig: TomeConfig = createTomeConfig({
   },
   context: {
     baseUrl: 'http://localhost:3000',
-    adminKey: process.env.ADMIN_KEY || 'admin123'
+    adminKey: getEnv('ADMIN_KEY') || 'admin123'
   }
 });
 

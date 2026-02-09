@@ -7,13 +7,13 @@
 
 import { TomeConfig, TomeInstance, TomeManager as ITomeManager } from './TomeConfig';
 import { createViewStateMachine } from './ViewStateMachine';
-import express from 'express';
+import express, { type Application } from 'express';
 
 export class TomeManager implements ITomeManager {
   public tomes: Map<string, TomeInstance> = new Map();
-  private app: express.Application;
+  private app: Application;
 
-  constructor(app: express.Application) {
+  constructor(app: Application) {
     this.app = app;
   }
 
@@ -40,13 +40,47 @@ export class TomeManager implements ITomeManager {
       console.log(`  🤖 Created machine: ${machineConfig.name} (${machineConfig.id})`);
     }
 
+    let isCaveSynchronized = false;
+    const viewKeyListeners: Array<(key: string) => void> = [];
+
+    function getRenderKey(): string {
+      const base = config.renderKey ?? config.id;
+      const machineKeys: string[] = [];
+      machines.forEach((m, key) => {
+        if (m && typeof m.getRenderKey === 'function') {
+          machineKeys.push(m.getRenderKey());
+        } else {
+          machineKeys.push(key);
+        }
+      });
+      if (machineKeys.length === 0) return base;
+      return `${base}:${machineKeys.join(',')}`;
+    }
+
     // Create tome instance
     const tomeInstance: TomeInstance = {
       id: config.id,
       config,
       machines,
       context: config.context || {},
-      
+      get isCaveSynchronized() {
+        return isCaveSynchronized;
+      },
+
+      getRenderKey,
+      observeViewKey(callback: (key: string) => void): () => void {
+        callback(getRenderKey());
+        viewKeyListeners.push(callback);
+        return () => {
+          const i = viewKeyListeners.indexOf(callback);
+          if (i !== -1) viewKeyListeners.splice(i, 1);
+        };
+      },
+
+      synchronizeWithCave(_cave?: unknown) {
+        isCaveSynchronized = true;
+      },
+
       async start() {
         console.log(`🚀 Starting Tome: ${this.id}`);
         // Initialize all machines

@@ -142,9 +142,9 @@ const TomeIntegration: React.FC = () => {
     ssrEnabled: false,
   });
 
-  // Initialize RobotCopy integration
+  // Initialize RobotCopy integration (optional; e.g. fish-burger wrapper provides it)
   useEffect(() => {
-    robotCopy.integrateWithViewStateMachine(tomeMachine);
+    robotCopy.integrateWithViewStateMachine?.(tomeMachine);
   }, [robotCopy]);
 
   const handleAddToCart = async (item: any) => {

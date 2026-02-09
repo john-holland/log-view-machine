@@ -569,9 +569,9 @@ const CompleteOrderStateMachine: React.FC = () => {
     traceId: null,
   });
 
-  // Initialize RobotCopy integration
+  // Initialize RobotCopy integration (optional; e.g. fish-burger wrapper provides it)
   useEffect(() => {
-    robotCopy.integrateWithViewStateMachine(mainOrderMachine);
+    robotCopy.integrateWithViewStateMachine?.(mainOrderMachine);
   }, [robotCopy]);
 
   const handleAddToCart = () => {

@@ -247,6 +247,21 @@ describe('log-view-machine Functionality', () => {
       expect(robotCopy.registerMachine).toBeDefined();
       expect(typeof robotCopy.registerMachine).toBe('function');
     });
+
+    test('should use generic default unleashAppName and configurable apiBasePath', () => {
+      const robotCopy = createRobotCopy();
+      const config = robotCopy.getConfig();
+
+      expect(config.unleashAppName).toBe('log-view-machine');
+      expect(config.apiBasePath).toBe('/api');
+    });
+
+    test('getBackendUrl should return nodeBackendUrl when backendSelectorToggle is not set', async () => {
+      const robotCopy = createRobotCopy({ nodeBackendUrl: 'http://localhost:3001' });
+      const url = await robotCopy.getBackendUrl();
+
+      expect(url).toBe('http://localhost:3001');
+    });
   });
 
   describe('createTracing', () => {
