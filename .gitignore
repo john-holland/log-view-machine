@@ -27,6 +27,6 @@ yarn-error.log*
 *.swp
 *.swo 
 
-test-results/*
-playwright-report/*
-.gradle/*
+**/test-results/**
+**/playwright-report/**
+**/.gradle/**
