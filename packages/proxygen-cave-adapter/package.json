@@ -1,0 +1,29 @@
+{
+  "name": "proxygen-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave server adapter for Proxygen (C++ HTTP layer with N-API bridge to Node)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "rebuild": "node-gyp rebuild",
+    "install": "node scripts/install-addon.cjs",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "node-addon-api": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "gypfile": true
+}

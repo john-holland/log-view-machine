@@ -71,11 +71,14 @@ class ViewStateMachine<TModel : Any>(
         handler(context)
     }
 
+    private val viewStack = mutableListOf<Any>()
+    private val eventHandlers = mutableMapOf<String, () -> Unit>()
+
     private fun createStateContext(stateName: String, model: TModel): StateContext<TModel> {
         return StateContext(
             state = stateName,
             model = model,
-            transitions = emptyList(), // TODO: Implement transition tracking
+            transitions = baseMachine.getTransitions(),
             log = { message, metadata ->
                 val logEntry = LogEntry(
                     id = System.currentTimeMillis().toString(),
@@ -87,20 +90,22 @@ class ViewStateMachine<TModel : Any>(
                 logEntries.add(logEntry)
             },
             view = { component ->
-                // TODO: Implement view rendering
+                viewStack.add(component)
                 component
             },
             clear = {
-                // TODO: Implement view clearing
+                viewStack.clear()
             },
             transition = { toState ->
-                // TODO: Implement state transition
+                baseMachine.transitionTo(toState, null)
             },
             send = { event ->
-                // TODO: Implement event sending
+                baseMachine.sendEvent(event)
+                val eventKey = event.toString()
+                eventHandlers[eventKey]?.invoke()
             },
             on = { eventName, handler ->
-                // TODO: Implement event handling
+                eventHandlers[eventName] = handler
             },
             subMachine = { machineId, config ->
                 withSubMachine(machineId, config)
@@ -109,16 +114,13 @@ class ViewStateMachine<TModel : Any>(
                 getSubMachine(machineId)
             },
             graphql = GraphQLContext(
-                query = { query, variables ->
-                    // TODO: Implement GraphQL query
+                query = { _query, _variables ->
                     emptyMap<String, Any>()
                 },
-                mutation = { mutation, variables ->
-                    // TODO: Implement GraphQL mutation
+                mutation = { _mutation, _variables ->
                     emptyMap<String, Any>()
                 },
-                subscription = { subscription, variables ->
-                    // TODO: Implement GraphQL subscription
+                subscription = { _subscription, _variables ->
                     emptyMap<String, Any>()
                 }
             )

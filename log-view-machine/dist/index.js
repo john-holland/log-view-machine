@@ -1,6 +1,6 @@
 'use strict';
 
-var React = require('react');
+var require$$0 = require('react');
 var react = require('@xstate/react');
 var xstate = require('xstate');
 var express = require('express');
@@ -24,7 +24,7 @@ var hasRequiredReactJsxRuntime_production_min;
 function requireReactJsxRuntime_production_min () {
 	if (hasRequiredReactJsxRuntime_production_min) return reactJsxRuntime_production_min;
 	hasRequiredReactJsxRuntime_production_min = 1;
-var f=React,k=Symbol.for("react.element"),l=Symbol.for("react.fragment"),m=Object.prototype.hasOwnProperty,n=f.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,p={key:!0,ref:!0,__self:!0,__source:!0};
+var f=require$$0,k=Symbol.for("react.element"),l=Symbol.for("react.fragment"),m=Object.prototype.hasOwnProperty,n=f.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,p={key:!0,ref:!0,__self:!0,__source:!0};
 	function q(c,a,g){var b,d={},e=null,h=null;void 0!==g&&(e=""+g);void 0!==a.key&&(e=""+a.key);void 0!==a.ref&&(h=a.ref);for(b in a)m.call(a,b)&&!p.hasOwnProperty(b)&&(d[b]=a[b]);if(c&&c.defaultProps)for(b in a=c.defaultProps,a)void 0===d[b]&&(d[b]=a[b]);return {$$typeof:k,type:c,key:e,ref:h,props:d,_owner:n.current}}reactJsxRuntime_production_min.Fragment=l;reactJsxRuntime_production_min.jsx=q;reactJsxRuntime_production_min.jsxs=q;
 	return reactJsxRuntime_production_min;
 }
@@ -50,7 +50,7 @@ function requireReactJsxRuntime_development () {
 	if (process.env.NODE_ENV !== "production") {
 	  (function() {
 
-	var React$1 = React;
+	var React = require$$0;
 
 	// ATTENTION
 	// When adding new symbols to this file,
@@ -85,7 +85,7 @@ function requireReactJsxRuntime_development () {
 	  return null;
 	}
 
-	var ReactSharedInternals = React$1.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+	var ReactSharedInternals = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 
 	function error(format) {
 	  {
@@ -1787,9 +1787,9 @@ class ViewStateMachine {
     // React hook for using the machine (pass machine definition; @xstate/react v5/v6 expects machine, not service)
     useViewStateMachine(initialModel) {
         const [state, send] = react.useMachine(this.machineDefinition);
-        const [context, setContext] = React.useState(null);
+        const [context, setContext] = require$$0.useState(null);
         // Execute state handler: compute effectiveStorage, run find/findOne, create context, then run handler
-        React.useEffect(() => {
+        require$$0.useEffect(() => {
             let cancelled = false;
             const stateKey = typeof state.value === 'string' ? state.value : state.value?.toString?.() ?? String(state.value);
             const effectiveStorage = {
@@ -2441,6 +2441,13 @@ class RobotCopy {
             writable: true,
             value: void 0
         });
+        // --- Location (local vs remote) for machines/tomes ---
+        Object.defineProperty(this, "locationRegistry", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: new Map()
+        });
         this.config = {
             unleashUrl: 'http://localhost:4242/api',
             unleashClientKey: 'default:development.unleash-insecure-api-token',
@@ -2605,7 +2612,7 @@ class RobotCopy {
     // Response handling
     onResponse(channel, _handler) {
         // This would be implemented to handle incoming responses
-        // For now, we'll just store the handler for future use
+        // For now, we're just store the handler for future use
         console.log(`Registered response handler for channel: ${channel}`);
     }
     // Machine registration for state machines
@@ -2617,6 +2624,12 @@ class RobotCopy {
             this.machines = new Map();
         }
         this.machines.set(name, { machine, config, registeredAt: new Date().toISOString() });
+        // Apply default location from config (TomeMachineConfig.location / remoteClient)
+        const loc = config.location;
+        const client = config.remoteClient;
+        if (loc !== undefined || client !== undefined) {
+            this.registerMachineLocation(name, { location: loc, remoteClient: client });
+        }
     }
     // Get registered machines
     getRegisteredMachines() {
@@ -2625,6 +2638,41 @@ class RobotCopy {
     // Get a specific registered machine
     getRegisteredMachine(name) {
         return this.machines?.get(name);
+    }
+    /**
+     * Set or override location for a machine or tome.
+     * When local is true, the runner activates local VSM; when false, sends via client (e.g. HTTP) instead.
+     */
+    setLocation(machineIdOrTomeId, opts) {
+        this.locationRegistry.set(machineIdOrTomeId, { local: opts.local, client: opts.client });
+    }
+    /**
+     * Get location for a machine or tome. Returns undefined if not set (caller may treat as local).
+     */
+    getLocation(machineIdOrTomeId) {
+        return this.locationRegistry.get(machineIdOrTomeId);
+    }
+    /**
+     * Register default location from TomeMachineConfig (location / remoteClient).
+     * Converts location hint to local/remote; can be overridden later by setLocation.
+     */
+    registerMachineLocation(machineIdOrTomeId, defaultFromConfig) {
+        if (!defaultFromConfig)
+            return;
+        const { location, remoteClient } = defaultFromConfig;
+        const local = location === 'remote' ? false : true;
+        const client = remoteClient ?? (typeof location === 'string' && location !== 'local' && location !== 'same-cave' ? location : undefined);
+        if (!this.locationRegistry.has(machineIdOrTomeId)) {
+            this.locationRegistry.set(machineIdOrTomeId, { local, client });
+        }
+    }
+    /**
+     * Answer whether the given machine/tome is local (run here) or remote (send via client).
+     * Defaults to true (local) when no location is registered.
+     */
+    isLocal(machineIdOrTomeId) {
+        const entry = this.locationRegistry.get(machineIdOrTomeId);
+        return entry === undefined ? true : entry.local;
     }
 }
 function createRobotCopy(config) {
@@ -3726,8 +3774,8 @@ class StructuralSystem {
 }
 // React hook for using the structural system
 function useStructuralSystem(config) {
-    const [system] = React.useState(() => new StructuralSystem(config));
-    React.useEffect(() => {
+    const [system] = require$$0.useState(() => new StructuralSystem(config));
+    require$$0.useEffect(() => {
         const validation = system.validate();
         if (!validation.isValid) {
             console.warn('Structural system validation errors:', validation.errors);
@@ -3740,10 +3788,10 @@ function createStructuralSystem(config) {
     return new StructuralSystem(config);
 }
 
-const RouterContext = React.createContext(null);
+const RouterContext = require$$0.createContext(null);
 // Router hook
 function useRouter() {
-    const context = React.useContext(RouterContext);
+    const context = require$$0.useContext(RouterContext);
     if (!context) {
         throw new Error('useRouter must be used within a StructuralRouter');
     }
@@ -3751,9 +3799,9 @@ function useRouter() {
 }
 // Main router component
 const StructuralRouter = ({ config, initialRoute = '/', onRouteChange, children }) => {
-    const [currentRoute, setCurrentRoute] = React.useState(initialRoute);
-    const [routeHistory, setRouteHistory] = React.useState([initialRoute]);
-    const [structuralSystem] = React.useState(() => new StructuralSystem(config));
+    const [currentRoute, setCurrentRoute] = require$$0.useState(initialRoute);
+    const [routeHistory, setRouteHistory] = require$$0.useState([initialRoute]);
+    const [structuralSystem] = require$$0.useState(() => new StructuralSystem(config));
     // Handle route changes
     const navigate = (path) => {
         const route = structuralSystem.findRoute(path);
@@ -3787,7 +3835,7 @@ const StructuralRouter = ({ config, initialRoute = '/', onRouteChange, children 
         structuralSystem
     };
     // Handle initial route validation
-    React.useEffect(() => {
+    require$$0.useEffect(() => {
         const route = structuralSystem.findRoute(initialRoute);
         if (!route) {
             console.warn(`Initial route not found: ${initialRoute}`);
@@ -3838,7 +3886,7 @@ const RouteFallback = () => {
 
 // Main component
 const StructuralTomeConnector = ({ componentName, structuralSystem, initialModel = {}, onStateChange, onLogEntry, onMachineCreated, children }) => {
-    const [state, setState] = React.useState({
+    const [state, setState] = require$$0.useState({
         machine: null,
         currentState: 'idle',
         model: initialModel,
@@ -3846,17 +3894,17 @@ const StructuralTomeConnector = ({ componentName, structuralSystem, initialModel
         isLoading: true,
         error: null
     });
-    const machineRef = React.useRef(null);
-    const logEntriesRef = React.useRef([]);
+    const machineRef = require$$0.useRef(null);
+    const logEntriesRef = require$$0.useRef([]);
     // Get tome configuration and component mapping
-    const tomeConfig = React.useMemo(() => {
+    const tomeConfig = require$$0.useMemo(() => {
         return structuralSystem.getTomeConfig().tomes[`${componentName}-tome`];
     }, [componentName, structuralSystem]);
-    const componentMapping = React.useMemo(() => {
+    const componentMapping = require$$0.useMemo(() => {
         return structuralSystem.getComponentTomeMapping()[componentName];
     }, [componentName, structuralSystem]);
     // Initialize the tome machine
-    React.useEffect(() => {
+    require$$0.useEffect(() => {
         const initializeTome = async () => {
             try {
                 setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -3991,7 +4039,7 @@ const TomeFooter = ({ context }) => {
 };
 // Hook for using the tome connector
 function useStructuralTomeConnector(componentName, structuralSystem) {
-    const [context, setContext] = React.useState({
+    const [context, setContext] = require$$0.useState({
         machine: null,
         currentState: 'idle',
         model: {},
@@ -4004,7 +4052,7 @@ function useStructuralTomeConnector(componentName, structuralSystem) {
         tomeConfig: null,
         componentMapping: null
     });
-    React.useEffect(() => {
+    require$$0.useEffect(() => {
         const tomeConfig = structuralSystem.getTomeConfig().tomes[`${componentName}-tome`];
         const componentMapping = structuralSystem.getComponentTomeMapping()[componentName];
         setContext(prev => ({
@@ -4325,6 +4373,29 @@ function createCave(name, spelunk) {
 }
 
 /**
+ * createCaveServer - applies Cave + tome config and plugins (adapters) generically.
+ * Initializes the Cave, then calls each adapter's apply(context).
+ */
+/**
+ * Create and run a Cave server: initialize the Cave, then apply each plugin (adapter) with the shared context.
+ * Each adapter's apply() is responsible for creating host resources (e.g. TomeManager) and registering routes.
+ */
+async function createCaveServer(config) {
+    const { cave, tomeConfigs, variables = {}, sections = {}, plugins, robotCopy } = config;
+    await cave.initialize();
+    const context = {
+        cave,
+        tomeConfigs,
+        variables: { ...variables },
+        sections: { ...sections },
+        robotCopy,
+    };
+    for (const plugin of plugins) {
+        await plugin.apply(context);
+    }
+}
+
+/**
  * React hooks for Cave, Tome, and ViewStateMachine that act like useEffect-compatible useState:
  * hold the instance, subscribe via observeViewKey for renderKey, and handle cleanup on unmount.
  */
@@ -4332,9 +4403,9 @@ function createCave(name, spelunk) {
  * useCave(cave): returns [cave, renderKey]. Subscribes to cave.observeViewKey; cleanup: unsubscribe only.
  */
 function useCave(cave) {
-    const [renderKey, setRenderKey] = React.useState(() => (cave ? cave.getRenderKey() : ''));
-    const caveRef = React.useRef(cave);
-    React.useEffect(() => {
+    const [renderKey, setRenderKey] = require$$0.useState(() => (cave ? cave.getRenderKey() : ''));
+    const caveRef = require$$0.useRef(cave);
+    require$$0.useEffect(() => {
         caveRef.current = cave;
         if (!cave) {
             setRenderKey('');
@@ -4352,13 +4423,13 @@ function useCave(cave) {
  * useTome(tome): returns [tome, renderKey]. Subscribes to tome.observeViewKey; cleanup: unsubscribe + tome.stop(), and optional unregister if provided.
  */
 function useTome(tome, options) {
-    const [renderKey, setRenderKey] = React.useState(() => (tome ? tome.getRenderKey() : ''));
-    const tomeRef = React.useRef(tome);
-    const unregisterRef = React.useRef(options?.unregister);
-    React.useEffect(() => {
+    const [renderKey, setRenderKey] = require$$0.useState(() => (tome ? tome.getRenderKey() : ''));
+    const tomeRef = require$$0.useRef(tome);
+    const unregisterRef = require$$0.useRef(options?.unregister);
+    require$$0.useEffect(() => {
         unregisterRef.current = options?.unregister;
     }, [options?.unregister]);
-    React.useEffect(() => {
+    require$$0.useEffect(() => {
         tomeRef.current = tome;
         if (!tome) {
             setRenderKey('');
@@ -4383,13 +4454,13 @@ function useTome(tome, options) {
  * cleanup: unsubscribe + machine.stop() + options.unregister(). Use when you don't need the full useViewStateMachine state/send API.
  */
 function useViewStateMachineInstance(machine, options) {
-    const [renderKey, setRenderKey] = React.useState(() => machine && typeof machine.getRenderKey === 'function' ? machine.getRenderKey() : '');
-    const machineRef = React.useRef(machine);
-    const unregisterRef = React.useRef(options?.unregister);
-    React.useEffect(() => {
+    const [renderKey, setRenderKey] = require$$0.useState(() => machine && typeof machine.getRenderKey === 'function' ? machine.getRenderKey() : '');
+    const machineRef = require$$0.useRef(machine);
+    const unregisterRef = require$$0.useRef(options?.unregister);
+    require$$0.useEffect(() => {
         unregisterRef.current = options?.unregister;
     }, [options?.unregister]);
-    React.useEffect(() => {
+    require$$0.useEffect(() => {
         machineRef.current = machine;
         if (!machine) {
             setRenderKey('');
@@ -4475,7 +4546,7 @@ function createDuckDBStorageSync(_options) {
  * Minimal ErrorBoundary for use by EditorWrapper and other editor components.
  * Catches React errors in the tree and optionally calls onError and renders fallback.
  */
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends require$$0.Component {
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -4503,7 +4574,7 @@ class ErrorBoundary extends React.Component {
  * Zero ace-editor dependency; tree-shakeable.
  */
 const EditorWrapper = ({ title, description, children, componentId, onError, router, hideHeader = false, }) => {
-    return (jsxRuntimeExports.jsx(ErrorBoundary, { onError: onError, children: jsxRuntimeExports.jsxs("div", { className: "editor-wrapper", "data-component-id": componentId, children: [!hideHeader && (jsxRuntimeExports.jsxs("header", { className: "editor-wrapper-header", children: [jsxRuntimeExports.jsx("h2", { className: "editor-wrapper-title", children: title }), jsxRuntimeExports.jsx("p", { className: "editor-wrapper-description", children: description }), jsxRuntimeExports.jsxs("p", { className: "editor-wrapper-meta", children: ["Tome Architecture", componentId && ` | Component: ${componentId}`, router && ' | Router: Available'] })] })), jsxRuntimeExports.jsx("main", { className: "editor-wrapper-content", children: children }), jsxRuntimeExports.jsxs("footer", { className: "editor-wrapper-footer", children: ["Wave Reader | Tome Architecture Enabled", router && ' | Router: Available'] })] }) }));
+    return (jsxRuntimeExports.jsx(ErrorBoundary, { onError: onError, children: jsxRuntimeExports.jsxs("div", { className: "editor-wrapper", "data-component-id": componentId, children: [!hideHeader && (jsxRuntimeExports.jsxs("header", { className: "editor-wrapper-header", children: [jsxRuntimeExports.jsx("h2", { className: "editor-wrapper-title", children: title }), jsxRuntimeExports.jsx("p", { className: "editor-wrapper-description", children: description }), jsxRuntimeExports.jsxs("p", { className: "editor-wrapper-meta", children: ["Tome Architecture", componentId && ` | Component: ${componentId}`, router && ' | Router: Available'] })] })), jsxRuntimeExports.jsx("main", { className: "editor-wrapper-content", children: children }), jsxRuntimeExports.jsxs("footer", { className: "editor-wrapper-footer", children: ["Tome Architecture Enabled", router && ' | Router: Available'] })] }) }));
 };
 
 exports.Cave = Cave;
@@ -4525,6 +4596,7 @@ exports.TomeManager = TomeManager;
 exports.Tracing = Tracing;
 exports.ViewStateMachine = ViewStateMachine;
 exports.createCave = createCave;
+exports.createCaveServer = createCaveServer;
 exports.createClientGenerator = createClientGenerator;
 exports.createDuckDBStorage = createDuckDBStorage;
 exports.createDuckDBStorageSync = createDuckDBStorageSync;

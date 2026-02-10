@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Static asset manifest",
+  "description": "Canonical paths for editor-wrapper, view-identity, and component assets. Shared across JS/TS, Kotlin, and Java builds.",
+  "editorWrapperCss": "src/styles/editor-wrapper.css",
+  "viewIdentityScss": "src/styles/_view-identity.scss",
+  "viewIdentityCssOutput": "dist/styles/view-identity.css",
+  "assetsBasePath": "/assets",
+  "paths": {
+    "editorWrapper": "/assets/editor-wrapper.css",
+    "viewIdentity": "/assets/view-identity.css"
+  }
+}

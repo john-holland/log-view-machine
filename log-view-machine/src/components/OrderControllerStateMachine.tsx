@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createViewStateMachine } from 'log-view-machine';
-import { RobotCopy, createRobotCopy } from '../core/RobotCopy';
+import { RobotCopy, createRobotCopy } from '../core/Cave/tome/viewstatemachine/robotcopy/RobotCopy';
 import { createCompleteOrderStateMachine } from './CompleteOrderStateMachine';
 
 // OrderControllerStateMachine - High-level orchestration

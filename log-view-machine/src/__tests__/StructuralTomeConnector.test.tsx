@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { StructuralTomeConnector, useStructuralTomeConnector } from '../core/StructuralTomeConnector';
-import { StructuralSystem } from '../core/StructuralSystem';
-import { DefaultStructuralConfig } from '../core/DefaultStructuralConfig';
+import { StructuralTomeConnector, useStructuralTomeConnector } from '../core/structural/StructuralTomeConnector';
+import { StructuralSystem } from '../core/structural/StructuralSystem';
+import { DefaultStructuralConfig } from '../core/structural/DefaultStructuralConfig';
 
 // Mock ViewStateMachine
 jest.mock('../core/ViewStateMachine', () => ({

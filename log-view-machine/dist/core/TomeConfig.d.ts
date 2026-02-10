@@ -10,6 +10,8 @@ export interface TomeMachineConfig {
     description?: string;
     xstateConfig: any;
     context?: Record<string, any>;
+    /** Optional state handlers for view rendering (browser Tomes). Passed to createViewStateMachine. */
+    logStates?: Record<string, (context: any) => Promise<any>>;
     dependencies?: string[];
 }
 export interface TomeBinding {
@@ -40,6 +42,8 @@ export interface TomeConfig {
     name: string;
     description?: string;
     version?: string;
+    /** Optional: stable key for React key / render slot; default uses id. */
+    renderKey?: string;
     machines: Record<string, TomeMachineConfig>;
     routing?: {
         basePath?: string;
@@ -87,12 +91,20 @@ export interface TomeInstance {
     machines: Map<string, any>;
     router?: any;
     context: Record<string, any>;
+    /** True when this Tome has been synchronized with a Cave (e.g. via synchronizeWithCave). */
+    readonly isCaveSynchronized: boolean;
+    /** Returns a stable key for this Tome in the render tree (e.g. React key). */
+    getRenderKey(): string;
+    /** Subscribes to render-key updates; returns unsubscribe. */
+    observeViewKey(callback: (key: string) => void): () => void;
     start(): Promise<void>;
     stop(): Promise<void>;
     getMachine(id: string): any;
     sendMessage(machineId: string, event: string, data?: any): Promise<any>;
     getState(machineId: string): any;
     updateContext(updates: Record<string, any>): void;
+    /** Mark this Tome as synchronized with a Cave. */
+    synchronizeWithCave(cave?: unknown): void;
 }
 export interface TomeManager {
     tomes: Map<string, TomeInstance>;

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Generic Editor - Core Functionality', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the editor page
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     
     // Wait for the page to load
     await page.waitForSelector('.container', { timeout: 10000 });
@@ -218,7 +218,7 @@ test.describe('Generic Editor - Core Functionality', () => {
 
 test.describe('Generic Editor - Canvas and Interaction', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });
@@ -309,7 +309,7 @@ test.describe('Generic Editor - Canvas and Interaction', () => {
 
 test.describe('Generic Editor - Drag and Drop', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });
@@ -366,7 +366,7 @@ test.describe('Generic Editor - Drag and Drop', () => {
 
 test.describe('Generic Editor - XState Integration', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });
@@ -428,7 +428,7 @@ test.describe('Generic Editor - XState Integration', () => {
 
 test.describe('Generic Editor - Error Handling', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });
@@ -459,7 +459,7 @@ test.describe('Generic Editor - Error Handling', () => {
 
 test.describe('Generic Editor - Performance and Memory', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });

@@ -7,11 +7,30 @@ export interface LogEntry {
     message: string;
     metadata?: any;
 }
+/** Optional view storage config: RxDB schema and find/findOne specs to populate model. */
+export type ViewStorageConfig = {
+    schema?: any;
+    find?: Record<string, unknown>[] | Record<string, unknown>;
+    findOne?: Record<string, unknown>;
+    /** Collection name for find/findOne (default when not set is left to db facade). */
+    collection?: string;
+    /** Collection name for log entries (default 'logEntries'). */
+    logCollection?: string;
+    /** Schema applied to log entry metadata when inserting (enforces type/property inclusion). */
+    logMetadataSchema?: any;
+};
 export type StateContext<TModel = any> = {
     state: string;
     model: TModel;
     transitions: any[];
-    log: (message: string, metadata?: any) => Promise<void>;
+    /** Single document from findOne; undefined when no findOne or no db. */
+    result?: unknown;
+    /** Array from find; [] when no find or no db. */
+    results: unknown[];
+    /** RxDB database instance or facade when view storage is configured; undefined otherwise. */
+    db?: any;
+    /** config is spread onto the log entry (override any property); schema applies to metadata. */
+    log: (message: string, metadata?: any, config?: Partial<LogEntry>) => Promise<void>;
     view: (component: React.ReactNode) => React.ReactNode;
     clear: () => void;
     transition: (to: string) => void;
@@ -29,12 +48,20 @@ export type StateHandler<TModel = any> = (context: StateContext<TModel>) => Prom
 export type ViewStateMachineConfig<TModel = any> = {
     machineId: string;
     xstateConfig: any;
+    /** Optional: stable key for React key / render slot; default uses machineId. */
+    renderKey?: string;
     logStates?: Record<string, StateHandler<TModel>>;
     tomeConfig?: any;
     subMachines?: Record<string, ViewStateMachineConfig<any>>;
+    /** Optional RxDB database (or facade) for view storage; passed to StateContext and machine context. */
+    db?: any;
+    /** Optional view storage config: schema, find, findOne to populate model from db. */
+    viewStorage?: ViewStorageConfig;
 };
 export declare class ViewStateMachine<TModel = any> {
     private machine;
+    /** Machine definition for useMachine (XState v5 expects machine, not service). */
+    private machineDefinition;
     private stateHandlers;
     private serverStateHandlers;
     private viewStack;
@@ -44,25 +71,50 @@ export declare class ViewStateMachine<TModel = any> {
     private subMachines;
     private robotCopy?;
     private incomingMessageHandlers;
+    private db?;
+    private viewStorage?;
+    /** Per-state view storage config (merged with viewStorage when running that state's handler). */
+    private stateViewStorage;
+    private machineId;
+    private configRenderKey?;
+    private renderKeyClearCount;
+    private viewKeyListeners;
     constructor(config: ViewStateMachineConfig<TModel>);
     withRobotCopy(robotCopy: RobotCopy): ViewStateMachine<TModel>;
     private setupRobotCopyIncomingHandling;
     registerRobotCopyHandler(eventType: string, handler: (message: any) => void): ViewStateMachine<TModel>;
     handleRobotCopyMessage(message: any): void;
-    withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel>;
+    withState(stateName: string, handler: StateHandler<TModel>, config?: Partial<ViewStorageConfig>): ViewStateMachine<TModel>;
+    /** Set view storage config (RxDB schema, find, findOne). Chain after withState or use alone. */
+    withViewStorage(config: ViewStorageConfig): ViewStateMachine<TModel>;
+    /** Register RxDB schema for view storage; enforces shape on insert. Chain after withState. */
+    schema(schema: any): ViewStateMachine<TModel>;
+    /** Query RxDB with specs; results update view model when state is entered. Chain after withState. */
+    find(specs: Record<string, unknown>[] | Record<string, unknown>): ViewStateMachine<TModel>;
+    /** Query RxDB for one document; result updates view model. Chain after withState. */
+    findOne(spec: Record<string, unknown>): ViewStateMachine<TModel>;
     withStateAndMessageHandler(stateName: string, handler: StateHandler<TModel>, messageType: string, messageHandler: (message: any) => void): ViewStateMachine<TModel>;
     withServerState(stateName: string, handler: (context: ServerStateContext<TModel>) => void): ViewStateMachine<TModel>;
     withSubMachine(machineId: string, config: ViewStateMachineConfig<any>): ViewStateMachine<TModel>;
     getSubMachine(machineId: string): ViewStateMachine<any> | undefined;
+    /**
+     * Run find and findOne against db when effectiveStorage has specs.
+     * Expects db to expose collections with .find(selector).exec() and .findOne(selector).exec() (RxDB-style).
+     */
+    private runFindFindOne;
+    /** Enforce schema on metadata: ensure required fields from schema exist; coerce types if possible. No-op if no schema. */
+    private applyLogMetadataSchema;
     private createStateContext;
     useViewStateMachine(initialModel: TModel): {
-        state: any;
+        state: import("xstate").StateValue;
         context: any;
-        send: (event: import("xstate").SingleOrArray<import("xstate").Event<import("xstate").EventObject>> | import("xstate").SCXML.Event<import("xstate").EventObject>, payload?: import("xstate").EventData) => import("xstate").State<unknown, import("xstate").EventObject, import("xstate").StateSchema<any>, import("xstate").Typestate<unknown>, unknown>;
+        send: (event: any, payload?: import("xstate").EventData) => import("xstate").State<any, any, any, any, any>;
         logEntries: any[];
         viewStack: React.ReactNode[];
         subMachines: Map<string, ViewStateMachine<any>>;
-        log: (message: string, metadata?: any) => Promise<void>;
+        result: unknown;
+        results: unknown[];
+        log: (message: string, metadata?: any, config?: Partial<LogEntry>) => Promise<void>;
         view: (component: React.ReactNode) => React.ReactNode;
         clear: () => void;
         transition: (to: string) => void;
@@ -73,6 +125,13 @@ export declare class ViewStateMachine<TModel = any> {
     send(event: any): void;
     start(): void;
     getState(): any;
+    /** Returns a stable key for this machine in the render tree (e.g. React key). Updates when clear() is called. */
+    getRenderKey(): string;
+    /** Subscribes to render-key updates; returns unsubscribe. Callback is invoked when the key changes (e.g. after clear()). */
+    observeViewKey(callback: (key: string) => void): () => void;
+    private notifyViewKeyListeners;
+    /** Stops the machine service. */
+    stop(): void;
     executeServerState(stateName: string, model: TModel): Promise<string>;
     private createServerStateContext;
     compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel>;
@@ -115,7 +174,7 @@ export declare class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateM
     useViewStateMachine(initialModel: TModel): any;
     compose(otherView: ViewStateMachine<TModel>): ViewStateMachine<TModel>;
     synchronizeWithTome(tomeConfig: any): ViewStateMachine<TModel>;
-    withState(stateName: string, handler: StateHandler<TModel>): ViewStateMachine<TModel>;
+    withState(stateName: string, handler: StateHandler<TModel>, _config?: Partial<ViewStorageConfig>): ViewStateMachine<TModel>;
 }
 export declare function createProxyRobotCopyStateMachine<TModel = any>(config: ProxyRobotCopyStateViewStateMachineConfig<TModel>): ProxyRobotCopyStateMachine<TModel>;
 export declare function createViewStateMachine<TModel = any>(config: ViewStateMachineConfig<TModel>): ViewStateMachine<TModel>;

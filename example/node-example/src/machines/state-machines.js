@@ -517,19 +517,25 @@ export async function createStateMachines(db, robotCopy) {
         on: {
           UPDATE_PROGRESS: 'cooking',
           COOKING_COMPLETE: 'order_complete',
-          PAUSE_COOKING: 'paused'
+          COMPLETE_COOKING: 'order_complete',
+          PAUSE_COOKING: 'paused',
+          ERROR: 'cooking',
+          RETRY: 'cooking',
+          RESET: 'idle'
         }
       },
       paused: {
         on: {
           RESUME_COOKING: 'cooking',
-          CANCEL_COOKING: 'idle'
+          CANCEL_COOKING: 'idle',
+          RESET: 'idle'
         }
       },
       order_complete: {
         on: {
           NEW_ORDER: 'idle',
-          VIEW_ORDER: 'viewing_order'
+          VIEW_ORDER: 'viewing_order',
+          RESET: 'idle'
         }
       },
       viewing_order: {

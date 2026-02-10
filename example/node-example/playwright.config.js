@@ -5,6 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/e2e/global-setup.js',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -80,9 +81,9 @@ export default defineConfig({
     timeout: 120 * 1000,
   },
 
-  /* Global test timeout */
+  /* Global test timeout; fish-burger-integration.spec.js sets 60s per test in-describe */
   timeout: 30000,
-  
+
   /* Expect timeout for assertions */
   expect: {
     timeout: 10000,

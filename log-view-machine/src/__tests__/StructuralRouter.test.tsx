@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { StructuralRouter, Route, RouteFallback, useRouter } from '../core/StructuralRouter';
-import { DefaultStructuralConfig } from '../core/DefaultStructuralConfig';
+import { StructuralRouter, Route, RouteFallback, useRouter } from '../core/structural/StructuralRouter';
+import { DefaultStructuralConfig } from '../core/structural/DefaultStructuralConfig';
 
 // Test component that uses the router
 const TestComponent: React.FC = () => {

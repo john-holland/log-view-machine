@@ -165,6 +165,50 @@ Both examples follow the same pattern: **one Cave per app**, **Tomes per feature
 
 ---
 
+## Security
+
+### Script-injection prevention
+
+Utilities for escaping and safely parsing user or cross-boundary content (message payloads, view state, API request/response bodies) to reduce XSS and script injection risk. Available in all environments (browser, Node, adapters).
+
+- **escapeText(str)** — Encode `&`, `<`, `>`, `"`, `'`, `` ` `` as HTML entities. Use when interpolating into HTML text nodes or attributes. Output is safe for those contexts.
+- **unescapeText(str)** — Reverse the encoding from escapeText. Use when round-tripping data that was escaped for display and must be restored for editing or processing.
+- **parseHtml(html, options?)** — Parse HTML into a safe representation (allowed tags only, scripts stripped by default). Returns `{ safe, errors? }`. Use the `safe` string only in a sanitized insertion context (e.g. whitelisted tags in a safe container); never assign to raw innerHTML. In browser uses DOMParser; in Node uses a lightweight strip and tag allowlist.
+
+Server adapters and RobotCopy/TomeManager do not call these automatically; application and adapter code should use them when handling user or external text (e.g. escaping before sending, parseHtml when accepting HTML payloads).
+
+### Message token (CSRF-style) and wave-reader alignment
+
+Cross-boundary messages (Cave-to-Cave, Tome-to-Tome, VSM-to-remote) can be protected with origin-bound tokens. The library provides a small messaging token module: **generateToken** / **generateTokenAsync** (salt + hash of `salt + channelId + payloadSummary + secret`), and **validateToken**. Token shape includes optional `originId`, `caveId`, `tomeId`, `expiresAt`. Use a configurable secret (env or Cave security config).
+
+- **RobotCopy.sendMessage:** When `messageTokenProvider` is set in config, the outbound request includes the token (e.g. header `X-Cave-Message-Token` or body field). The server validates; RobotCopy does not validate (it sends).
+- **Server (adapter):** Optional `validateMessageToken(req)` in the adapter contract; when Cave config or adapter options enable message-token validation, middleware can reject (403) state-changing requests missing or invalid token.
+- **Wave-reader alignment:** Wave-reader is not in this repo. When it is in scope, the same conceptual model applies: channel = (origin, context) in popup/background/content; same salt-then-hash idea so the same token shape and validation can be used or refactored to match wave-reader’s exact API.
+
+### Resource monitoring and metrics
+
+Resource and bandwidth metrics are recorded via an overridable **ResourceMonitor** and reported in a shape compatible with AWS CloudWatch and Hystrix so the same pipeline can feed dashboards or other backends.
+
+- **MetricsSnapshot / ResourceMonitor:** Core types include `requestCount`, `errorCount`, `bytesIn`, `bytesOut`, `latencyMs` (e.g. p50/p95/p99), optional `circuitState`, `timestamp`, and `dimensions` (CaveId, TomeId, route, adapter name). **ResourceMonitor** provides `trackRequest(meta)`, `trackCircuit(name, state)`, and `getSnapshot()`. Optional **BandwidthTracker** for `trackBandwidth(bytesIn, bytesOut, labels)`.
+- **Default reporter:** A **MetricsReporter** implements the monitor and periodically (or on demand) calls a pluggable `reportTo(snapshot)`. Default can post to a GA-like endpoint (e.g. GA4 Measurement Protocol or custom collector); callers can replace `reportTo` with a function that pushes to CloudWatch (PutMetricData shape), Hystrix stream, or another backend. The snapshot shape is documented so AWS and Hystrix adapters can be written without changing core.
+- **Integration:** Cave server adapter (e.g. Express) can take optional `resourceMonitor` and `metricsReporter` in context; middleware calls `trackRequest` with path, method, bytes, latency, status. **RobotCopy** can take an optional ResourceMonitor and record bytes, latency, and success/failure for cross-cave traffic in the same metrics.
+
+### Cost controls: throttling, retries, circuit breakers
+
+Monitoring feeds **throttling**, **retry/try-again**, and **circuit breakers** so resource use stays within Bat Armor data-transfer and cost controls.
+
+- **Throttling:** When a ResourceMonitor (or a dedicated window) reports that request count or bandwidth exceeds configured thresholds (e.g. `maxRequestsPerMinute`, `maxBytesPerMinute`, `windowMs`), the adapter or RobotCopy can return **429** with `Retry-After`, or queue and process later. **ThrottlePolicy** reads from the monitor or an in-memory window and signals over-limit; middleware or RobotCopy checks before processing.
+- **Try-agains (retry with backoff):** **RobotCopy.sendMessage** supports **retryPolicy** (e.g. `initialDelayMs`, `maxDelayMs`, `multiplier`, `maxRetries`, `jitter`). On transient failure (5xx, network error), it retries with exponential backoff; optionally respects `Retry-After`. Server-side “try again” is client responsibility: we return 429 or 503 with Retry-After.
+- **Circuit breaker (shutoffs):** A **CircuitBreaker** uses ResourceMonitor (or MetricsSnapshot) to transition: **Closed** (normal); **Open** when failure count or error rate exceeds threshold (reject requests immediately, e.g. 503); **Half-open** after `resetMs` with limited probes. Circuit state is exposed in MetricsSnapshot so GA/AWS/Hystrix dashboards can show it. RobotCopy and the server adapter can wrap sendMessage or selected routes with a circuit breaker per backend or per route.
+- **Config:** Cave or adapter config supports optional `throttle`, `retryPolicy` (full backoff), and `circuitBreaker` (threshold, resetMs, name). These can be overridden per-route or per-tome in TomeConfig.routing if needed.
+
+### Data transfer: CORS and HTTP/2
+
+- **CORS:** Server adapter (and/or Cave config) supports **cors**: `boolean` or `{ origin?, credentials?, methods?, allowedHeaders?, maxAge? }`. Express adapter applies `cors` middleware when set. For cross-origin backends, the server must send proper CORS headers (RobotCopy in the browser does not set CORS; config can set `credentials` for cookies).
+- **HTTP/2:** Adapter options support **http2**: `boolean` or `{ allowHTTP1? }`. When true, the Node server can use `http2.createSecureServer` or `http2.createServer` (with TLS if configured). In production, HTTP/2 is often terminated at a reverse proxy; the option applies when the Node process is the TLS endpoint. RobotCopy can take **http2** / **useHTTP2** for environment-specific or future HTTP/2 client behavior.
+
+---
+
 ## Backend storage: DuckDB
 
 - **Frontend view storage**: RxDB in the browser.

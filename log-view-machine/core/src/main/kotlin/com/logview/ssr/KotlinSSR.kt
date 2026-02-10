@@ -200,11 +200,20 @@ class SpanComponent(
 // State machine integration
 class KotlinViewStateMachine<TModel : Any>(
     private val machineId: String,
-    private val initialState: TModel
+    val initialState: TModel
 ) {
     private val logEntries = mutableListOf<LogEntry>()
     private val stateHandlers = mutableMapOf<String, suspend (StateContext<TModel>) -> Component>()
     private val currentState = MutableSharedFlow<TModel>()
+
+    /** Optional: called when context.transition(toState) is invoked from a handler. */
+    var onTransition: ((String) -> Unit)? = null
+    /** Optional: called when context.send(event) is invoked. */
+    var onSend: ((Any) -> Unit)? = null
+    /** Optional: called when context.updateModel(newModel) is invoked. */
+    var onUpdateModel: ((TModel) -> Unit)? = null
+    /** Optional: called when context.clear() is invoked. */
+    var onClear: (() -> Unit)? = null
 
     data class LogEntry(
         val id: String,
@@ -256,16 +265,16 @@ class KotlinViewStateMachine<TModel : Any>(
                 component.render(createRenderContext(model))
             },
             clear = {
-                // TODO: Implement view clearing
+                onClear?.invoke()
             },
             transition = { toState ->
-                // TODO: Implement state transition
+                onTransition?.invoke(toState)
             },
             send = { event ->
-                // TODO: Implement event sending
+                onSend?.invoke(event)
             },
             updateModel = { newModel ->
-                // TODO: Implement model update
+                onUpdateModel?.invoke(newModel)
             }
         )
     }

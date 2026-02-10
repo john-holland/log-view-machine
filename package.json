@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "log-view-machine",
-    "example/*"
+    "example/*",
+    "packages/*"
   ],
   "scripts": {
     "build": "npm run build --workspace=log-view-machine",
@@ -30,4 +31,4 @@
     "url": "https://github.com/viewstatemachine/log-view-machine/issues"
   },
   "homepage": "https://github.com/viewstatemachine/log-view-machine#readme"
-} 
+}

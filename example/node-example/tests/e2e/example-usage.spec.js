@@ -17,7 +17,7 @@ import {
 
 test.describe('Example Usage - Demonstrating Utility Functions', () => {
   test.beforeEach(async ({ page }) => {
-    // Use the utility function to wait for editor to be ready
+    await page.goto('/editor');
     await waitForEditorReady(page);
   });
 

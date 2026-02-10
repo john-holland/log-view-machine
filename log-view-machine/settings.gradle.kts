@@ -4,6 +4,7 @@ include(":core")
 include(":adapters")
 include(":graphql")
 include(":example")
+include(":java")
 
 dependencyResolutionManagement {
     repositories {

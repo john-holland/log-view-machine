@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Generic Editor - API Integration', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/src/component-middleware/generic-editor/index.html');
+    await page.goto('/editor');
     await page.waitForSelector('.container', { timeout: 10000 });
     await page.waitForTimeout(2000);
   });

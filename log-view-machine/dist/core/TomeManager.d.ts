@@ -5,11 +5,11 @@
  * allowing them to insert gracefully into a routing hierarchy.
  */
 import { TomeConfig, TomeInstance, TomeManager as ITomeManager } from './TomeConfig';
-import express from 'express';
+import express, { type Application } from 'express';
 export declare class TomeManager implements ITomeManager {
     tomes: Map<string, TomeInstance>;
     private app;
-    constructor(app: express.Application);
+    constructor(app: Application);
     /**
      * Register a new Tome with the manager
      */

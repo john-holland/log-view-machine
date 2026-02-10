@@ -8,6 +8,12 @@ export interface RobotCopyConfig {
     nodeBackendUrl?: string;
     enableTracing?: boolean;
     enableDataDog?: boolean;
+    /** Toggle name that when enabled means use Kotlin backend; when disabled use Node. If omitted, getBackendUrl uses nodeBackendUrl. */
+    backendSelectorToggle?: string;
+    /** Path prefix for sendMessage (e.g. '/api/fish-burger'). Default '/api'. */
+    apiBasePath?: string;
+    /** Optional initial toggle map; merged into toggles so the library does not hard-code toggle names. */
+    initialToggles?: Record<string, boolean>;
 }
 export declare class RobotCopy {
     private config;
@@ -16,7 +22,7 @@ export declare class RobotCopy {
     private machines;
     constructor(config?: RobotCopyConfig);
     private initializeUnleashToggles;
-    isEnabled(toggleName: string, context?: any): Promise<boolean>;
+    isEnabled(toggleName: string, _context?: any): Promise<boolean>;
     getBackendUrl(): Promise<string>;
     getBackendType(): Promise<'kotlin' | 'node'>;
     generateMessageId(): string;
@@ -27,10 +33,6 @@ export declare class RobotCopy {
     getTraceMessages(traceId: string): MessageMetadata[];
     getFullTrace(traceId: string): import("./Tracing").TraceInfo;
     sendMessage(action: string, data?: any): Promise<any>;
-    startCooking(orderId: string, ingredients: string[]): Promise<any>;
-    updateProgress(orderId: string, cookingTime: number, temperature: number): Promise<any>;
-    completeCooking(orderId: string): Promise<any>;
-    integrateWithViewStateMachine(viewStateMachine: any): RobotCopy;
     getTrace(traceId: string): Promise<any>;
     getMessageFromBackend(messageId: string): Promise<any>;
     getMessageHistory(): MessageMetadata[];
@@ -38,7 +40,7 @@ export declare class RobotCopy {
     clearHistory(): void;
     updateConfig(newConfig: Partial<RobotCopyConfig>): void;
     getConfig(): RobotCopyConfig;
-    onResponse(channel: string, handler: (response: any) => void): void;
+    onResponse(channel: string, _handler: (response: any) => void): void;
     registerMachine(name: string, machine: any, config?: any): void;
     getRegisteredMachines(): Map<string, any>;
     getRegisteredMachine(name: string): any;

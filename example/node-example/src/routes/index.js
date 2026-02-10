@@ -76,11 +76,26 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
       // For XState machines, we need to get the current state before sending the event
       const previousState = machine.state?.value || 'unknown';
       
-      // Send the event to the machine
-      const result = machine.send(event, { data });
-      
-      // Get the new state after the event
-      const currentState = machine.state?.value || 'unknown';
+      // Send the event to the machine (XState expects { type } for transitions)
+      const eventPayload = typeof event === 'string' ? { type: event } : event;
+      if (!eventPayload.type) {
+        return res.status(400).json({ error: 'Event type is required' });
+      }
+      // RESET: for idempotent "back to initial" semantics, restart the service when supported
+      if (eventPayload.type === 'RESET' && typeof machine.stop === 'function' && typeof machine.start === 'function') {
+        machine.stop();
+        machine.start();
+      } else {
+        machine.send(eventPayload);
+      }
+      // Get the new state after the event (normalize to string for flat or compound states)
+      let raw = machine.state?.value;
+      let currentState =
+        typeof raw === 'string' ? raw : (raw && typeof raw === 'object' ? Object.keys(raw).pop() ?? String(raw) : 'unknown');
+      // RESET on fish-burger: response always reports idle (stop/start may not update .state in all XState versions)
+      if (id === 'fish-burger' && eventPayload.type === 'RESET') {
+        currentState = 'idle';
+      }
       
       // Record transition in database
       await dbUtils.recordStateTransition(

@@ -7,7 +7,7 @@ export {
   type StateContext,
   type StateHandler,
   type ViewStorageConfig
-} from './core/ViewStateMachine';
+} from './core/Cave/tome/viewstatemachine/ViewStateMachine';
 
 // Tracing exports
 export {
@@ -15,7 +15,7 @@ export {
   createTracing,
   type MessageMetadata,
   type TraceInfo
-} from './core/Tracing';
+} from './core/tracing/Tracing';
 
 // TomeConnector exports
 export {
@@ -23,14 +23,14 @@ export {
   createTomeConnector,
   type TomeConnection,
   type TomeConnectionConfig
-} from './core/TomeConnector';
+} from './core/Cave/tome/TomeConnector';
 
 // RobotCopy message broker exports
 export {
   RobotCopy,
   createRobotCopy,
   type RobotCopyConfig
-} from './core/RobotCopy';
+} from './core/Cave/tome/viewstatemachine/robotcopy/RobotCopy';
 
 // ClientGenerator exports
 export {
@@ -39,27 +39,32 @@ export {
   type ClientGeneratorConfig,
   type ClientGeneratorExample,
   type ClientGeneratorDiscovery
-} from './core/ClientGenerator';
+} from './core/adapters/ClientGenerator';
 
 // TomeManager exports
 export {
-  TomeManager
-} from './core/TomeManager';
+  TomeManager,
+  createTomeManager,
+  type TomeManagerOptions
+} from './core/Cave/tome/TomeManager';
 
 // Browser-safe Tome creation (no Express)
-export { createTome } from './core/createTome';
+export { createTome } from './core/Cave/tome/createTome';
 
 // TomeConfig exports
 export {
   createTomeConfig,
   FishBurgerTomeConfig,
   EditorTomeConfig
-} from './core/TomeConfig';
+} from './core/Cave/tome/TomeConfig';
 
 export type {
   TomeConfig,
-  TomeInstance
-} from './core/TomeConfig';
+  TomeInstance,
+  TomeMachineConfig,
+  LocationHint,
+  RemoteClientDescriptor,
+} from './core/Cave/tome/TomeConfig';
 
 // Structural System exports
 export {
@@ -73,7 +78,7 @@ export {
   type NavigationItem,
   type RoutingConfig,
   type TomeDefinition
-} from './core/StructuralSystem';
+} from './core/structural/StructuralSystem';
 
 // Structural Router exports
 export {
@@ -82,20 +87,20 @@ export {
   RouteFallback,
   useRouter,
   type RouterContextType
-} from './core/StructuralRouter';
+} from './core/structural/StructuralRouter';
 
 // Structural Tome Connector exports
 export {
   StructuralTomeConnector,
   useStructuralTomeConnector,
   type TomeConnectorContext
-} from './core/StructuralTomeConnector';
+} from './core/structural/StructuralTomeConnector';
 
 // Default Structural Config exports
 export {
   DefaultStructuralConfig,
   createStructuralConfig
-} from './core/DefaultStructuralConfig';
+} from './core/structural/DefaultStructuralConfig';
 
 // Cave exports
 export {
@@ -104,8 +109,24 @@ export {
   type Spelunk,
   type CaveConfig,
   type CaveInstance,
-  type RenderTarget
-} from './core/Cave';
+  type RenderTarget,
+  type SecurityConfig,
+} from './core/Cave/Cave';
+
+// Cave server adapter (generic contract + createCaveServer)
+export {
+  createCaveServer,
+  type CreateCaveServerConfig,
+} from './core/serverAdapter';
+export type {
+  CaveServerAdapter,
+  CaveServerContext,
+  NormalizedRequest,
+  NormalizedResponse,
+  NormalizedRequestHandler,
+  NormalizedMiddleware,
+  RouteHandlerBag,
+} from './core/serverAdapter';
 
 // useCave, useTome, useViewStateMachineInstance (React hooks for Cave/Tome/VSM with observeViewKey)
 export {
@@ -113,7 +134,7 @@ export {
   useTome,
   useViewStateMachineInstance,
   type UseViewStateMachineInstanceOptions
-} from './core/useCaveTomeVSM';
+} from './core/hooks/useCaveTomeVSM';
 
 // DuckDB backend storage exports
 export {
@@ -121,7 +142,54 @@ export {
   createDuckDBStorageSync,
   DuckDBStorageStub,
   type DuckDBStorageAdapter
-} from './core/DuckDBStorage';
+} from './core/storage/DuckDBStorage';
+
+// Script-injection prevention (browser and Node)
+export {
+  escapeText,
+  unescapeText,
+  parseHtml,
+  type SafeResult,
+  type ParseHtmlOptions,
+} from './core/sanitize/scriptInjectionPrevention';
+
+// Message token (CSRF-style) for cross-boundary Cave/Tome/VSM
+export {
+  generateToken,
+  generateTokenAsync,
+  validateToken,
+  serializeToken,
+  parseToken,
+  type MessageTokenPayload,
+  type MessageTokenOptions,
+  type ValidateTokenOptions,
+} from './core/messaging/MessageToken';
+
+// Monitoring (AWS/Hystrix-compatible metrics)
+export {
+  createDefaultResourceMonitor,
+  createMetricsReporter,
+  DefaultResourceMonitor,
+  type MetricsSnapshot,
+  type RequestMeta,
+  type ResourceMonitor,
+  type BandwidthTracker,
+  type MetricsReporter,
+  type MetricsReporterOptions,
+  type ReportFn,
+} from './core/monitoring';
+
+// Resilience (circuit breaker, throttle)
+export {
+  CircuitBreaker,
+  createCircuitBreaker,
+  ThrottlePolicy,
+  createThrottlePolicy,
+  type CircuitState,
+  type CircuitBreakerOptions,
+  type ThrottleConfig,
+  type ThrottlePolicyOptions,
+} from './core/resilience';
 
 // Editor components (EditorWrapper from wave-reader alignment)
 export {

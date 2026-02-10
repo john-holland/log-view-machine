@@ -1,4 +1,4 @@
-import { StructuralSystem, createStructuralSystem, AppStructureConfig } from '../core/StructuralSystem';
+import { StructuralSystem, createStructuralSystem, AppStructureConfig } from '../core/structural/StructuralSystem';
 
 // Mock configuration for testing
 const mockConfig: AppStructureConfig = {
