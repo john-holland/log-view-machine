@@ -1,3 +1,5 @@
+import type { ExtensionContextType, CaveMessagingTransport } from '../messaging/CaveMessagingTransport';
+
 /**
  * Cave - Physical device/location description; contains Tomes; owns docker/warehousing.
  * Config-only until initialize() is called; isInitialized reflects whether the Cave has been initialized.
@@ -57,6 +59,12 @@ export interface SecurityConfig {
   };
 }
 
+/** Optional extension context for Cave in browser extensions (content/background/popup). */
+export interface CaveExtensionContext {
+  contextType: ExtensionContextType;
+  transport: CaveMessagingTransport;
+}
+
 export interface CaveConfig {
   name: string;
   spelunk: Spelunk;
@@ -64,6 +72,8 @@ export interface CaveConfig {
   wanOsRomRegistry?: { enabled?: boolean; registryPath?: string };
   /** Optional: security (TLS, auth, network labels). Adapters apply as middleware. */
   security?: SecurityConfig;
+  /** Optional: extension context and messaging transport (e.g. Chrome content/background/popup). */
+  extensionContext?: CaveExtensionContext;
 }
 
 export interface CaveInstance {
@@ -92,12 +102,16 @@ function createChildCaves(spelunk: Spelunk): Record<string, CaveInstance> {
   return childCaves;
 }
 
+export interface CaveOptions {
+  extensionContext?: CaveExtensionContext;
+}
+
 /**
- * Cave factory: (name, caveDescent) => CaveInstance.
+ * Cave factory: (name, caveDescent, options?) => CaveInstance.
  * Returns a Cave that is config-only until initialize() is called.
  */
-export function Cave(name: string, caveDescent: Spelunk): CaveInstance {
-  const config: CaveConfig = { name, spelunk: caveDescent };
+export function Cave(name: string, caveDescent: Spelunk, options?: CaveOptions): CaveInstance {
+  const config: CaveConfig = { name, spelunk: caveDescent, ...options };
   let isInitialized = false;
   const childCavesRef = createChildCaves(caveDescent);
   const viewKeyListeners: Array<(key: string) => void> = [];
@@ -170,6 +184,6 @@ export function Cave(name: string, caveDescent: Spelunk): CaveInstance {
   return instance;
 }
 
-export function createCave(name: string, spelunk: Spelunk): CaveInstance {
-  return Cave(name, spelunk);
+export function createCave(name: string, spelunk: Spelunk, options?: CaveOptions): CaveInstance {
+  return Cave(name, spelunk, options);
 }

@@ -6,7 +6,6 @@
 
 import type {
   NormalizedRequest,
-  NormalizedResponse,
   NormalizedRequestHandler,
   NormalizedMiddleware,
   RouteHandlerBag,
@@ -14,7 +13,7 @@ import type {
 
 /** Context passed to each adapter when createCaveServer applies plugins. */
 export interface CaveServerContext {
-  cave: import('../cave/Cave').CaveInstance;
+  cave: import('../Cave/Cave').CaveInstance;
   tomeConfigs: import('../Cave/tome/TomeConfig').TomeConfig[];
   variables: Record<string, string>;
   sections: Record<string, boolean>;
@@ -24,6 +23,12 @@ export interface CaveServerContext {
   resourceMonitor?: import('../monitoring/types').ResourceMonitor;
   /** Optional metrics reporter (GA, CloudWatch, Hystrix). */
   metricsReporter?: import('../monitoring/MetricsReporter').MetricsReporter;
+  /**
+   * Optional: resolve CaveDB adapter per tome for store routes (e.g. /api/editor/store/:tomeId/...).
+   * When present, adapters that serve store routes (express-cave-adapter, Lambda, etc.) use this
+   * instead of app-specific globals. App builds the persistence registry and passes getCaveDBAdapter in context.
+   */
+  getCaveDBAdapter?(tomeId: string): import('../cavedb/CaveDBAdapter').CaveDBAdapter | Promise<import('../cavedb/CaveDBAdapter').CaveDBAdapter> | undefined;
 }
 
 /**

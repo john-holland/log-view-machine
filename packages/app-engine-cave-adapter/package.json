@@ -1,0 +1,23 @@
+{
+  "name": "app-engine-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave server adapter for Google App Engine (Node.js); Express + express-cave-adapter, listen on PORT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "express": "^4.18.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "compute-engine-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave server adapter for Google Compute Engine; Express + express-cave-adapter, optional GCE metadata",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "express": "^4.18.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

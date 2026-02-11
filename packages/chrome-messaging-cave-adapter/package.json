@@ -1,0 +1,20 @@
+{
+  "name": "chrome-messaging-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave messaging transport adapter for Chrome extension (content, background, popup)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "log-view-machine": "file:../../log-view-machine",
+    "typescript": "^5.0.0"
+  }
+}

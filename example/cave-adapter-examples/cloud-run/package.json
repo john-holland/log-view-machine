@@ -1,0 +1,15 @@
+{
+  "name": "cave-adapter-example-cloud-run",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Minimal Cave app for Google Cloud Run using cloud-run-cave-adapter",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "express": "^4.18.0",
+    "log-view-machine": "*",
+    "express-cave-adapter": "*",
+    "cloud-run-cave-adapter": "*"
+  }
+}

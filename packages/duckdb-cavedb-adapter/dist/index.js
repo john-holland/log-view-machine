@@ -1,5 +1,6 @@
 /**
  * duckdb-cavedb-adapter: DuckDB-backed persistence for Cave/Tome.
+ * Implements the canonical CaveDBAdapter from log-view-machine.
  * - Arbitrary JSON property put/get.
  * - find(selector) / findOne(selector) for document-style queries (arbitrary JS objects).
  * - Per-Tome: createDuckDBCaveDBAdapter(tomeId) or config for which Tome to adapt.
@@ -14,6 +15,7 @@ function matchesSelector(doc, selector) {
 }
 /**
  * In-memory implementation (no DuckDB dependency). Use for tests or when DuckDB is not installed.
+ * Implements the canonical CaveDBAdapter from log-view-machine.
  */
 export class DuckDBCaveDBAdapterMemory {
     constructor(tomeId) {

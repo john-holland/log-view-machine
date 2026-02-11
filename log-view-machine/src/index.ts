@@ -114,6 +114,8 @@ export {
   type CaveInstance,
   type RenderTarget,
   type SecurityConfig,
+  type CaveExtensionContext,
+  type CaveOptions,
 } from './core/Cave/Cave';
 
 // Cave server adapter (generic contract + createCaveServer)
@@ -130,6 +132,9 @@ export type {
   NormalizedMiddleware,
   RouteHandlerBag,
 } from './core/serverAdapter';
+
+// CaveDB adapter contract (canonical; cavedb adapters implement this)
+export type { CaveDBAdapter, CaveDBAdapterOptions, CaveDBAdapterFactory } from './core/cavedb';
 
 // useCave, useTome, useViewStateMachineInstance (React hooks for Cave/Tome/VSM with observeViewKey)
 export {
@@ -167,6 +172,18 @@ export {
   type MessageTokenOptions,
   type ValidateTokenOptions,
 } from './core/messaging/MessageToken';
+
+// Cave messaging transport (extension content/background/popup)
+export {
+  createInMemoryTransport,
+  wireInMemoryTransportPair,
+  type CaveMessagingTransport,
+  type CaveMessage,
+  type MessageTarget,
+  type MessageSender,
+  type ExtensionContextType,
+  type InMemoryTransportOptions,
+} from './core/messaging/CaveMessagingTransport';
 
 // Monitoring (AWS/Hystrix-compatible metrics)
 export {

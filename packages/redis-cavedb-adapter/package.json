@@ -1,0 +1,22 @@
+{
+  "name": "redis-cavedb-adapter",
+  "version": "1.0.0",
+  "description": "Redis-backed Cave DB adapter for Tome-scoped persistence; implements CaveDBAdapter from log-view-machine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "ioredis": "^5.0.0"
+  }
+}

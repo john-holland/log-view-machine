@@ -1,0 +1,27 @@
+{
+  "name": "aws-node-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave server adapter for AWS Node (EC2, ECS, Elastic Beanstalk) with optional SSM/Secrets Manager config",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "express": "^4.18.0",
+    "express-cave-adapter": "*",
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@aws-sdk/client-ssm": "^3.0.0",
+    "@aws-sdk/client-secrets-manager": "^3.0.0"
+  }
+}

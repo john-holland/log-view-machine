@@ -1,0 +1,16 @@
+{
+  "name": "cave-adapter-example-memcache-cavedb",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Minimal Cave app with Tome persistence override to Memcache",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "express": "^4.18.0",
+    "log-view-machine": "*",
+    "express-cave-adapter": "*",
+    "duckdb-cavedb-adapter": "*",
+    "memcache-cavedb-adapter": "*"
+  }
+}

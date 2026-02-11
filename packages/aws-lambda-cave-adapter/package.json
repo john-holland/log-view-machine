@@ -1,0 +1,24 @@
+{
+  "name": "aws-lambda-cave-adapter",
+  "version": "1.0.0",
+  "description": "Cave server adapter for AWS Lambda (API Gateway HTTP/REST or function URL)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0",
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "express": "^4.18.0",
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@types/aws-lambda": "^8.10.0"
+  }
+}

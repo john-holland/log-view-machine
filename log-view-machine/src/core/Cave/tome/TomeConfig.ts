@@ -115,10 +115,13 @@ export interface TomeConfig {
     transports?: string[];
   };
   
-  // State persistence
+  // State persistence (property sync / store API)
   persistence?: {
     enabled: boolean;
     type?: 'memory' | 'database' | 'file';
+    /** Which CaveDB adapter to use for this Tome's store (put/get/find). When set, config is passed to that adapter's factory. */
+    adapter?: 'duckdb' | 'dynamodb' | 'redis' | 'memcache';
+    /** Adapter-specific options (e.g. tableName, url, region). Passed to the adapter factory when adapter is set. */
     config?: Record<string, any>;
   };
   
@@ -355,6 +358,11 @@ export const EditorTomeConfig: TomeConfig = createTomeConfig({
   context: {
     editorType: 'generic',
     previewMode: 'iframe'
+  },
+  persistence: {
+    enabled: true,
+    adapter: 'duckdb',
+    config: {}
   }
 });
 

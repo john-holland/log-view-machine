@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, FishBurgerTomeConfig, EditorTomeConfig, createTomeConfig, createCaveServer } from 'log-view-machine';
 import { expressCaveAdapter } from 'express-cave-adapter';
 import { createDuckDBCaveDBAdapter } from 'duckdb-cavedb-adapter';
+import { buildPersistenceRegistry } from './persistence-registry.js';
 import { createDotCmsPamCaveAdapter } from 'dotcms-pam-cave-adapter';
 import { setupDatabase } from './database/setup.js';
 import { createGraphQLSchema } from './graphql/schema.js';
@@ -192,17 +193,35 @@ const DonationTomeConfig = createTomeConfig({
   routing: { basePath: '/api/editor/donation', routes: { donationMachine: { path: '/', method: 'POST' } } },
 });
 
+const tomeConfigsList = [
+  FishBurgerTomeConfig,
+  EditorTomeConfig,
+  LibraryTomeConfig,
+  CartTomeConfig,
+  DonationTomeConfig,
+];
+
+// Persistence override: build registry from TomeConfig.persistence.adapter so store API uses the right backend per Tome
+const cavedbFactories = { duckdb: (opts) => createDuckDBCaveDBAdapter(opts) };
+try {
+  const { createDynamoDBCaveDBAdapter } = await import('dynamodb-cavedb-adapter');
+  cavedbFactories.dynamodb = (opts) => createDynamoDBCaveDBAdapter(opts);
+} catch (_) {}
+try {
+  const { createRedisCaveDBAdapter } = await import('redis-cavedb-adapter');
+  cavedbFactories.redis = (opts) => createRedisCaveDBAdapter(opts);
+} catch (_) {}
+try {
+  const { createMemcacheCaveDBAdapter } = await import('memcache-cavedb-adapter');
+  cavedbFactories.memcache = (opts) => createMemcacheCaveDBAdapter(opts);
+} catch (_) {}
+const persistenceRegistry = await buildPersistenceRegistry(tomeConfigsList, cavedbFactories);
+
 const cave = Cave('node-example', nodeExampleSpelunk);
 const caveAdapter = expressCaveAdapter({ app, registryPath: '/registry', cors: true });
 await createCaveServer({
   cave,
-  tomeConfigs: [
-    FishBurgerTomeConfig,
-    EditorTomeConfig,
-    LibraryTomeConfig,
-    CartTomeConfig,
-    DonationTomeConfig,
-  ],
+  tomeConfigs: tomeConfigsList,
   sections: { registry: true },
   plugins: [caveAdapter],
 });
@@ -313,9 +332,11 @@ if (tomeManager) {
   });
 }
 
-// DuckDB Cave DB adapter: user settings and sticky-coins (arbitrary JSON put/get per Tome)
+// Store API: use persistence registry (from TomeConfig.persistence.adapter) or fallback to duckdb per Tome
 const cavedbAdapters = new Map();
 function getCaveDBAdapter(tomeId) {
+  const fromRegistry = persistenceRegistry.get(tomeId);
+  if (fromRegistry) return fromRegistry;
   if (!cavedbAdapters.has(tomeId)) {
     cavedbAdapters.set(tomeId, createDuckDBCaveDBAdapter({ tomeId }));
   }
@@ -350,6 +371,85 @@ app.post('/api/editor/store/:tomeId/find', express.json(), async (req, res) => {
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Generic editor component API (save/load protected by cavePam)
+let genericEditorUI = null;
+try {
+  const { createGenericEditorUI } = await import('./component-middleware/generic-editor/ui.js');
+  genericEditorUI = createGenericEditorUI({
+    persistenceConfig: {
+      dataDir: path.join(process.cwd(), 'src/component-middleware/generic-editor/data'),
+      componentsDir: path.join(process.cwd(), 'src/component-middleware/generic-editor/data/components'),
+      stateMachinesDir: path.join(process.cwd(), 'src/component-middleware/generic-editor/data/state-machines'),
+      sassDir: path.join(process.cwd(), 'src/component-middleware/generic-editor/data/sass'),
+      backupsDir: path.join(process.cwd(), 'src/component-middleware/generic-editor/data/backups')
+    }
+  });
+  await genericEditorUI.initialize();
+  logger.info('Generic Editor UI initialized for component API');
+} catch (e) {
+  logger.warn('Generic Editor UI not available', e.message);
+}
+function getEditorUser(req) {
+  return (req.user && (req.user.username || req.user.id)) || req.get('x-user') || 'anonymous';
+}
+app.get('/api/components/search', async (req, res) => {
+  if (!genericEditorUI) return res.status(503).json({ success: false, error: 'Generic Editor UI not initialized' });
+  try {
+    const query = (req.query.query || '').toString();
+    const components = await genericEditorUI.searchComponents(query);
+    res.json({ success: true, components: Array.isArray(components) ? components : [] });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+app.get('/api/components/:componentId/versions', async (req, res) => {
+  if (!genericEditorUI) return res.status(503).json({ success: false, error: 'Generic Editor UI not initialized' });
+  try {
+    const { componentId } = req.params;
+    const versions = await genericEditorUI.getComponentVersions(componentId);
+    res.json({ success: true, versions: Array.isArray(versions) ? versions : [versions] });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+app.post('/api/components/:id/load', express.json(), async (req, res) => {
+  if (!genericEditorUI) return res.status(503).json({ success: false, error: 'Generic Editor UI not initialized' });
+  try {
+    const componentId = req.params.id;
+    const user = getEditorUser(req);
+    const pam = req.cavePam;
+    if (pam && typeof pam.checkPermission === 'function') {
+      const allowed = await Promise.resolve(pam.checkPermission(user, 'editor/component/' + componentId, 'read'));
+      if (!allowed) return res.status(403).json({ success: false, error: 'Permission denied' });
+    }
+    const version = req.body?.version;
+    const result = await genericEditorUI.loadComponentWithVersion(componentId, version);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+app.post('/api/components/:id/save', express.json(), async (req, res) => {
+  if (!genericEditorUI) return res.status(503).json({ success: false, error: 'Generic Editor UI not initialized' });
+  try {
+    const componentId = req.params.id;
+    const user = getEditorUser(req);
+    const pam = req.cavePam;
+    if (pam && typeof pam.checkPermission === 'function') {
+      const allowed = await Promise.resolve(pam.checkPermission(user, 'editor/component/' + componentId, 'write'));
+      if (!allowed) return res.status(403).json({ success: false, error: 'Permission denied' });
+    }
+    const editor = genericEditorUI.genericEditor;
+    if (!editor || typeof editor.saveComponent !== 'function') {
+      return res.status(503).json({ success: false, error: 'Editor persistence not available' });
+    }
+    const saved = await editor.saveComponent(req.body);
+    res.json({ success: true, component: saved });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -902,6 +1002,34 @@ app.get('/api/editor/render-target', (req, res) => {
   const requestPath = (req.query.path || req.query.p || '/editor').toString().replace(/^\.\/?|\/$/g, '') || 'editor';
   const target = cave.getRenderTarget(requestPath);
   res.json({ path: requestPath, ...target });
+});
+
+// Editor presence (dotcms-pam): who is viewing/editing; client can show "who's here".
+app.get('/api/editor/presence', async (req, res) => {
+  try {
+    const caveOrTomeId = (req.query.caveOrTomeId || req.query.tomeId || 'editor').toString();
+    const pam = req.cavePam;
+    if (!pam || typeof pam.getPresence !== 'function') {
+      return res.json([]);
+    }
+    const list = await Promise.resolve(pam.getPresence(caveOrTomeId));
+    res.json(Array.isArray(list) ? list : []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+app.post('/api/editor/presence', express.json(), async (req, res) => {
+  try {
+    const { user, location } = req.body || {};
+    const pam = req.cavePam;
+    if (!pam || typeof pam.updatePresence !== 'function' || !user || !location) {
+      return res.json({ ok: true });
+    }
+    await Promise.resolve(pam.updatePresence(user, location));
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Editor pages: SPA-style so /editor, /editor/library, /editor/cart, /editor/donation all serve the same shell; client uses getRenderTarget(path).

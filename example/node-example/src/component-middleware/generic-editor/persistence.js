@@ -395,8 +395,135 @@ export class LocalPersistenceManager {
 }
 
 /**
+ * Cave Store Persistence Manager
+ * Uses the store API (PUT/GET /api/editor/store/:tomeId/:key) so editor components
+ * use the Tome's persistence backend (duckdb/redis/dynamodb per Tome).
+ */
+export class CaveStorePersistenceManager {
+  constructor(config = {}) {
+    this.config = {
+      baseUrl: config.baseUrl || 'http://localhost:3000',
+      editorTomeId: config.editorTomeId || 'editor-tome',
+      ...config
+    };
+    this.initialized = false;
+  }
+
+  async initialize() {
+    this.initialized = true;
+  }
+
+  _key(prefix, id) {
+    return `${prefix}:${id}`;
+  }
+
+  async _get(key) {
+    const url = `${this.config.baseUrl.replace(/\/$/, '')}/api/editor/store/${encodeURIComponent(this.config.editorTomeId)}/${encodeURIComponent(key)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async _put(key, value) {
+    const url = `${this.config.baseUrl.replace(/\/$/, '')}/api/editor/store/${encodeURIComponent(this.config.editorTomeId)}/${encodeURIComponent(key)}`;
+    await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value)
+    });
+  }
+
+  async saveComponent(component) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('component', component.id);
+    const data = { ...component, lastModified: new Date().toISOString(), source: 'cave-store' };
+    await this._put(key, data);
+    return data;
+  }
+
+  async loadComponent(componentId) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('component', componentId);
+    const component = await this._get(key);
+    return component ?? null;
+  }
+
+  async listLocalComponents() {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    try {
+      const url = `${this.config.baseUrl.replace(/\/$/, '')}/api/editor/store/${encodeURIComponent(this.config.editorTomeId)}/find`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selector: {} })
+      });
+      if (!res.ok) return [];
+      const result = await res.json();
+      const list = Array.isArray(result) ? result : (result?.items ?? []);
+      return list.filter((item) => item && (item.key?.startsWith('component:') || item.id)).map((item) => (item.value ?? item));
+    } catch {
+      return [];
+    }
+  }
+
+  async saveStateMachine(stateMachine) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('stateMachine', stateMachine.id);
+    await this._put(key, { ...stateMachine, lastModified: new Date().toISOString() });
+    return stateMachine;
+  }
+
+  async loadStateMachine(stateMachineId) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('stateMachine', stateMachineId);
+    return (await this._get(key)) ?? null;
+  }
+
+  async saveSASSIdentity(sassIdentity) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('sassIdentity', sassIdentity.id);
+    await this._put(key, { ...sassIdentity, lastModified: new Date().toISOString() });
+    return sassIdentity;
+  }
+
+  async loadSASSIdentity(sassIdentityId) {
+    if (!this.initialized) throw new Error('Persistence not initialized');
+    const key = this._key('sassIdentity', sassIdentityId);
+    return (await this._get(key)) ?? null;
+  }
+
+  async listLocalStateMachines() {
+    return [];
+  }
+
+  async listLocalSASSIdentities() {
+    return [];
+  }
+
+  async getStorageStats() {
+    const components = await this.listLocalComponents();
+    return {
+      components: components.length,
+      stateMachines: 0,
+      sassIdentities: 0,
+      totalItems: components.length,
+      lastBackup: null
+    };
+  }
+
+  async getLastBackupTime() {
+    return null;
+  }
+}
+
+/**
  * Create persistence manager
+ * @param {Object} config - persistenceConfig from GenericEditorConfig; use persistenceBackend: 'local' | 'cave-store'
  */
 export function createPersistenceManager(config = {}) {
+  const backend = config.persistenceBackend || 'local';
+  if (backend === 'cave-store') {
+    return new CaveStorePersistenceManager(config);
+  }
   return new LocalPersistenceManager(config);
 } 

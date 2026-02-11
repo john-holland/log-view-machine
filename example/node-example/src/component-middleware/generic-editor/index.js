@@ -16,6 +16,8 @@ export class GenericEditorConfig {
     this.enableStyleManagement = options.enableStyleManagement !== false;
     this.enablePersistence = options.enablePersistence !== false;
     this.persistenceConfig = options.persistenceConfig || {};
+    /** 'local' = LocalPersistenceManager (file-based); 'cave-store' = CaveStorePersistenceManager (store API per Tome). */
+    this.persistenceBackend = options.persistenceBackend || 'local';
     this.enableFishBurgerIntegration = options.enableFishBurgerIntegration !== false;
     /** When true, use EditorWrapper from log-view-machine as the editor UI wrapper (3-panel tabbed layout). For React integration. */
     this.enableEditorWrapper = options.enableEditorWrapper !== false;
@@ -308,7 +310,11 @@ export class GenericEditor {
     try {
       // Initialize persistence if enabled
       if (this.config.enablePersistence) {
-        this.persistence = createPersistenceManager(this.config.persistenceConfig);
+        const persistenceConfig = {
+          ...this.config.persistenceConfig,
+          persistenceBackend: this.config.persistenceBackend
+        };
+        this.persistence = createPersistenceManager(persistenceConfig);
         await this.persistence.initialize();
         console.log('  ✅ Persistence initialized');
       }

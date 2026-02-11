@@ -1,10 +1,13 @@
 /**
  * duckdb-cavedb-adapter: DuckDB-backed persistence for Cave/Tome.
+ * Implements the canonical CaveDBAdapter from log-view-machine.
  * - Arbitrary JSON property put/get.
  * - find(selector) / findOne(selector) for document-style queries (arbitrary JS objects).
  * - Per-Tome: createDuckDBCaveDBAdapter(tomeId) or config for which Tome to adapt.
  * - Optional warehousing and backups (hook points; implementation can be external).
  */
+import type { CaveDBAdapter } from 'log-view-machine';
+export type { CaveDBAdapter } from 'log-view-machine';
 export interface DuckDBCaveDBAdapterOptions {
     /** Tome id this adapter is for (isolates data per Tome). */
     tomeId: string;
@@ -21,23 +24,14 @@ export interface DuckDBCaveDBAdapterOptions {
         onBackup?: (path: string) => Promise<void>;
     };
 }
-export interface DuckDBCaveDBAdapter {
-    readonly tomeId: string;
-    /** Put a JSON-serializable value under key. */
-    put(key: string, value: Record<string, unknown> | unknown): Promise<void>;
-    /** Get value by key. */
-    get(key: string): Promise<Record<string, unknown> | null>;
-    /** Find documents matching selector (arbitrary object; simple key-value match). */
-    find(selector?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-    /** Find one document matching selector. */
-    findOne(selector?: Record<string, unknown>): Promise<Record<string, unknown> | null>;
-    /** Close and release resources. */
-    close(): Promise<void>;
+/** DuckDB CaveDB adapter; extends canonical CaveDBAdapter from log-view-machine. */
+export interface DuckDBCaveDBAdapter extends CaveDBAdapter {
 }
 /**
  * In-memory implementation (no DuckDB dependency). Use for tests or when DuckDB is not installed.
+ * Implements the canonical CaveDBAdapter from log-view-machine.
  */
-export declare class DuckDBCaveDBAdapterMemory implements DuckDBCaveDBAdapter {
+export declare class DuckDBCaveDBAdapterMemory implements CaveDBAdapter {
     readonly tomeId: string;
     private store;
     constructor(tomeId: string);
@@ -52,4 +46,4 @@ export declare class DuckDBCaveDBAdapterMemory implements DuckDBCaveDBAdapter {
  * Pass tomeId so persistence is Tome-specific. Optional: invoke per Tome (createDuckDBCaveDBAdapter(tomeId)) for each Tome that needs this persistence.
  * If the optional 'duckdb' package is available, uses file-backed DuckDB; otherwise falls back to in-memory.
  */
-export declare function createDuckDBCaveDBAdapter(options: DuckDBCaveDBAdapterOptions | string): DuckDBCaveDBAdapter;
+export declare function createDuckDBCaveDBAdapter(options: DuckDBCaveDBAdapterOptions | string): CaveDBAdapter;

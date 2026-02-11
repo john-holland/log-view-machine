@@ -1866,6 +1866,11 @@
                 <button class="btn btn-warning" onclick="importFromFile()">Import from File</button>
             </div>
 
+            <div class="sidebar-section desktop-only" id="presence-section">
+                <h3>👥 Who's here</h3>
+                <div id="presence-list" style="font-size: 12px; color: #666;">—</div>
+            </div>
+
             <div class="sidebar-section desktop-only">
                 <h3>🔍 Diff & Compare</h3>
                 <button class="btn btn-secondary" onclick="showDiffView()">Show Diff</button>
@@ -2213,6 +2218,49 @@
             dotCMSUrl: 'http://localhost:8080'
         };
 
+        // Editor store API (Cave): use tomeId from render-target for editor-tome state.
+        function getEditorTomeId() {
+            return (window.__editorRenderTarget && window.__editorRenderTarget.tomeId) || 'editor-tome';
+        }
+        async function editorStoreGet(key) {
+            const t = getEditorTomeId();
+            const r = await fetch(config.apiUrl + '/api/editor/store/' + encodeURIComponent(t) + '/' + encodeURIComponent(key));
+            if (!r.ok) return null;
+            return r.json();
+        }
+        function editorStorePut(key, value) {
+            const t = getEditorTomeId();
+            fetch(config.apiUrl + '/api/editor/store/' + encodeURIComponent(t) + '/' + encodeURIComponent(key), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(value)
+            }).catch(function() {});
+        }
+        async function editorPresenceUpdate(location) {
+            try {
+                await fetch(config.apiUrl + '/api/editor/presence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user: currentUser || 'anonymous', location: location || getEditorTomeId() })
+                });
+                editorPresenceFetch();
+            } catch (e) {}
+        }
+        function editorPresenceFetch() {
+            var el = document.getElementById('presence-list');
+            if (!el) return;
+            fetch(config.apiUrl + '/api/editor/presence?caveOrTomeId=' + encodeURIComponent(getEditorTomeId()))
+                .then(function(r) { return r.json(); })
+                .then(function(list) {
+                    if (Array.isArray(list) && list.length) {
+                        el.textContent = list.map(function(p) { return p.user || p.id || '?'; }).join(', ');
+                    } else {
+                        el.textContent = '—';
+                    }
+                })
+                .catch(function() { el.textContent = '—'; });
+        }
+
         // Global state
         let currentUser = null;
         let currentComponent = null;
@@ -2359,6 +2407,27 @@
             checkHealth();
             loadComponents();
             setupRealTimeUpdates();
+            
+            // Cave: when render-target is ready, load editor state from store (overwrites localStorage if present) and update presence
+            window.addEventListener('editor-render-target-ready', function once(e) {
+                window.removeEventListener('editor-render-target-ready', once);
+                var detail = e.detail || {};
+                editorStoreGet('currentComponent').then(function(data) {
+                    if (data) applyStoreComponentData(data);
+                }).catch(function() {});
+                editorPresenceUpdate(detail.path || detail.tomeId || getEditorTomeId());
+            });
+            if (window.__editorRenderTarget && window.__editorRenderTarget.tomeId) {
+                editorStoreGet('currentComponent').then(function(data) {
+                    if (data) applyStoreComponentData(data);
+                }).catch(function() {});
+                editorPresenceUpdate(window.__editorRenderTarget.path || window.__editorRenderTarget.tomeId);
+            }
+            window.addEventListener('popstate', function() {
+                var path = window.location.pathname.replace(/^\/?|\/$/g, '') || 'editor';
+                editorPresenceUpdate(path);
+            });
+            setInterval(editorPresenceFetch, 15000);
             
             // Load sample components if none exist
             if (!window.components || window.components.length === 0) {
@@ -3268,6 +3337,7 @@
             };
             
             localStorage.setItem('generic-editor-current-component', JSON.stringify(componentData));
+            editorStorePut('currentComponent', componentData);
         }
 
         function loadFromLocalStorage() {
@@ -3287,38 +3357,57 @@
                 }
             }
         }
+        function applyStoreComponentData(componentData) {
+            if (!componentData || !editors.html) return;
+            try {
+                editors.html.setContents(componentData.template || '');
+                editors.css.setValue(componentData.styles || '');
+                editors.js.setValue(componentData.script || '');
+                editors.json.setValue(componentData.stateMachine || '');
+                currentComponent = { id: componentData.id, name: 'Restored Component' };
+                currentVersion = componentData.version;
+                hasUnsavedChanges = componentData.hasUnsavedChanges || false;
+                updateSaveStatus();
+                var infoEl = document.getElementById('current-component-info');
+                if (infoEl) infoEl.innerHTML = '<strong>Restored Component</strong><br><small>From store</small><br><small>Version: ' + (componentData.version || '') + '</small>';
+            } catch (e) { console.error('Failed to apply store data:', e); }
+        }
 
         function restoreFromLocalStorage() {
-            const savedData = localStorage.getItem('generic-editor-current-component');
-            if (savedData) {
-                try {
-                    const componentData = JSON.parse(savedData);
-                    
-                    // Restore editor content
-                    editors.html.setContents(componentData.template || '');
-                    editors.css.setValue(componentData.styles || '');
-                    editors.js.setValue(componentData.script || '');
-                    editors.json.setValue(componentData.stateMachine || '');
-                    
-                    // Update component info
-                    currentComponent = { id: componentData.id, name: 'Restored Component' };
-                    currentVersion = componentData.version;
-                    
-                    // Update UI
-                    document.getElementById('current-component-info').innerHTML = `
-                        <strong>Restored Component</strong><br>
-                        <small>From localStorage</small><br>
-                        <small>Version: ${componentData.version}</small>
-                    `;
-                    
+            editorStoreGet('currentComponent').then(function(componentData) {
+                if (componentData) {
+                    applyStoreComponentData(componentData);
                     markAsSaved();
-                    showMessage('success', 'Component restored from localStorage');
-                    
-                } catch (error) {
-                    console.error('Failed to restore from localStorage:', error);
-                    showMessage('error', 'Failed to restore component from localStorage');
+                    showMessage('success', 'Component restored from store');
+                    return;
                 }
-            }
+                var savedData = localStorage.getItem('generic-editor-current-component');
+                if (savedData) {
+                    try {
+                        var data = JSON.parse(savedData);
+                        applyStoreComponentData(data);
+                        document.getElementById('current-component-info').innerHTML = '<strong>Restored Component</strong><br><small>From localStorage</small><br><small>Version: ' + (data.version || '') + '</small>';
+                        markAsSaved();
+                        showMessage('success', 'Component restored from localStorage');
+                    } catch (error) {
+                        console.error('Failed to restore from localStorage:', error);
+                        showMessage('error', 'Failed to restore component from localStorage');
+                    }
+                }
+            }).catch(function() {
+                var savedData = localStorage.getItem('generic-editor-current-component');
+                if (savedData) {
+                    try {
+                        var data = JSON.parse(savedData);
+                        applyStoreComponentData(data);
+                        document.getElementById('current-component-info').innerHTML = '<strong>Restored Component</strong><br><small>From localStorage</small><br><small>Version: ' + (data.version || '') + '</small>';
+                        markAsSaved();
+                        showMessage('success', 'Component restored from localStorage');
+                    } catch (error) {
+                        showMessage('error', 'Failed to restore component from localStorage');
+                    }
+                }
+            });
         }
 
         async function checkHealth() {

@@ -14,6 +14,7 @@ export { DefaultStructuralConfig, createStructuralConfig } from './core/DefaultS
 export { Cave, createCave, type Spelunk, type CaveConfig, type CaveInstance, type RenderTarget } from './core/Cave';
 export { createCaveServer, type CreateCaveServerConfig, } from './core/serverAdapter';
 export type { CaveServerAdapter, CaveServerContext, NormalizedRequest, NormalizedResponse, NormalizedRequestHandler, NormalizedMiddleware, RouteHandlerBag, } from './core/serverAdapter';
+export type { CaveDBAdapter, CaveDBAdapterOptions, CaveDBAdapterFactory } from './core/cavedb';
 export { useCave, useTome, useViewStateMachineInstance, type UseViewStateMachineInstanceOptions } from './core/useCaveTomeVSM';
 export { createDuckDBStorage, createDuckDBStorageSync, DuckDBStorageStub, type DuckDBStorageAdapter } from './core/DuckDBStorage';
 export { default as EditorWrapper, type EditorWrapperProps, type EditorWrapperRouter } from './components/EditorWrapper';

@@ -1,0 +1,22 @@
+{
+  "name": "dynamodb-cavedb-adapter",
+  "version": "1.0.0",
+  "description": "DynamoDB-backed Cave DB adapter for Tome-scoped persistence; implements CaveDBAdapter from log-view-machine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0"
+  }
+}

@@ -44,6 +44,8 @@ export interface RobotCopyConfig {
   circuitBreaker?: { threshold?: number; resetMs?: number; name?: string };
   /** Optional: record request/bytes/latency/status for metrics. */
   resourceMonitor?: ResourceMonitor;
+  /** Optional: custom transport; when set, sendMessage uses transport.send(action, data) instead of fetch. Use for extension messaging (e.g. Chrome background). */
+  transport?: { send(action: string, data: unknown): Promise<unknown> };
 }
 
 export class RobotCopy {
@@ -159,6 +161,10 @@ export class RobotCopy {
       const err = new Error('Circuit breaker is open') as Error & { code?: string };
       err.code = 'CIRCUIT_OPEN';
       throw err;
+    }
+
+    if (this.config.transport) {
+      return this.config.transport.send(action, data);
     }
 
     const doOne = async (): Promise<any> => {
