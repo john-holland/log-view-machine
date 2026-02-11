@@ -14,7 +14,10 @@ import winston from 'winston';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, TomeManager, FishBurgerTomeConfig } from 'log-view-machine';
+import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, FishBurgerTomeConfig, EditorTomeConfig, createTomeConfig, createCaveServer } from 'log-view-machine';
+import { expressCaveAdapter } from 'express-cave-adapter';
+import { createDuckDBCaveDBAdapter } from 'duckdb-cavedb-adapter';
+import { createDotCmsPamCaveAdapter } from 'dotcms-pam-cave-adapter';
 import { setupDatabase } from './database/setup.js';
 import { createGraphQLSchema } from './graphql/schema.js';
 import { createProxyMachines } from './machines/proxy-machines.js';
@@ -54,19 +57,35 @@ const port = process.env.PORT || 3000;
 // Setup middleware
 setupMiddleware(app, logger);
 
-// Setup rate limiting
+// Rate limit: stable peak per user from 1M req/min server budget (AWS free/low tier sizing).
+//   capacity = 1_000_000 req/min, target peak concurrent users = 10_000 → per_user = 100 req/min.
+//   Average user (10–60 req/min active) stays under limit; 10k users at peak = 1M/min.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const SERVER_CAPACITY_REQ_PER_MIN = Number(process.env.SERVER_CAPACITY_REQ_PER_MIN) || 1_000_000;
+const TARGET_PEAK_CONCURRENT_USERS = Number(process.env.TARGET_PEAK_CONCURRENT_USERS) || 10_000;
+const PER_USER_REQ_PER_MIN = Math.max(60, Math.floor(SERVER_CAPACITY_REQ_PER_MIN / TARGET_PEAK_CONCURRENT_USERS));
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: PER_USER_REQ_PER_MIN,
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => req.originalUrl.includes('state-machines') && req.originalUrl.includes('/events')
+});
+
+const stateMachineEventsLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: PER_USER_REQ_PER_MIN,
+  message: 'Too many state machine events, please try again later.'
 });
 
 const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 50, // allow 50 requests per 15 minutes, then...
-  delayMs: 500 // begin adding 500ms of delay per request above 50
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  delayAfter: Math.max(1, Math.floor(PER_USER_REQ_PER_MIN * 0.5)),
+  delayMs: 500
 });
 
+// Apply higher limit to state-machine events first so demo can send many Update Progress requests
+app.use('/api/state-machines/:id/events', stateMachineEventsLimiter);
 app.use('/api/', limiter);
 app.use('/api/', speedLimiter);
 
@@ -101,6 +120,16 @@ app.use(morgan('combined', {
   }
 }));
 
+// dotCMS PAM Cave adapter (user permissions and presence); attach to request for Tome routes
+const cavePam = createDotCmsPamCaveAdapter({
+  dotCmsUrl: process.env.DOTCMS_URL,
+  apiKey: process.env.DOTCMS_API_KEY,
+});
+app.use((req, res, next) => {
+  req.cavePam = cavePam;
+  next();
+});
+
 // Initialize database
 const db = await setupDatabase();
 
@@ -108,6 +137,7 @@ const db = await setupDatabase();
 const robotCopy = createRobotCopy();
 
 // Root Cave for node-example: route/entry describe where each feature is exposed (path → handler/Tome).
+// Editor childCaves: editor (main panel), library, cart, donation — each with route and tomeId for getRenderTarget.
 const nodeExampleSpelunk = {
   childCaves: {
     'fish-burger-api': {
@@ -118,18 +148,73 @@ const nodeExampleSpelunk = {
     'fish-burger-demo': {
       route: '/fish-burger-demo',
     },
-    'generic-editor': {
+    editor: {
       route: '/editor',
+      container: 'editor',
+      tomeId: 'editor-tome',
+      childCaves: {
+        library: {
+          route: '/editor/library',
+          container: 'library',
+          tomeId: 'library-tome',
+        },
+        cart: {
+          route: '/editor/cart',
+          container: 'cart',
+          tomeId: 'cart-tome',
+        },
+        donation: {
+          route: '/editor/donation',
+          container: 'donation',
+          tomeId: 'donation-tome',
+        },
+      },
     },
   },
 };
-const cave = Cave('node-example', nodeExampleSpelunk);
-await cave.initialize();
+// Library, Cart, Donation Tomes (inline so we work with current log-view-machine dist; or use LibraryTomeConfig etc. when built)
+const LibraryTomeConfig = createTomeConfig({
+  id: 'library-tome',
+  name: 'Component Library',
+  machines: { libraryMachine: { id: 'library-machine', name: 'Library', xstateConfig: { id: 'library-machine', initial: 'idle', states: { idle: { on: { OPEN: 'browsing' } }, browsing: { on: { SELECT: 'idle', CLOSE: 'idle' } } } } } },
+  routing: { basePath: '/api/editor/library', routes: { libraryMachine: { path: '/', method: 'POST' } } },
+});
+const CartTomeConfig = createTomeConfig({
+  id: 'cart-tome',
+  name: 'Cart',
+  machines: { cartMachine: { id: 'cart-machine', name: 'Cart', xstateConfig: { id: 'cart-machine', initial: 'idle', states: { idle: { on: { ADD: 'active' } }, active: { on: { CHECKOUT: 'idle', CLEAR: 'idle' } } } } } },
+  routing: { basePath: '/api/editor/cart', routes: { cartMachine: { path: '/', method: 'POST' } } },
+});
+const DonationTomeConfig = createTomeConfig({
+  id: 'donation-tome',
+  name: 'Donation',
+  machines: { donationMachine: { id: 'donation-machine', name: 'Donation', xstateConfig: { id: 'donation-machine', initial: 'idle', states: { idle: { on: { CONNECT_WALLET: 'connected' } }, connected: { on: { DONATE: 'idle', DISCONNECT: 'idle' } } } } } },
+  routing: { basePath: '/api/editor/donation', routes: { donationMachine: { path: '/', method: 'POST' } } },
+});
 
-// TomeManager with Express app; register fish-burger Tome
-const tomeManager = new TomeManager(app);
-const fishBurgerTome = await tomeManager.registerTome(FishBurgerTomeConfig);
-fishBurgerTome.synchronizeWithCave(cave);
+const cave = Cave('node-example', nodeExampleSpelunk);
+const caveAdapter = expressCaveAdapter({ app, registryPath: '/registry', cors: true });
+await createCaveServer({
+  cave,
+  tomeConfigs: [
+    FishBurgerTomeConfig,
+    EditorTomeConfig,
+    LibraryTomeConfig,
+    CartTomeConfig,
+    DonationTomeConfig,
+  ],
+  sections: { registry: true },
+  plugins: [caveAdapter],
+});
+const tomeManager = caveAdapter.getTomeManager();
+if (tomeManager) {
+  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'cart-tome', 'donation-tome']) {
+    const tome = tomeManager.getTome(tomeId);
+    if (tome && typeof tome.synchronizeWithCave === 'function') {
+      tome.synchronizeWithCave(cave);
+    }
+  }
+}
 
 // Create state machines
 const stateMachines = await createStateMachines(db, robotCopy);
@@ -180,104 +265,91 @@ apolloServer.applyMiddleware({ app, path: '/graphql' });
 // Setup REST routes
 setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, logger);
 
-// Fish Burger API: delegate to registered fish-burger Tome
-app.post('/api/fish-burger/start', async (req, res) => {
-  try {
-    const { orderId, ingredients } = req.body || {};
-    logger.info('Fish burger start', { orderId, ingredients });
-    const traceId = req.headers['x-trace-id'] || `trace-${Date.now()}`;
-    await tomeManager.sendTomeMessage('fish-burger-tome', 'cookingMachine', 'START_COOKING', { orderId, ingredients });
-    const state = tomeManager.getTomeMachineState('fish-burger-tome', 'cookingMachine');
+// Tome management routes (per-path Tome routes are registered by express-cave-adapter via FishBurgerTomeConfig.routing)
+if (tomeManager) {
+  app.get('/api/tomes', (req, res) => {
     res.json({
-      success: true,
-      messageId: `msg-${Date.now()}`,
-      traceId,
-      state: state?.value ?? 'processing',
-      context: { orderId: orderId || null, ingredients: ingredients || [] },
+      tomes: tomeManager.listTomes(),
+      status: tomeManager.getTomeStatus()
     });
-  } catch (err) {
-    logger.error('Fish burger start error', { error: err.message });
-    res.status(500).json({ error: err.message });
-  }
-});
-app.post('/api/fish-burger/progress', (req, res) => {
-  try {
-    const { orderId, cookingTime, temperature } = req.body || {};
-    logger.info('Fish burger progress', { orderId, cookingTime, temperature });
-    tomeManager.updateTomeContext('fish-burger-tome', { orderId, cookingTime, temperature });
-    res.json({
-      success: true,
-      messageId: `msg-${Date.now()}`,
-      state: 'processing',
-      context: { orderId, cookingTime, temperature },
-    });
-  } catch (err) {
-    logger.error('Fish burger progress error', { error: err.message });
-    res.status(500).json({ error: err.message });
-  }
-});
-app.post('/api/fish-burger/complete', async (req, res) => {
-  try {
-    const { orderId } = req.body || {};
-    logger.info('Fish burger complete', { orderId });
-    await tomeManager.sendTomeMessage('fish-burger-tome', 'cookingMachine', 'COMPLETE_COOKING', { orderId });
-    const state = tomeManager.getTomeMachineState('fish-burger-tome', 'cookingMachine');
-    res.json({
-      success: true,
-      messageId: `msg-${Date.now()}`,
-      state: state?.value ?? 'completed',
-      context: { orderId: orderId || null },
-    });
-  } catch (err) {
-    logger.error('Fish burger complete error', { error: err.message });
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Add tome management routes
-app.get('/api/tomes', (req, res) => {
-  res.json({
-    tomes: tomeManager.listTomes(),
-    status: tomeManager.getTomeStatus()
   });
-});
 
-app.get('/api/tomes/:tomeId', (req, res) => {
-  const { tomeId } = req.params;
-  const tome = tomeManager.getTome(tomeId);
-  if (!tome) {
-    return res.status(404).json({ error: 'Tome not found' });
-  }
-  res.json({
-    id: tome.id,
-    name: tome.config.name,
-    description: tome.config.description,
-    version: tome.config.version,
-    machines: Array.from(tome.machines.keys()),
-    context: tome.context
-  });
-});
-
-app.post('/api/tomes/:tomeId/machines/:machineId/message', async (req, res) => {
-  try {
-    const { tomeId, machineId } = req.params;
-    const { event, data } = req.body;
-    
-    const result = await tomeManager.sendTomeMessage(tomeId, machineId, event, data);
+  app.get('/api/tomes/:tomeId', (req, res) => {
+    const { tomeId } = req.params;
+    const tome = tomeManager.getTome(tomeId);
+    if (!tome) {
+      return res.status(404).json({ error: 'Tome not found' });
+    }
     res.json({
-      success: true,
-      tomeId,
-      machineId,
-      event,
-      result,
-      timestamp: new Date().toISOString()
+      id: tome.id,
+      name: tome.config.name,
+      description: tome.config.description,
+      version: tome.config.version,
+      machines: Array.from(tome.machines.keys()),
+      context: tome.context
     });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
+  });
+
+  app.post('/api/tomes/:tomeId/machines/:machineId/message', async (req, res) => {
+    try {
+      const { tomeId, machineId } = req.params;
+      const { event, data } = req.body;
+      const result = await tomeManager.sendTomeMessage(tomeId, machineId, event, data);
+      res.json({
+        success: true,
+        tomeId,
+        machineId,
+        event,
+        result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+}
+
+// DuckDB Cave DB adapter: user settings and sticky-coins (arbitrary JSON put/get per Tome)
+const cavedbAdapters = new Map();
+function getCaveDBAdapter(tomeId) {
+  if (!cavedbAdapters.has(tomeId)) {
+    cavedbAdapters.set(tomeId, createDuckDBCaveDBAdapter({ tomeId }));
+  }
+  return cavedbAdapters.get(tomeId);
+}
+app.get('/api/editor/store/:tomeId/:key', async (req, res) => {
+  try {
+    const { tomeId, key } = req.params;
+    const adapter = getCaveDBAdapter(tomeId);
+    const value = await adapter.get(key);
+    res.json(value ?? null);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+app.put('/api/editor/store/:tomeId/:key', express.json(), async (req, res) => {
+  try {
+    const { tomeId, key } = req.params;
+    const adapter = getCaveDBAdapter(tomeId);
+    await adapter.put(key, req.body ?? {});
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+app.post('/api/editor/store/:tomeId/find', express.json(), async (req, res) => {
+  try {
+    const { tomeId } = req.params;
+    const { selector, one } = req.body ?? {};
+    const adapter = getCaveDBAdapter(tomeId);
+    const result = one ? await adapter.findOne(selector) : await adapter.find(selector);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -596,6 +668,18 @@ app.get('/fish-burger-demo', (req, res) => {
             
             async function sendEvent(eventType) {
                 try {
+                    let payload = {
+                        timestamp: new Date().toISOString(),
+                        cookingTime: cookingTime,
+                        temperature: temperature
+                    };
+                    if (eventType === 'UPDATE_PROGRESS') {
+                        payload.cookingTime = (cookingTime || 0) + 10;
+                        payload.temperature = Math.min((temperature || 0) + 15, 220);
+                    }
+                    if (eventType === 'START_COOKING') {
+                        payload.orderId = 'order-' + Date.now();
+                    }
                     const response = await fetch('/api/state-machines/fish-burger/events', {
                         method: 'POST',
                         headers: {
@@ -603,11 +687,7 @@ app.get('/fish-burger-demo', (req, res) => {
                         },
                         body: JSON.stringify({
                             event: eventType,
-                            data: {
-                                timestamp: new Date().toISOString(),
-                                cookingTime: cookingTime,
-                                temperature: temperature
-                            }
+                            data: payload
                         })
                     });
                     
@@ -616,26 +696,19 @@ app.get('/fish-burger-demo', (req, res) => {
                         updateStatus(result);
                         addLog('info', \`Event '\${eventType}' sent successfully\`);
                     } else {
-                        addLog('error', \`Failed to send event '\${eventType}'\`);
+                        const errBody = await response.text();
+                        let errMsg = \`Failed to send event '\${eventType}' (\${response.status})\`;
+                        try {
+                            const errJson = JSON.parse(errBody);
+                            if (errJson.message) errMsg += ': ' + errJson.message;
+                        } catch (_) {
+                            if (errBody) errMsg += ': ' + errBody.slice(0, 80);
+                        }
+                        addLog('error', errMsg);
                     }
                 } catch (error) {
                     addLog('error', \`Error sending event: \${error.message}\`);
                 }
-            }
-            
-            function updateStatus(result) {
-                currentState = result.currentState;
-                document.getElementById('current-state').textContent = currentState;
-                
-                if (result.data) {
-                    if (result.data.orderId) orderId = result.data.orderId;
-                    if (result.data.cookingTime) cookingTime = result.data.cookingTime;
-                    if (result.data.temperature) temperature = result.data.temperature;
-                }
-                
-                document.getElementById('order-id').textContent = orderId || '-';
-                document.getElementById('cooking-time').textContent = cookingTime;
-                document.getElementById('temperature').textContent = temperature;
             }
             
             function addLog(level, message) {
@@ -647,6 +720,56 @@ app.get('/fish-burger-demo', (req, res) => {
                 logEntries.scrollTop = logEntries.scrollHeight;
             }
             
+            // When cooking completes, add burger to cart and show link
+            let lastAddedOrderId = null;
+            async function maybeAddToCart() {
+                if (currentState !== 'order_complete' || !orderId || lastAddedOrderId === orderId) return;
+                lastAddedOrderId = orderId;
+                try {
+                    const r = await fetch('/api/cart/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            item: {
+                                id: orderId,
+                                name: 'Fish Burger',
+                                price: 9.99,
+                                orderId,
+                                cookingTime,
+                                temperature
+                            }
+                        })
+                    });
+                    if (r.ok) {
+                        addLog('info', 'Added to cart! View cart →');
+                        const cartLink = document.createElement('a');
+                        cartLink.href = '/cart';
+                        cartLink.textContent = ' View cart';
+                        cartLink.className = 'back-link';
+                        cartLink.style.marginLeft = '8px';
+                        const statusEl = document.getElementById('status');
+                        if (statusEl && !document.getElementById('cart-link')) {
+                            cartLink.id = 'cart-link';
+                            statusEl.appendChild(cartLink);
+                        }
+                    }
+                } catch (e) {
+                    addLog('error', 'Failed to add to cart: ' + e.message);
+                }
+            }
+            function updateStatus(result) {
+                currentState = result.currentState;
+                document.getElementById('current-state').textContent = currentState;
+                if (result.data) {
+                    if (result.data.orderId != null) orderId = result.data.orderId;
+                    if (result.data.cookingTime != null) cookingTime = result.data.cookingTime;
+                    if (result.data.temperature != null) temperature = result.data.temperature;
+                }
+                document.getElementById('order-id').textContent = orderId || '-';
+                document.getElementById('cooking-time').textContent = cookingTime;
+                document.getElementById('temperature').textContent = temperature;
+                maybeAddToCart();
+            }
             // Initialize
             addLog('info', 'Fish Burger Demo initialized');
         </script>
@@ -655,8 +778,143 @@ app.get('/fish-burger-demo', (req, res) => {
   `);
 });
 
-// Editor Page
+// Cart page: receives cooked burgers, payment-free checkout
+app.get('/cart', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cart – Cooked Burgers</title>
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                font-family: system-ui, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                min-height: 100vh;
+                color: #eee;
+            }
+            .container { max-width: 560px; margin: 0 auto; }
+            .back-link {
+                display: inline-block;
+                margin-bottom: 20px;
+                color: white;
+                text-decoration: none;
+                padding: 10px 20px;
+                background: rgba(255,255,255,0.2);
+                border-radius: 10px;
+            }
+            .back-link:hover { background: rgba(255,255,255,0.3); }
+            h1 { margin: 0 0 20px; }
+            .cart-list {
+                background: rgba(255,255,255,0.08);
+                border-radius: 12px;
+                padding: 16px;
+                margin: 20px 0;
+                list-style: none;
+            }
+            .cart-list li {
+                padding: 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .cart-list li:last-child { border-bottom: none; }
+            .empty { text-align: center; color: #999; padding: 24px; }
+            .total { font-size: 1.2em; margin: 16px 0; }
+            .checkout-btn {
+                background: linear-gradient(45deg, #2ecc71, #27ae60);
+                color: white;
+                border: none;
+                padding: 14px 28px;
+                border-radius: 25px;
+                font-size: 1em;
+                cursor: pointer;
+            }
+            .checkout-btn:hover { opacity: 0.9; }
+            .checkout-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .success-msg { background: rgba(46, 204, 113, 0.3); padding: 16px; border-radius: 10px; margin-top: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/fish-burger-demo" class="back-link">← Back to Fish Burger Demo</a>
+            <h1>🛒 Cart</h1>
+            <p>Cooked burgers ready for checkout (no payment).</p>
+            <ul class="cart-list" id="cart-list"></ul>
+            <p class="total" id="total-line"></p>
+            <button class="checkout-btn" id="checkout-btn" disabled>Checkout (free)</button>
+            <div class="success-msg" id="success-msg" style="display:none;">
+                Order complete. No payment required. Thank you!
+            </div>
+        </div>
+        <script>
+            const listEl = document.getElementById('cart-list');
+            const totalEl = document.getElementById('total-line');
+            const btn = document.getElementById('checkout-btn');
+            const successEl = document.getElementById('success-msg');
+            function render(cart) {
+                const items = cart?.cart?.items ?? [];
+                listEl.innerHTML = '';
+                if (items.length === 0) {
+                    listEl.innerHTML = '<li class="empty">No items. Cook a burger and complete cooking to add it here.</li>';
+                    totalEl.textContent = '';
+                    btn.disabled = true;
+                    return;
+                }
+                items.forEach(function(item) {
+                    const li = document.createElement('li');
+                    li.innerHTML = '<span>🍔 ' + (item.name || 'Burger') + '</span><span>$' + (item.price ?? 0).toFixed(2) + '</span>';
+                    listEl.appendChild(li);
+                });
+                const total = (cart?.cart?.total ?? 0);
+                totalEl.textContent = 'Total: $' + total.toFixed(2);
+                btn.disabled = false;
+            }
+            fetch('/api/cart/status').then(function(r) { return r.json(); }).then(render).catch(function() {
+                listEl.innerHTML = '<li class="empty">Could not load cart.</li>';
+            });
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                fetch('/api/cart/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            successEl.style.display = 'block';
+                            listEl.innerHTML = '<li class="empty">Cart is empty.</li>';
+                            totalEl.textContent = '';
+                        }
+                    })
+                    .catch(function() { btn.disabled = false; });
+            });
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// Editor: render-target for Cave getRenderTarget(path) — used by generic-editor entry to resolve container/tomeId.
+app.get('/api/editor/render-target', (req, res) => {
+  const requestPath = (req.query.path || req.query.p || '/editor').toString().replace(/^\.\/?|\/$/g, '') || 'editor';
+  const target = cave.getRenderTarget(requestPath);
+  res.json({ path: requestPath, ...target });
+});
+
+// Editor pages: SPA-style so /editor, /editor/library, /editor/cart, /editor/donation all serve the same shell; client uses getRenderTarget(path).
 app.get('/editor', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
+});
+app.get('/editor/library', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
+});
+app.get('/editor/cart', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
+});
+app.get('/editor/donation', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
 
@@ -704,6 +962,7 @@ server.listen(port, () => {
   logger.info(`🔧 Cart Integration Test: http://localhost:${port}/cart-integration-test`);
   logger.info(`🎯 Cart Demo: http://localhost:${port}/cart-demo`);
   logger.info(`🍔 Fish Burger Demo: http://localhost:${port}/fish-burger-demo`);
+  logger.info(`🛒 Cart (cooked burgers, payment-free checkout): http://localhost:${port}/cart`);
 });
 
 // Graceful shutdown

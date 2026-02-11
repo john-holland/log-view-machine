@@ -43,6 +43,9 @@ import {
   createTomeConfig,
   FishBurgerTomeConfig,
   EditorTomeConfig,
+  LibraryTomeConfig,
+  CartTomeConfig,
+  DonationTomeConfig,
   type TomeConfig,
   type TomeInstance
 } from '../index';
@@ -179,6 +182,21 @@ describe('log-view-machine Exports', () => {
     test('should export EditorTomeConfig', () => {
       expect(EditorTomeConfig).toBeDefined();
       expect(typeof EditorTomeConfig).toBe('object');
+    });
+
+    test('should export LibraryTomeConfig', () => {
+      expect(LibraryTomeConfig).toBeDefined();
+      expect(typeof LibraryTomeConfig).toBe('object');
+    });
+
+    test('should export CartTomeConfig', () => {
+      expect(CartTomeConfig).toBeDefined();
+      expect(typeof CartTomeConfig).toBe('object');
+    });
+
+    test('should export DonationTomeConfig', () => {
+      expect(DonationTomeConfig).toBeDefined();
+      expect(typeof DonationTomeConfig).toBe('object');
     });
 
     test('should export TomeConfig type', () => {

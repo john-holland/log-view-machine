@@ -119,6 +119,31 @@ node-example/
 - `GET /api/robotcopy/discover` - Discover registered machines
 - `POST /api/robotcopy/message` - Send RobotCopy message
 
+## Frontend Cave (Next.js) and Backend Cave (Express)
+
+This example can run as **two Cave builds** that talk to each other:
+
+- **Backend Cave (Express)**: The main server (`src/main-server.js`) uses `createCaveServer` and the **express-cave-adapter** to register the Cave and Tome (e.g. `FishBurgerTomeConfig`). Per-path Tome routes (e.g. `POST /api/fish-burger/cooking`, `POST /api/fish-burger/orders`) are registered automatically from the Tome config and forward messages to the correct state machines. The adapter exposes `getTomeManager()` so the server can also register generic `/api/tomes` and `/api/tomes/:tomeId/machines/:machineId/message` routes.
+
+- **Frontend Cave (Next.js)**: A Next.js app in **`frontend/`** acts as the frontend Cave build. It uses Cave and `getRenderTarget()` for routing and a fish-burger demo page that sends events via **same-origin** `/api/fish-burger/...`. Those requests are proxied to the backend by the **next-cave-adapter** (`createProxyHandler`), so the browser only talks to the Next app; the Next app forwards to the Express backend (e.g. `BACKEND_CAVE_URL=http://localhost:3000`).
+
+### How to run backend + frontend
+
+1. **Backend** (from `example/node-example`):
+   ```bash
+   npm install
+   npm run dev
+   ```
+   Server runs at http://localhost:3000 (or `PORT`). Exposes `/registry`, `/api/fish-burger/cooking`, `/api/fish-burger/orders`, `/api/tomes`, etc.
+
+2. **Frontend** (from `example/node-example/frontend`):
+   ```bash
+   npm install
+   export BACKEND_CAVE_URL=http://localhost:3000   # or set in .env.local
+   npm run dev
+   ```
+   Next.js runs at http://localhost:3001. Open http://localhost:3001/fish-burger-demo to use the Fish Burger demo; it will proxy Tome messages to the backend.
+
 ## Installation
 
 ```bash
@@ -337,11 +362,13 @@ Logs are written to:
 
 ## Docker Support
 
+The SaaS backend Cave Docker stack includes **dotCMS** for the generic editor (component/template storage). Backend and generic-editor services receive `DOTCMS_*` env and depend on the dotCMS service.
+
 ```bash
 # Build Docker image
 docker build -t log-view-machine-node .
 
-# Run with Docker Compose
+# Run with Docker Compose (includes dotCMS, postgres-dotcms, Cave backend, generic-editor)
 docker-compose up -d
 ```
 

@@ -1,5 +1,5 @@
 import { createViewStateMachine } from 'log-view-machine';
-import { createMachine, interpret } from 'xstate';
+import { createMachine, interpret, assign } from 'xstate';
 import { dbUtils } from '../database/setup.js';
 
 // Create state machines for the backend
@@ -476,6 +476,9 @@ export async function createStateMachines(db, robotCopy) {
     context: {
       order: [],
       progress: 0,
+      cookingTime: 0,
+      temperature: 0,
+      orderId: null,
       message: 'Ready to take your fish burger order!'
     },
     states: {
@@ -483,7 +486,7 @@ export async function createStateMachines(db, robotCopy) {
         on: {
           START_ORDER: 'ordering',
           VIEW_MENU: 'viewing_menu',
-          START_COOKING: 'cooking'
+          START_COOKING: { target: 'cooking', actions: assign({ orderId: (_, ev) => ev.orderId ?? null, cookingTime: 0, temperature: 0, progress: 0 }) }
         }
       },
       ordering: {
@@ -515,7 +518,14 @@ export async function createStateMachines(db, robotCopy) {
       },
       cooking: {
         on: {
-          UPDATE_PROGRESS: 'cooking',
+          UPDATE_PROGRESS: {
+            target: 'cooking',
+            actions: assign({
+              cookingTime: (_, ev) => ev.cookingTime ?? 0,
+              temperature: (_, ev) => ev.temperature ?? 0,
+              progress: (ctx, ev) => ev.progress ?? ctx.progress
+            })
+          },
           COOKING_COMPLETE: 'order_complete',
           COMPLETE_COOKING: 'order_complete',
           PAUSE_COOKING: 'paused',
@@ -534,6 +544,7 @@ export async function createStateMachines(db, robotCopy) {
       order_complete: {
         on: {
           NEW_ORDER: 'idle',
+          START_COOKING: { target: 'cooking', actions: assign({ orderId: (_, ev) => ev.orderId ?? null, cookingTime: 0, temperature: 0, progress: 0 }) },
           VIEW_ORDER: 'viewing_order',
           RESET: 'idle'
         }

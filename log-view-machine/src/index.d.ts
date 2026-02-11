@@ -5,7 +5,7 @@ export { RobotCopy, createRobotCopy, type RobotCopyConfig } from './core/Cave/to
 export { ClientGenerator, createClientGenerator, type ClientGeneratorConfig, type ClientGeneratorExample, type ClientGeneratorDiscovery } from './core/adapters/ClientGenerator';
 export { TomeManager } from './core/Cave/tome/TomeManager';
 export { createTome } from './core/Cave/tome/createTome';
-export { createTomeConfig, FishBurgerTomeConfig, EditorTomeConfig } from './core/Cave/tome/TomeConfig';
+export { createTomeConfig, FishBurgerTomeConfig, EditorTomeConfig, LibraryTomeConfig, CartTomeConfig, DonationTomeConfig } from './core/Cave/tome/TomeConfig';
 export type { TomeConfig, TomeInstance } from './core/Cave/tome/TomeConfig';
 export { StructuralSystem, createStructuralSystem, useStructuralSystem, type AppStructureConfig, type AppStructureNode, type ComponentTomeMapping, type RouteConfig, type NavigationItem, type RoutingConfig, type TomeDefinition } from './core/structural/StructuralSystem';
 export { StructuralRouter, Route, RouteFallback, useRouter, type RouterContextType } from './core/structural/StructuralRouter';

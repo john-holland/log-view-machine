@@ -55,7 +55,10 @@ export { createTome } from './core/Cave/tome/createTome';
 export {
   createTomeConfig,
   FishBurgerTomeConfig,
-  EditorTomeConfig
+  EditorTomeConfig,
+  LibraryTomeConfig,
+  CartTomeConfig,
+  DonationTomeConfig,
 } from './core/Cave/tome/TomeConfig';
 
 export type {

@@ -3,6 +3,9 @@ import express from 'express';
 import { dbUtils } from '../database/setup.js';
 
 // Setup REST routes
+// In-memory cart for demo: receives cooked burgers and supports payment-free checkout
+const cartStore = { items: [], nextId: 1 };
+
 export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, logger) {
   const router = express.Router();
 
@@ -76,17 +79,18 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
       // For XState machines, we need to get the current state before sending the event
       const previousState = machine.state?.value || 'unknown';
       
-      // Send the event to the machine (XState expects { type } for transitions)
-      const eventPayload = typeof event === 'string' ? { type: event } : event;
+      // Send the event to the machine (XState expects { type } for transitions); merge request data so UPDATE_PROGRESS gets cookingTime/temperature
+      const eventPayload = typeof event === 'string' ? { type: event } : { ...event };
       if (!eventPayload.type) {
         return res.status(400).json({ error: 'Event type is required' });
       }
+      const payloadWithData = { ...eventPayload, ...(data || {}) };
       // RESET: for idempotent "back to initial" semantics, restart the service when supported
       if (eventPayload.type === 'RESET' && typeof machine.stop === 'function' && typeof machine.start === 'function') {
         machine.stop();
         machine.start();
       } else {
-        machine.send(eventPayload);
+        machine.send(payloadWithData);
       }
       // Get the new state after the event (normalize to string for flat or compound states)
       let raw = machine.state?.value;
@@ -106,10 +110,12 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
         data
       );
 
+      // Include machine context in response so client can show cookingTime, temperature, orderId, etc.
+      const context = machine.state?.context ?? {};
       res.json({
         machineId: id,
         event,
-        data,
+        data: { ...context, ...(data || {}) },
         previousState,
         currentState,
         timestamp: new Date().toISOString()
@@ -501,24 +507,29 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
     try {
       const { item } = req.body;
       
-      if (!item || !item.id) {
+      if (!item || (item.id == null && item.name == null)) {
         return res.status(400).json({ 
           success: false, 
-          error: 'Item data is required' 
+          error: 'Item data is required (id or name)' 
         });
       }
 
-      logger.info('Adding item to cart', { item, timestamp: new Date().toISOString() });
+      const cartItem = {
+        id: item.id ?? `cart-${cartStore.nextId++}`,
+        name: item.name ?? 'Burger',
+        price: item.price ?? 9.99,
+        ...item,
+        addedAt: new Date().toISOString()
+      };
+      cartStore.items.push(cartItem);
+      logger.info('Adding item to cart', { item: cartItem, timestamp: new Date().toISOString() });
 
-      // Simulate cart addition
-      const result = {
+      res.json({
         success: true,
         message: 'Item added to cart',
-        item: item,
+        item: cartItem,
         timestamp: new Date().toISOString()
-      };
-
-      res.json(result);
+      });
     } catch (error) {
       logger.error('Failed to add item to cart', { error: error.message, stack: error.stack });
       res.status(500).json({ 
@@ -540,17 +551,16 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
         });
       }
 
-      logger.info('Removing item from cart', { itemId, timestamp: new Date().toISOString() });
+      const before = cartStore.items.length;
+      cartStore.items = cartStore.items.filter((i) => i.id !== itemId);
+      logger.info('Removing item from cart', { itemId, removed: before !== cartStore.items.length, timestamp: new Date().toISOString() });
 
-      // Simulate cart removal
-      const result = {
+      res.json({
         success: true,
         message: 'Item removed from cart',
-        itemId: itemId,
+        itemId,
         timestamp: new Date().toISOString()
-      };
-
-      res.json(result);
+      });
     } catch (error) {
       logger.error('Failed to remove item from cart', { error: error.message, stack: error.stack });
       res.status(500).json({ 
@@ -596,19 +606,16 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
 
   router.get('/cart/status', async (req, res) => {
     try {
-      logger.info('Getting cart status', { timestamp: new Date().toISOString() });
-
-      // Simulate cart status
+      const total = cartStore.items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
       const result = {
         success: true,
         cart: {
-          items: [],
-          total: 0,
-          status: 'empty'
+          items: [...cartStore.items],
+          total: Math.round(total * 100) / 100,
+          status: cartStore.items.length === 0 ? 'empty' : 'ready'
         },
         timestamp: new Date().toISOString()
       };
-
       res.json(result);
     } catch (error) {
       logger.error('Failed to get cart status', { error: error.message, stack: error.stack });
@@ -617,6 +624,24 @@ export function setupRoutes(app, db, stateMachines, proxyMachines, robotCopy, lo
         error: 'Failed to get cart status',
         details: error.message
       });
+    }
+  });
+
+  router.post('/cart/checkout', async (req, res) => {
+    try {
+      const count = cartStore.items.length;
+      const total = cartStore.items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+      cartStore.items = [];
+      logger.info('Cart checkout (payment-free)', { itemCount: count, total, timestamp: new Date().toISOString() });
+      res.json({
+        success: true,
+        message: 'Order complete. No payment required.',
+        order: { itemCount: count, total: Math.round(total * 100) / 100 },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error('Failed to checkout', { error: error.message, stack: error.stack });
+      res.status(500).json({ success: false, error: 'Failed to checkout', details: error.message });
     }
   });
 

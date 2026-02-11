@@ -5197,6 +5197,22 @@
             
             // Force resize all editors after a delay to ensure they're properly sized
     </script>
+
+    <!-- Cave getRenderTarget bootstrap: resolve current path to container/tomeId for generic-editor entry -->
+    <script>
+      (function() {
+        var path = window.location.pathname.replace(/^\/?|\/$/g, '') || 'editor';
+        window.__editorRenderTarget = { path: path, container: 'editor', tomeId: 'editor-tome' };
+        window.__editorRenderTargetPromise = fetch('/api/editor/render-target?path=' + encodeURIComponent(path))
+          .then(function(r) { return r.json(); })
+          .then(function(t) {
+            window.__editorRenderTarget = t;
+            window.dispatchEvent(new CustomEvent('editor-render-target-ready', { detail: t }));
+            return t;
+          })
+          .catch(function() { return window.__editorRenderTarget; });
+      })();
+    </script>
     
     <!-- External JavaScript Files -->
     <script type="module" src="/assets/js/core/editor-core.js"></script>

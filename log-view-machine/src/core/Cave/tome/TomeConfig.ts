@@ -357,3 +357,96 @@ export const EditorTomeConfig: TomeConfig = createTomeConfig({
     previewMode: 'iframe'
   }
 });
+
+/**
+ * Library TomeConfig - Component library state for the generic editor.
+ */
+export const LibraryTomeConfig: TomeConfig = createTomeConfig({
+  id: 'library-tome',
+  name: 'Component Library',
+  description: 'Component library state and discovery',
+  version: '1.0.0',
+  machines: {
+    libraryMachine: {
+      id: 'library-machine',
+      name: 'Library',
+      description: 'Library state',
+      xstateConfig: {
+        id: 'library-machine',
+        initial: 'idle',
+        states: {
+          idle: { on: { OPEN: 'browsing' } },
+          browsing: { on: { SELECT: 'idle', CLOSE: 'idle' } },
+        },
+      },
+    },
+  },
+  routing: {
+    basePath: '/api/editor/library',
+    routes: {
+      libraryMachine: { path: '/', method: 'POST' },
+    },
+  },
+});
+
+/**
+ * Cart TomeConfig - Cart state (e.g. cooked burgers, checkout) for the generic editor.
+ */
+export const CartTomeConfig: TomeConfig = createTomeConfig({
+  id: 'cart-tome',
+  name: 'Cart',
+  description: 'Cart state and checkout',
+  version: '1.0.0',
+  machines: {
+    cartMachine: {
+      id: 'cart-machine',
+      name: 'Cart',
+      description: 'Cart state',
+      xstateConfig: {
+        id: 'cart-machine',
+        initial: 'idle',
+        states: {
+          idle: { on: { ADD: 'active' } },
+          active: { on: { CHECKOUT: 'idle', CLEAR: 'idle' } },
+        },
+      },
+    },
+  },
+  routing: {
+    basePath: '/api/editor/cart',
+    routes: {
+      cartMachine: { path: '/', method: 'POST' },
+    },
+  },
+});
+
+/**
+ * Donation TomeConfig - Mod author / sticky-coins (Solana) state for the generic editor.
+ */
+export const DonationTomeConfig: TomeConfig = createTomeConfig({
+  id: 'donation-tome',
+  name: 'Donation',
+  description: 'Mod author donation and sticky coins',
+  version: '1.0.0',
+  machines: {
+    donationMachine: {
+      id: 'donation-machine',
+      name: 'Donation',
+      description: 'Donation / wallet state',
+      xstateConfig: {
+        id: 'donation-machine',
+        initial: 'idle',
+        states: {
+          idle: { on: { CONNECT_WALLET: 'connected' } },
+          connected: { on: { DONATE: 'idle', DISCONNECT: 'idle' } },
+        },
+      },
+    },
+  },
+  routing: {
+    basePath: '/api/editor/donation',
+    routes: {
+      donationMachine: { path: '/', method: 'POST' },
+    },
+  },
+});

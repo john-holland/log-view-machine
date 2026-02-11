@@ -38,6 +38,10 @@ Single source of truth for ecommerce setup, component architecture, Cave (new st
 - **Optional wan-os ROM builds**: Cave may optionally support [wan-os rom-registry](https://github.com/john-holland/farey_for_fun/tree/file-system/wan_os/rom-registry) for ROM build and registry (artifacts, versioning, distribution). Purely optional.
 - **Render contract**: Cave, Tome, and ViewStateMachine each have a `render()` that reduces view state for the whole Cave / Tome / ViewStateMachine.
 
+### Node-example: Frontend Cave (Next.js) and Backend Cave (Express)
+
+- The **node-example** can run as two Cave builds that talk to each other. **Backend**: Express app uses `createCaveServer` and **express-cave-adapter** to register Cave and Tomes; per-path Tome routes (e.g. `POST /api/fish-burger/cooking`) are registered from Tome config and forward to the correct state machines. **Frontend**: Next.js app in `example/node-example/frontend` uses Cave and `getRenderTarget()`; the **next-cave-adapter** provides `createProxyHandler()` so Next API routes proxy same-origin `/api/fish-burger/...` and `/api/registry` to the backend. The browser only talks to the Next app; the Next app forwards to the Express Cave backend. See node-example README for how to run backend and frontend together.
+
 ### Cave sync
 
 - **Tome sync** (today): ViewStateMachine can be bound to a Tome via `synchronizeWithTome(tomeConfig)`; `view()` then does not warn when the machine is used from a Tome context.
@@ -124,6 +128,7 @@ flowchart TB
 - **EditorWrapper (first-class option)**: **EditorWrapper** from wave-reader alignment is a first-class editor option in log-view-machine. It is a lightweight wrapper with ErrorBoundary, zero ace-editor dependency, and tree-shakeable. Use it alongside or instead of the SunEditor-based layout for the 3-panel tabbed editor. Export: `import { EditorWrapper } from 'log-view-machine'`. The generic editor supports it via `enableEditorWrapper` (config); when integrating with React, wrap the 3-panel layout in EditorWrapper.
 - **SASS mod architecture**: Modable app is installed by using log-view-machine as a **React framework library**; backend is an **installable modable backend** (TomeManager + Cave-aware routing). Mods are SASS-themed components with meta and optional sticky-coin/donation.
 - **Wave Reader SASS alignment**: SASS mechanisms are aligned with Wave Reader where they fit the plan. Adopted in log-view-machine: **view identity** variables and breakpoints (`_view-identity.scss`, `editor-wrapper.css`) matching SASSComponentIdentity (styleIdentity, responsiveBreakpoints). Use the same naming and structure so mods and EditorWrapper share one SASS contract. Left to wave-reader or app-specific: non-Cave routing, wave-reader-only runtime, and SASS that would conflict with existing SASSComponentIdentity; merge or extend rather than override.
+- **Modding metadata: replaceable-component permissions**: To avoid a mod doing a **complete override** of an application, each product (or Cave/app identity) has a **replaceable-components** allow-list (slot IDs or component IDs that mods are allowed to override). A mod can only supply replacements for those slots; any other slot remains the default or product-provided component. Enforced at **install time** and at **runtime** when resolving which component to render (SaaS and client both respect the allow-list). Schema shape: `modMetadata: { replaceableComponents?: string[] }` (per product); product config: `replaceableComponents: ['library', 'cart']` (example: only library and cart can be replaced by mods).
 - **Next steps**: Formalize 3-panel + tabs; add Mod file viewer panel; wire editor to Cave/Tome once Cave exists.
 - **Fish Burger Demo (refit)**: The fish burger demo uses **editor components** and **generic components** in both examples. **ts-example**: The tracing route (`/tracing`) wraps `FishBurgerWithTracing` in **EditorWrapper** from log-view-machine (title, description, componentId `fish-burger-demo`, router); the app imports `editor-wrapper.css` (or view-identity) so the chrome is styled; the component uses top-level class names `demo-container`, `demo-header`, `demo-content` for consistency with the generic-editor demo template. **node-example**: The `/fish-burger-demo` route serves the generic-editor **demo-template.html**, which is wrapped in **editor chrome** (`.editor-wrapper`, `data-component-id="fish-burger-demo"`, `.editor-wrapper-header`, `.editor-wrapper-content`, `.editor-wrapper-footer`) and links to shared **editor-wrapper.css** (a copy lives in `generic-editor/assets/css/core/`; canonical source is `log-view-machine/src/styles/editor-wrapper.css`). The page uses the generic-editor **generic components** (cart-component, fish-burger-demo component) via existing script/style links (main.js, demo-styles.css). Both demos thus share the same editor chrome and view-identity contract.
 
@@ -132,7 +137,12 @@ flowchart TB
 ## 2.8 Crypto / Donation / Sticky Coins (Future)
 
 - **Idea**: Crypto investment pooling based on user accrual; donation flow; "sticky coins" that last at least a week or two on mod install (e.g. visibility or rewards for mod author).
-- Document as **future capability**; plug-in points: mod metadata, backend wallet/accrual service, install lifecycle. No implementation in this doc.
+- **Persistence**: User-based app settings and sticky-coins are persisted via **duckdb-cavedb-adapter** (DuckDB-backed, arbitrary JSON put/get, find/findOne; per-Tome). See node-example `/api/editor/store/:tomeId/:key` and the adapter package.
+- Document as **future capability**; plug-in points: mod metadata, backend wallet/accrual service, install lifecycle.
+
+### SaaS contract for wave-reader and other products
+
+- The **modding + generic editor SaaS** exposes a stable contract: **GET /registry**, per-path Tome routes (e.g. `/api/editor/*`, `/api/fish-burger/*`), optional mod endpoints. **Product/cave identity** can be passed so mods and editor state are scoped per product. Wave-reader (when refactored to Caves) and other products can **land on this SaaS** by pointing at the same registry and APIs; document **replaceable-components** and **SASS/view-identity** (log-view-machine as canonical) so wave-reader alignment is a config and style sync, not a fork.
 
 ---
 

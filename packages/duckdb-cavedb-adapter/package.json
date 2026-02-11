@@ -1,0 +1,19 @@
+{
+  "name": "duckdb-cavedb-adapter",
+  "version": "1.0.0",
+  "description": "DuckDB-backed Cave DB adapter for Tome-specific persistence; arbitrary JSON put/get, find/findOne; RxDB-style API",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

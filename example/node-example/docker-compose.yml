@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Node.js Backend
+  # Node.js Backend (SaaS Cave backend)
   fish-burger-node-backend:
     build: .
     ports:
@@ -14,6 +14,10 @@ services:
       - LOG_LEVEL=info
       - LOG_DIR=/app/logs
       - LOG_WAREHOUSE_DIR=/app/log-warehouse
+      - DOTCMS_URL=http://dotcms:8080
+      - DOTCMS_API_KEY=demo-key
+      - DOTCMS_ADMIN_USER=admin@dotcms.com
+      - DOTCMS_ADMIN_PASSWORD=admin
     volumes:
       - ./logs:/app/logs
       - ./log-warehouse:/app/log-warehouse
@@ -21,6 +25,7 @@ services:
     depends_on:
       - otel-collector
       - unleash
+      - dotcms
     networks:
       - fish-burger-network
 
@@ -45,11 +50,42 @@ services:
     networks:
       - fish-burger-network
 
-  # Kotlin Backend (placeholder)
+  # dotCMS (SaaS backend Cave: component/template storage for generic editor)
+  dotcms:
+    image: dotcms/dotcms:latest
+    container_name: dotcms-saas
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_BASE_URL=jdbc:postgresql://postgres-dotcms:5432/dotcms
+      - DOTCMS_DB_URL=jdbc:postgresql://postgres-dotcms:5432/dotcms
+      - DOTCMS_DB_USERNAME=dotcms
+      - DOTCMS_DB_PASSWORD=dotcms
+      - DOTCMS_DB_HBM2DDL_AUTO=update
+    volumes:
+      - dotcms_data:/opt/dotcms
+    depends_on:
+      - postgres-dotcms
+    networks:
+      - fish-burger-network
+
+  postgres-dotcms:
+    image: postgres:13
+    container_name: postgres-dotcms
+    environment:
+      - POSTGRES_DB=dotcms
+      - POSTGRES_USER=dotcms
+      - POSTGRES_PASSWORD=dotcms
+    volumes:
+      - postgres_dotcms_data:/var/lib/postgresql/data
+    networks:
+      - fish-burger-network
+
+  # Kotlin Backend (placeholder; port 8082 to avoid conflict with dotCMS on 8080)
   fish-burger-kotlin-backend:
     image: openjdk:17-jdk-slim
     ports:
-      - "8080:8080"
+      - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=development
       - OTEL_EXPORTER_OTLP_ENDPYPOINT=http://otel-collector:4318/v1/traces
@@ -62,7 +98,7 @@ services:
     networks:
       - fish-burger-network
 
-  # Generic Editor Server
+  # Generic Editor Server (uses dotCMS when running in Docker)
   generic-editor:
     build: .
     ports:
@@ -72,11 +108,17 @@ services:
       - LOG_LEVEL=info
       - LOG_DIR=/app/logs
       - LOG_WAREHOUSE_DIR=/app/log-warehouse
+      - DOTCMS_URL=http://dotcms:8080
+      - DOTCMS_API_KEY=demo-key
+      - DOTCMS_ADMIN_USER=admin@dotcms.com
+      - DOTCMS_ADMIN_PASSWORD=admin
     volumes:
       - ./logs:/app/logs
       - ./log-warehouse:/app/log-warehouse
       - ./src:/app/src
     command: ["node", "src/component-middleware/generic-editor/server.js"]
+    depends_on:
+      - dotcms
     networks:
       - fish-burger-network
 
@@ -196,6 +238,8 @@ services:
 
 volumes:
   postgres_data:
+  postgres_dotcms_data:
+  dotcms_data:
   log_rotation:
 
 networks:

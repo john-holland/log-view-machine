@@ -4,11 +4,8 @@
  */
 
 import express, { type Application, type Request, type Response } from 'express';
-import { TomeManager, parseToken, validateToken, createCircuitBreaker, createThrottlePolicy } from 'log-view-machine';
-import type { CaveServerAdapter, CaveServerContext } from 'log-view-machine';
-import type { NormalizedRequest, NormalizedResponse } from 'log-view-machine';
-import type { CircuitBreaker } from 'log-view-machine';
-import type { ThrottlePolicy } from 'log-view-machine';
+import { TomeManager } from 'log-view-machine';
+import type { CaveServerAdapter, CaveServerContext, NormalizedRequest, NormalizedResponse } from 'log-view-machine';
 
 export interface CorsOptions {
   origin?: string | string[] | RegExp;
@@ -90,7 +87,7 @@ function sendNormalizedResponse(res: Response, nr: NormalizedResponse): void {
   }
 }
 
-export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): CaveServerAdapter & { getApp(): Application } {
+export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): CaveServerAdapter & { getApp(): Application; getTomeManager(): TomeManager | null } {
   const app: Application = options.app ?? express();
   if (!options.app) {
     app.use(express.json());
@@ -98,9 +95,12 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
   const registryPath = options.registryPath ?? '/registry';
   let tomeManager: TomeManager | null = null;
 
-  const adapter: CaveServerAdapter & { getApp(): Application } = {
+  const adapter: CaveServerAdapter & { getApp(): Application; getTomeManager(): TomeManager | null } = {
     getApp() {
       return app;
+    },
+    getTomeManager() {
+      return tomeManager;
     },
 
     registerRoute(method: string, path: string, handler: (req: NormalizedRequest) => Promise<NormalizedResponse> | NormalizedResponse) {
@@ -162,55 +162,69 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
         const headerName = security.messageToken.header ?? 'X-Cave-Message-Token';
         const secret = typeof process !== 'undefined' && process.env?.[secretEnv];
         if (secret) {
-          app.use((req: Request, res: Response, next: (err?: any) => void) => {
-            const method = (req.method ?? 'GET').toUpperCase();
-            if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return next();
-            const rawHeader = req.get(headerName);
-            const bodyToken = req.body?._messageToken;
-            const token = rawHeader
-              ? parseToken(rawHeader)
-              : bodyToken != null
-                ? (typeof bodyToken === 'string' ? parseToken(bodyToken) : bodyToken)
-                : null;
-            if (!token || !token.salt || !token.hash) {
-              return res.status(403).json({ error: 'Message token required' });
+          const lvm = await import('log-view-machine') as Record<string, unknown>;
+          const parseToken = lvm.parseToken as (s: string) => unknown;
+          const validateToken = lvm.validateToken as (opts: unknown) => boolean;
+          if (typeof parseToken === 'function' && typeof validateToken === 'function') {
+            app.use((req: Request, res: Response, next: (err?: any) => void) => {
+              const method = (req.method ?? 'GET').toUpperCase();
+              if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return next();
+              const rawHeader = req.get(headerName);
+              const headerStr = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+              const bodyToken = req.body?._messageToken;
+              const token = headerStr
+                ? parseToken(headerStr)
+                : bodyToken != null
+                  ? (typeof bodyToken === 'string' ? parseToken(bodyToken) : bodyToken)
+                  : null;
+              if (!token || !token.salt || !token.hash) {
+                return res.status(403).json({ error: 'Message token required' });
+              }
+              const channelId = req.path ?? '';
+              const payloadSummary = (req.body?.action ?? req.body?.messageId ?? '').toString();
+              const valid = validateToken({ token, channelId, payloadSummary, secret, checkExpiry: true });
+              if (!valid) return res.status(403).json({ error: 'Invalid message token' });
+              next();
+            });
+          }
+        }
+      }
+
+      let adapterCircuit: { allowRequest(): boolean; recordSuccess(): void; recordFailure(): void } | null = null;
+      let adapterThrottle: { isOverLimit(): boolean; record(bytesIn: number, bytesOut: number): void } | null = null;
+      if (opts.throttle && resourceMonitor) {
+        const lvm = await import('log-view-machine') as Record<string, unknown>;
+        const createThrottlePolicy = lvm.createThrottlePolicy as (opts: unknown) => { isOverLimit(): boolean; record(a: number, b: number): void };
+        if (typeof createThrottlePolicy === 'function') {
+          adapterThrottle = createThrottlePolicy({ config: opts.throttle, monitor: resourceMonitor });
+          app.use((_req: Request, res: Response, next: () => void) => {
+            if (adapterThrottle!.isOverLimit()) {
+              res.setHeader('Retry-After', '60');
+              res.status(429).json({ error: 'Too many requests', retryAfter: 60 });
+              return;
             }
-            const channelId = req.path ?? '';
-            const payloadSummary = (req.body?.action ?? req.body?.messageId ?? '').toString();
-            const valid = validateToken({ token, channelId, payloadSummary, secret, checkExpiry: true });
-            if (!valid) return res.status(403).json({ error: 'Invalid message token' });
             next();
           });
         }
       }
-
-      let adapterCircuit: CircuitBreaker | null = null;
-      let adapterThrottle: ThrottlePolicy | null = null;
-      if (opts.throttle && resourceMonitor) {
-        adapterThrottle = createThrottlePolicy({ config: opts.throttle, monitor: resourceMonitor });
-        app.use((_req: Request, res: Response, next: () => void) => {
-          if (adapterThrottle!.isOverLimit()) {
-            res.setHeader('Retry-After', '60');
-            res.status(429).json({ error: 'Too many requests', retryAfter: 60 });
-            return;
-          }
-          next();
-        });
-      }
       if (opts.circuitBreaker && resourceMonitor) {
-        adapterCircuit = createCircuitBreaker({
-          name: opts.circuitBreaker.name ?? 'express',
-          threshold: opts.circuitBreaker.threshold,
-          resetMs: opts.circuitBreaker.resetMs,
-          monitor: resourceMonitor,
-        });
-        app.use((_req: Request, res: Response, next: () => void) => {
-          if (!adapterCircuit!.allowRequest()) {
-            res.status(503).json({ error: 'Service unavailable', circuitOpen: true });
-            return;
-          }
-          next();
-        });
+        const lvm = await import('log-view-machine') as Record<string, unknown>;
+        const createCircuitBreaker = lvm.createCircuitBreaker as (opts?: unknown) => { allowRequest(): boolean; recordSuccess(): void; recordFailure(): void };
+        if (typeof createCircuitBreaker === 'function') {
+          adapterCircuit = createCircuitBreaker({
+            name: opts.circuitBreaker.name ?? 'express',
+            threshold: opts.circuitBreaker.threshold,
+            resetMs: opts.circuitBreaker.resetMs,
+            monitor: resourceMonitor,
+          });
+          app.use((_req: Request, res: Response, next: () => void) => {
+            if (!adapterCircuit!.allowRequest()) {
+              res.status(503).json({ error: 'Service unavailable', circuitOpen: true });
+              return;
+            }
+            next();
+          });
+        }
       }
       if (resourceMonitor) {
         app.use((req: Request, res: Response, next: () => void) => {
