@@ -1,0 +1,16 @@
+{
+  "name": "fish-burger-mod",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Example mod demonstrating fish burger state machine with shopping cart functionality",
+  "private": true,
+  "keywords": [
+    "mod",
+    "fish-burger",
+    "cart",
+    "state-machine",
+    "example"
+  ],
+  "author": "Mod Framework Team",
+  "license": "MIT"
+}

@@ -469,107 +469,10 @@ export async function createStateMachines(db, robotCopy) {
     ]
   });
 
-  // Fish Burger State Machine
-  const fishBurgerMachine = createMachine({
-    id: 'fish-burger',
-    initial: 'idle',
-    context: {
-      order: [],
-      progress: 0,
-      cookingTime: 0,
-      temperature: 0,
-      orderId: null,
-      message: 'Ready to take your fish burger order!'
-    },
-    states: {
-      idle: {
-        on: {
-          START_ORDER: 'ordering',
-          VIEW_MENU: 'viewing_menu',
-          START_COOKING: { target: 'cooking', actions: assign({ orderId: (_, ev) => ev.orderId ?? null, cookingTime: 0, temperature: 0, progress: 0 }) }
-        }
-      },
-      ordering: {
-        on: {
-          ADD_INGREDIENT: 'adding_ingredient',
-          REMOVE_INGREDIENT: 'removing_ingredient',
-          COMPLETE_ORDER: 'order_complete',
-          CANCEL_ORDER: 'idle',
-          START_COOKING: 'cooking'
-        }
-      },
-      adding_ingredient: {
-        on: {
-          INGREDIENT_ADDED: 'ordering',
-          ERROR: 'ordering'
-        }
-      },
-      removing_ingredient: {
-        on: {
-          INGREDIENT_REMOVED: 'ordering',
-          ERROR: 'ordering'
-        }
-      },
-      viewing_menu: {
-        on: {
-          BACK_TO_ORDER: 'ordering',
-          CLOSE_MENU: 'idle'
-        }
-      },
-      cooking: {
-        on: {
-          UPDATE_PROGRESS: {
-            target: 'cooking',
-            actions: assign({
-              cookingTime: (_, ev) => ev.cookingTime ?? 0,
-              temperature: (_, ev) => ev.temperature ?? 0,
-              progress: (ctx, ev) => ev.progress ?? ctx.progress
-            })
-          },
-          COOKING_COMPLETE: 'order_complete',
-          COMPLETE_COOKING: 'order_complete',
-          PAUSE_COOKING: 'paused',
-          ERROR: 'cooking',
-          RETRY: 'cooking',
-          RESET: 'idle'
-        }
-      },
-      paused: {
-        on: {
-          RESUME_COOKING: 'cooking',
-          CANCEL_COOKING: 'idle',
-          RESET: 'idle'
-        }
-      },
-      order_complete: {
-        on: {
-          NEW_ORDER: 'idle',
-          START_COOKING: { target: 'cooking', actions: assign({ orderId: (_, ev) => ev.orderId ?? null, cookingTime: 0, temperature: 0, progress: 0 }) },
-          VIEW_ORDER: 'viewing_order',
-          RESET: 'idle'
-        }
-      },
-      viewing_order: {
-        on: {
-          NEW_ORDER: 'idle',
-          BACK_TO_ORDERING: 'ordering'
-        }
-      }
-    }
-  });
-
-  // Create an interpreted service for the fish burger machine
-  const fishBurgerService = interpret(fishBurgerMachine)
-    .onTransition((state) => {
-      console.log(`Fish Burger State: ${state.value}`, state.context);
-    })
-    .start();
-
   // Store machines in Map
   stateMachines.set('user-management', userManagementMachine);
   stateMachines.set('api-key-management', apiKeyManagementMachine);
   stateMachines.set('system-health', systemHealthMachine);
-  stateMachines.set('fish-burger', fishBurgerService);
 
   // Initialize state machines in database
   await initializeStateMachinesInDatabase(db);

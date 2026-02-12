@@ -208,11 +208,6 @@ const nodeExampleSpelunk = {
           container: 'library',
           tomeId: 'library-tome',
         },
-        cart: {
-          route: '/editor/cart',
-          container: 'cart',
-          tomeId: 'cart-tome',
-        },
         donation: {
           route: '/editor/donation',
           container: 'donation',
@@ -229,12 +224,6 @@ const LibraryTomeConfig = createTomeConfig({
   machines: { libraryMachine: { id: 'library-machine', name: 'Library', xstateConfig: { id: 'library-machine', initial: 'idle', states: { idle: { on: { OPEN: 'browsing' } }, browsing: { on: { SELECT: 'idle', CLOSE: 'idle' } } } } } },
   routing: { basePath: '/api/editor/library', routes: { libraryMachine: { path: '/', method: 'POST' } } },
 });
-const CartTomeConfig = createTomeConfig({
-  id: 'cart-tome',
-  name: 'Cart',
-  machines: { cartMachine: { id: 'cart-machine', name: 'Cart', xstateConfig: { id: 'cart-machine', initial: 'idle', states: { idle: { on: { ADD: 'active' } }, active: { on: { CHECKOUT: 'idle', CLEAR: 'idle' } } } } } },
-  routing: { basePath: '/api/editor/cart', routes: { cartMachine: { path: '/', method: 'POST' } } },
-});
 const DonationTomeConfig = createTomeConfig({
   id: 'donation-tome',
   name: 'Donation',
@@ -246,7 +235,6 @@ const tomeConfigsList = [
   FishBurgerTomeConfig,
   EditorTomeConfig,
   LibraryTomeConfig,
-  CartTomeConfig,
   DonationTomeConfig,
 ];
 
@@ -276,7 +264,7 @@ await createCaveServer({
 });
 const tomeManager = caveAdapter.getTomeManager();
 if (tomeManager) {
-  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'cart-tome', 'donation-tome']) {
+  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'donation-tome']) {
     const tome = tomeManager.getTome(tomeId);
     if (tome && typeof tome.synchronizeWithCave === 'function') {
       tome.synchronizeWithCave(cave);
@@ -649,6 +637,25 @@ app.get('/', (req, res) => {
                 margin-top: 0;
                 color: #ffd700;
             }
+            .feature-mod {
+                border: 2px solid #ffd700;
+                background: rgba(255, 215, 0, 0.1);
+            }
+            .feature-button {
+                background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin-top: 10px;
+            }
+            .feature-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            }
         </style>
     </head>
     <body>
@@ -663,12 +670,6 @@ app.get('/', (req, res) => {
             </div>
             
             <div class="content">
-                <div class="fish-burger-demo">
-                    <h2>🍔 Fish Burger State Machine Demo</h2>
-                    <p>Experience the power of XState with our interactive fish burger ordering system.</p>
-                    <button class="demo-button" onclick="startFishBurgerDemo()">Start Fish Burger Demo</button>
-                </div>
-                
                 <div class="features">
                     <div class="feature">
                         <h3>🎯 State Management</h3>
@@ -686,19 +687,112 @@ app.get('/', (req, res) => {
                         <h3>🚀 TeleportHQ Integration</h3>
                         <p>Seamless integration with TeleportHQ for component generation and management.</p>
                     </div>
+                    <div class="feature feature-mod" data-mod-id="fish-burger-mod">
+                        <h3>🛒 Fish Burger Cart</h3>
+                        <p>Interactive shopping cart with fish burger state machine. Demonstrates mod system replacing hardcoded features.</p>
+                        <button class="feature-button" onclick="loadFishBurgerMod()">Try Fish Burger Cart</button>
+                    </div>
                 </div>
             </div>
         </div>
         
         <script>
-            function startFishBurgerDemo() {
-                // Redirect to the fish burger demo
-                window.location.href = '/fish-burger-demo';
+            async function loadFishBurgerMod() {
+                try {
+                    // Fetch mod configuration
+                    const modResponse = await fetch('/api/mods/fish-burger-mod');
+                    if (!modResponse.ok) {
+                        throw new Error('Failed to load mod configuration');
+                    }
+                    const modConfig = await modResponse.json();
+                    
+                    // Load mod assets
+                    const templateResponse = await fetch(modConfig.assets.templates + 'fish-burger-demo/templates/demo-template.html');
+                    const template = await templateResponse.text();
+                    
+                    // Create mod container
+                    const modContainer = document.createElement('div');
+                    modContainer.id = 'fish-burger-mod-container';
+                    modContainer.innerHTML = template;
+                    modContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; overflow-y: auto;';
+                    
+                    // Add close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.textContent = '✕ Close';
+                    closeBtn.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10001; padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;';
+                    closeBtn.onclick = () => {
+                        document.body.removeChild(modContainer);
+                        document.body.removeChild(closeBtn);
+                    };
+                    
+                    document.body.appendChild(modContainer);
+                    document.body.appendChild(closeBtn);
+                    
+                    // Load mod scripts
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.src = modConfig.serverUrl + '/assets/js/fish-burger-demo/main.js';
+                    modContainer.appendChild(script);
+                    
+                    // Load mod styles
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = modConfig.serverUrl + '/assets/css/fish-burger-demo/demo-styles.css';
+                    document.head.appendChild(link);
+                    
+                } catch (error) {
+                    console.error('Error loading fish burger mod:', error);
+                    alert('Failed to load Fish Burger Cart mod. Please check the console for details.');
+                }
             }
         </script>
     </body>
     </html>
   `);
+});
+
+// Mod API endpoints
+app.get('/api/mods', (req, res) => {
+  res.json({
+    mods: [
+      {
+        id: 'fish-burger-mod',
+        name: 'Fish Burger Cart',
+        description: 'Interactive shopping cart with fish burger state machine',
+        version: '1.0.0',
+        serverUrl: process.env.FISH_BURGER_SERVER_URL || 'http://localhost:3004',
+        assets: {
+          templates: '/mods/fish-burger/templates/',
+          styles: '/mods/fish-burger/styles/',
+          scripts: '/mods/fish-burger/scripts/'
+        }
+      }
+    ]
+  });
+});
+
+app.get('/api/mods/:modId', (req, res) => {
+  const { modId } = req.params;
+  if (modId === 'fish-burger-mod') {
+    res.json({
+      id: 'fish-burger-mod',
+      name: 'Fish Burger Cart',
+      description: 'Interactive shopping cart with fish burger state machine. Demonstrates mod system replacing hardcoded features.',
+      version: '1.0.0',
+      serverUrl: process.env.FISH_BURGER_SERVER_URL || 'http://localhost:3004',
+      assets: {
+        templates: '/mods/fish-burger/templates/',
+        styles: '/mods/fish-burger/styles/',
+        scripts: '/mods/fish-burger/scripts/'
+      },
+      entryPoints: {
+        cart: '/mods/fish-burger/cart',
+        demo: '/mods/fish-burger/demo'
+      }
+    });
+  } else {
+    res.status(404).json({ error: 'Mod not found' });
+  }
 });
 
 // Fish Burger Demo Page
@@ -1240,10 +1334,17 @@ app.get('/editor', (req, res) => {
 app.get('/editor/library', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
-app.get('/editor/cart', (req, res) => {
+app.get('/editor/donation', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
-app.get('/editor/donation', (req, res) => {
+
+app.get('/editor/redeem', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/redeem-tome-widget.html'));
+});
+app.get('/editor/signup', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
+});
+app.get('/editor/activate', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
 

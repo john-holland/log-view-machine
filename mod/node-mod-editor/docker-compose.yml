@@ -29,7 +29,7 @@ services:
       - unleash
       - dotcms
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Tome Server (SSR)
   tome-server:
@@ -50,7 +50,7 @@ services:
     depends_on:
       - otel-collector
     networks:
-      - fish-burger-network
+      - mod-network
 
   # dotCMS (SaaS backend Cave: component/template storage for generic editor)
   dotcms:
@@ -69,7 +69,7 @@ services:
     depends_on:
       - postgres-dotcms
     networks:
-      - fish-burger-network
+      - mod-network
 
   postgres-dotcms:
     image: postgres:13
@@ -81,7 +81,7 @@ services:
     volumes:
       - postgres_dotcms_data:/var/lib/postgresql/data
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Kotlin Mod Index Backend (port 8082)
   kotlin-mod-index:
@@ -99,7 +99,7 @@ services:
     volumes:
       - kotlin_mod_index_data:/app/data
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Java Mod Ecommerce Backend (port 8083)
   java-mod-ecommerce:
@@ -117,7 +117,7 @@ services:
     volumes:
       - java_mod_ecommerce_data:/app/data
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Generic Editor Server (uses dotCMS when running in Docker)
   generic-editor:
@@ -141,7 +141,7 @@ services:
     depends_on:
       - dotcms
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Log Management Service
   log-manager:
@@ -161,7 +161,7 @@ services:
         done
       "
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Log Aggregator (Fluentd)
   fluentd:
@@ -174,7 +174,7 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
     networks:
-      - fish-burger-network
+      - mod-network
 
   # OpenTelemetry Collector
   otel-collector:
@@ -188,7 +188,7 @@ services:
       - ./logs:/logs
     command: ["--config", "/etc/otel-collector-config.yaml"]
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Unleash Feature Toggle
   unleash:
@@ -206,7 +206,7 @@ services:
       - postgres
       - redis
     networks:
-      - fish-burger-network
+      - mod-network
 
   # PostgreSQL for Unleash
   postgres:
@@ -218,13 +218,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Redis for Unleash
   redis:
     image: redis:7-alpine
     networks:
-      - fish-burger-network
+      - mod-network
 
   # DataDog Agent
   datadog-agent:
@@ -243,7 +243,7 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./logs:/logs
     networks:
-      - fish-burger-network
+      - mod-network
 
   # Jaeger for local tracing
   jaeger:
@@ -255,7 +255,7 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     networks:
-      - fish-burger-network
+      - mod-network
 
 volumes:
   postgres_data:
@@ -264,9 +264,7 @@ volumes:
   log_rotation:
   kotlin_mod_index_data:
   java_mod_ecommerce_data:
-  kotlin_mod_index_data:
-  java_mod_ecommerce_data:
 
 networks:
-  fish-burger-network:
+  mod-network:
     driver: bridge 

@@ -1,0 +1,17 @@
+{
+  "id": "fish-burger-mod",
+  "name": "Fish Burger Cart",
+  "description": "Example mod demonstrating fish burger state machine with shopping cart functionality",
+  "version": "1.0.0",
+  "entryPoints": {
+    "cart": "/mods/fish-burger/cart",
+    "demo": "/mods/fish-burger/demo"
+  },
+  "serverUrl": "http://localhost:3004",
+  "assets": {
+    "templates": "assets/templates/",
+    "styles": "assets/styles/",
+    "scripts": "assets/scripts/"
+  },
+  "features": ["cart", "state-machine", "checkout"]
+}

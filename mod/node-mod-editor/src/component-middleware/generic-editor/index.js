@@ -18,7 +18,6 @@ export class GenericEditorConfig {
     this.persistenceConfig = options.persistenceConfig || {};
     /** 'local' = LocalPersistenceManager (file-based); 'cave-store' = CaveStorePersistenceManager (store API per Tome). */
     this.persistenceBackend = options.persistenceBackend || 'local';
-    this.enableFishBurgerIntegration = options.enableFishBurgerIntegration !== false;
     /** When true, use EditorWrapper from log-view-machine as the editor UI wrapper (3-panel tabbed layout). For React integration. */
     this.enableEditorWrapper = options.enableEditorWrapper !== false;
   }
@@ -174,115 +173,6 @@ export class SASSComponentIdentity {
 }
 
 /**
- * Fish Burger Integration Component
- */
-export class FishBurgerComponent {
-  constructor(data = {}) {
-    this.id = data.id || 'fish-burger-component';
-    this.name = data.name || 'Fish Burger Component';
-    this.description = data.description || 'Interactive fish burger ordering component';
-    this.type = data.type || 'fish-burger';
-    this.semanticVersions = data.semanticVersions || ['1.0.0'];
-    this.template = data.template || `
-      <div class="fish-burger-component" data-component-id="{{componentId}}">
-        <div class="burger-builder">
-          <h3>Build Your Fish Burger</h3>
-          <div class="ingredients">
-            <div class="ingredient" data-ingredient="bun">Bun</div>
-            <div class="ingredient" data-ingredient="fish">Fish Patty</div>
-            <div class="ingredient" data-ingredient="lettuce">Lettuce</div>
-            <div class="ingredient" data-ingredient="tomato">Tomato</div>
-            <div class="ingredient" data-ingredient="cheese">Cheese</div>
-          </div>
-          <div class="burger-preview">
-            <div class="burger-stack"></div>
-          </div>
-          <button class="order-btn">Order Now</button>
-        </div>
-      </div>
-    `;
-    this.styles = data.styles || `
-      .fish-burger-component {
-        padding: 20px;
-        border: 2px solid #007bff;
-        border-radius: 8px;
-        background: #f8f9fa;
-      }
-      .burger-builder {
-        text-align: center;
-      }
-      .ingredients {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin: 20px 0;
-      }
-      .ingredient {
-        padding: 8px 16px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-        background: white;
-      }
-      .ingredient:hover {
-        background: #e9ecef;
-      }
-      .burger-preview {
-        margin: 20px 0;
-        min-height: 100px;
-        border: 1px dashed #ccc;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .order-btn {
-        padding: 10px 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .order-btn:hover {
-        background: #0056b3;
-      }
-    `;
-    this.stateMachine = data.stateMachine || {
-      id: 'fish-burger-state',
-      name: 'Fish Burger State Machine',
-      config: {
-        id: 'fishBurgerState',
-        initial: 'idle',
-        states: {
-          idle: {
-            on: { START_BUILDING: 'building' }
-          },
-          building: {
-            on: { ADD_INGREDIENT: 'building', COMPLETE_BUILD: 'ready' }
-          },
-          ready: {
-            on: { ORDER: 'ordering', MODIFY: 'building' }
-          },
-          ordering: {
-            on: { CONFIRM: 'confirmed', CANCEL: 'ready' }
-          },
-          confirmed: {
-            on: { RESET: 'idle' }
-          }
-        }
-      }
-    };
-    this.metadata = data.metadata || {
-      author: 'Fish Burger Team',
-      created: new Date().toISOString(),
-      tags: ['food', 'interactive', 'burger'],
-      isFishBurger: true
-    };
-    this.status = data.status || 'published';
-  }
-}
-
-/**
  * Generic Editor
  */
 export class GenericEditor {
@@ -297,7 +187,6 @@ export class GenericEditor {
     this.reactDnD = null;
     this.sassCompiler = null;
     this.persistence = null;
-    this.fishBurgerIntegration = null;
     this.eventListeners = new Map();
   }
 
@@ -344,10 +233,6 @@ export class GenericEditor {
         await this.initializeSASSIdentityManagement();
       }
 
-      // Initialize Fish Burger Integration
-      if (this.config.enableFishBurgerIntegration) {
-        await this.initializeFishBurgerIntegration();
-      }
 
       // Load default components
       await this.loadDefaultComponents();
@@ -437,41 +322,6 @@ export class GenericEditor {
     console.log('  ✅ SASS Identity Management initialized');
   }
 
-  /**
-   * Initialize Fish Burger Integration
-   */
-  async initializeFishBurgerIntegration() {
-    console.log('  🐟 Initializing Fish Burger Integration...');
-    
-    // Create fish burger component
-    const fishBurgerComponent = new FishBurgerComponent();
-    this.components.set(fishBurgerComponent.id, fishBurgerComponent);
-    
-    // Create fish burger SASS identity
-    const fishBurgerSASS = new SASSComponentIdentity({
-      id: 'fish-burger-sass',
-      name: 'Fish Burger SASS Identity',
-      componentType: 'fish-burger',
-      sassVariables: {
-        'fish-burger-primary': '#007bff',
-        'fish-burger-secondary': '#6c757d',
-        'fish-burger-success': '#28a745'
-      },
-      sassMixins: [
-        '@mixin fish-burger-button { padding: 10px 20px; border-radius: 4px; cursor: pointer; }',
-        '@mixin fish-burger-ingredient { padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; }'
-      ]
-    });
-    this.sassIdentities.set(fishBurgerSASS.id, fishBurgerSASS);
-    
-    this.fishBurgerIntegration = {
-      component: fishBurgerComponent,
-      sassIdentity: fishBurgerSASS,
-      isEnabled: () => true
-    };
-    
-    console.log('  ✅ Fish Burger Integration initialized');
-  }
 
   /**
    * Load default components
@@ -678,7 +528,6 @@ export class GenericEditor {
       reactDnD: this.reactDnD ? 'enabled' : 'disabled',
       sassCompiler: this.sassCompiler ? 'enabled' : 'disabled',
       persistence: this.persistence ? 'enabled' : 'disabled',
-      fishBurgerIntegration: this.fishBurgerIntegration ? 'enabled' : 'disabled'
     };
   }
 
