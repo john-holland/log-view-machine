@@ -1,0 +1,8 @@
+{
+  "name": "dotcms-startup-adapter",
+  "version": "1.0.0",
+  "description": "Start dotCMS (backend) service at app startup via docker-compose; optional Unleash toggle",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

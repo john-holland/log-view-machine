@@ -1,0 +1,8 @@
+{
+  "name": "opentelemetry-cavestartup-adapter",
+  "version": "1.0.0",
+  "description": "Start OpenTelemetry collector via docker-compose at app startup",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

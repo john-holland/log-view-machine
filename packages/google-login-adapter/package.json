@@ -1,0 +1,11 @@
+{
+  "name": "google-login-adapter",
+  "version": "1.0.0",
+  "description": "Google ID token verifier for server-side auth",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {},
+  "dependencies": {
+    "google-auth-library": "^10.5.0"
+  }
+}

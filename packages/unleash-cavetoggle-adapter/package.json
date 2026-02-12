@@ -1,0 +1,11 @@
+{
+  "name": "unleash-cavetoggle-adapter",
+  "version": "1.0.0",
+  "description": "Toggle abstraction: serverless defaults or Unleash client; isEnabled(toggleName) => Promise<boolean>",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {},
+  "dependencies": {
+    "unleash-client": "^6.9.x"
+  }
+}

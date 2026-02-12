@@ -1,0 +1,11 @@
+{
+  "name": "email-send-adapter",
+  "version": "1.0.0",
+  "description": "Email send adapter for magic link / verification; stub and Nodemailer implementations",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {},
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "cave-adapters-interfaces",
+  "version": "1.0.0",
+  "description": "JSDoc-only contracts for Cave adapters: ToggleProvider, OtelCaveMetricsProvider",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

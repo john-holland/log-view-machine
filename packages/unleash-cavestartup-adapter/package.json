@@ -1,0 +1,8 @@
+{
+  "name": "unleash-cavestartup-adapter",
+  "version": "1.0.0",
+  "description": "Start Unleash (and postgres/redis) via docker-compose at app startup",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

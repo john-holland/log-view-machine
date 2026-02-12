@@ -1,0 +1,8 @@
+{
+  "name": "port-cavestartup-adapter",
+  "version": "1.0.0",
+  "description": "Kill process on port before server start (address in use)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

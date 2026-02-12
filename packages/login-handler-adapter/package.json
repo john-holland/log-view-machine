@@ -1,0 +1,8 @@
+{
+  "name": "login-handler-adapter",
+  "version": "1.0.0",
+  "description": "Login handler adapter for /api/login (stub and future implementations)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

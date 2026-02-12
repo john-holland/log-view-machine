@@ -1,0 +1,41 @@
+# Fragment for merge: Unleash + postgres + redis. Use with compose merge script.
+services:
+  unleash:
+    image: unleashorg/unleash-server:latest
+    ports:
+      - "4242:4242"
+    environment:
+      - DATABASE_URL=postgres://unleash:unleash@postgres:5432/unleash
+      - DATABASE_URL_FILE=/tmp/database_url
+      - REDIS_URL=redis://redis:6379
+      - REDIS_URL_FILE=/tmp/redis_url
+      - NODE_ENV=development
+      - LOG_LEVEL=info
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - fish-burger-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=unleash
+      - POSTGRES_PASSWORD=unleash
+      - POSTGRES_DB=unleash
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fish-burger-network
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - fish-burger-network
+
+volumes:
+  postgres_data:
+
+networks:
+  fish-burger-network:
+    driver: bridge
