@@ -291,23 +291,29 @@
 
 
 
-        /* State Machine for Canvas Grabber */
+        /* State Machine for Canvas Grabber - hidden (debug indicator) */
         .canvas-grabber-state {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: monospace;
-            z-index: 2000;
-            display: none;
+            display: none !important;
         }
 
-        .canvas-grabber-state.active {
-            display: block;
+        /* Canvas pan hint tooltip - shown when user drags without Shift */
+        .canvas-pan-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            font-size: 12px;
+            border-radius: 6px;
+            z-index: 1500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .canvas-pan-hint.visible {
+            opacity: 1;
         }
 
         /* Enhanced dotCMS Status */
@@ -1988,6 +1994,7 @@
         <!-- Canvas takes full screen height -->
         <div class="canvas-container" id="canvas-container">
             <div class="gesture-indicator" id="gesture-indicator">Gesture: Pan</div>
+            <div class="canvas-pan-hint" id="canvas-pan-hint">Hold Shift and click/drag to move canvas</div>
             <div class="canvas-controls">
                 <button class="canvas-btn" onclick="resetCanvas()" title="Reset View">🏠</button>
                 <button class="canvas-btn" onclick="zoomIn()" title="Zoom In">🔍+</button>
@@ -2419,6 +2426,14 @@
         let canvasStartY = 0;
         let canvasOffsetX = 0;
         let canvasOffsetY = 0;
+
+        // Pan hint tooltip - detect click/drag without Shift
+        let noShiftDragStartX = 0;
+        let noShiftDragStartY = 0;
+        let noShiftDragActive = false;
+        let panHintLastShown = 0;
+        const PAN_HINT_COOLDOWN_MS = 25000;
+        const DRAG_THRESHOLD_PX = 8;
         
         // Canvas zoom variables
         let canvasScale = 1;
@@ -3148,7 +3163,14 @@ function test() {
             // When Shift is held, capture mousedown in capture phase so the event never reaches iframe/editors.
             // Start drag directly (don't rely on state machine transition) so it works even if we never got MOUSE_ENTER_CANVAS.
             canvasContainer.addEventListener('mousedown', function(e) {
-                if (!e.shiftKey) return;
+                if (!e.shiftKey) {
+                    if (!e.target.closest('.canvas-controls') && canvasContainer.contains(e.target)) {
+                        noShiftDragActive = true;
+                        noShiftDragStartX = e.clientX;
+                        noShiftDragStartY = e.clientY;
+                    }
+                    return;
+                }
                 if (e.target.closest('.canvas-controls')) return;
                 if (!canvasContainer.contains(e.target)) return;
                 e.preventDefault();
@@ -3181,6 +3203,32 @@ function test() {
                 document.body.style.cursor = '';
                 zoomStateMachine.transition('MOUSE_UP');
             }
+
+            function showPanHint() {
+                const hint = document.getElementById('canvas-pan-hint');
+                if (!hint) return;
+                hint.classList.add('visible');
+                clearTimeout(showPanHint._fadeTimer);
+                showPanHint._fadeTimer = setTimeout(function() {
+                    hint.classList.remove('visible');
+                }, 2500);
+            }
+
+            document.addEventListener('mousemove', function(e) {
+                if (!noShiftDragActive || e.shiftKey || !(e.buttons & 1)) return;
+                const dx = e.clientX - noShiftDragStartX;
+                const dy = e.clientY - noShiftDragStartY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > DRAG_THRESHOLD_PX && (Date.now() - panHintLastShown) > PAN_HINT_COOLDOWN_MS) {
+                    showPanHint();
+                    panHintLastShown = Date.now();
+                    noShiftDragActive = false;
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                noShiftDragActive = false;
+            });
 
             // Touch events for pinch and zoom with vector analysis
             function handleTouchStart(e) {
