@@ -42,3 +42,8 @@ const descriptor = pythonAdapter.getAppShell('myTool');
 - **PythonAppDescriptor**: `scriptPath`, `cwd?`, `env?`, `pythonPath?`, `requirementsPath?`, `dependencies?`, `pipInstall?` (`true` | `'once'` | `'always'`), `venvPath?`.
 
 See [Cave services and appShell registry](../../docs/CAVE_SERVICES_APPSHELL.md) for the full contract and **CaveServiceAdapter** convention.
+
+## Tests
+
+- **Unit tests** (`npm test`): Mock `child_process.spawn`; cover `apply`, `getAppShell`, `runAppShell`, and descriptor registration.
+- **Integration test**: Installs a Python dependency (`pip install -r requirements.txt`) then runs a script that uses it, in order. Skipped when `python` and `pip` (or `pip3`) are not on PATH. To run it, ensure Python and pip are available, then run `npm test`.

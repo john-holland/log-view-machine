@@ -48,14 +48,17 @@ function resolvePythonExecutable(descriptor: AppShellDescriptor): string {
   return defaultPython;
 }
 
-function resolvePipExecutable(descriptor: AppShellDescriptor): string {
+/** Returns [command, args] for spawning pip (use command + args for spawn). When no venv, use python -m pip so it works on Windows when pip isn't on PATH. */
+function getPipSpawnArgs(descriptor: AppShellDescriptor): [string, string[]] {
   if (descriptor.venvPath) {
     const base = descriptor.venvPath;
-    return process.platform === 'win32'
+    const pip = process.platform === 'win32'
       ? path.join(base, 'Scripts', 'pip.exe')
       : path.join(base, 'bin', 'pip');
+    return [pip, []];
   }
-  return process.platform === 'win32' ? 'pip' : 'pip3';
+  const python = descriptor.pythonPath ?? defaultPython;
+  return [python, ['-m', 'pip']];
 }
 
 export interface AppShellRunner {
@@ -81,7 +84,7 @@ export function createPythonAppCaveServiceAdapter(
     const hasDeps = descriptor.requirementsPath || (descriptor.dependencies && descriptor.dependencies.length > 0);
     if (!hasDeps) return;
 
-    const pip = resolvePipExecutable(descriptor);
+    const [pipCommand, pipPrefixArgs] = getPipSpawnArgs(descriptor);
     const cwd = descriptor.cwd || path.dirname(descriptor.scriptPath);
     const env = { ...process.env, ...descriptor.env };
 
@@ -90,13 +93,13 @@ export function createPythonAppCaveServiceAdapter(
         ? descriptor.requirementsPath
         : path.join(cwd, descriptor.requirementsPath);
       await new Promise<void>((resolve, reject) => {
-        const child = spawn(pip, ['install', '-r', reqPath], { cwd, env, stdio: 'inherit' });
+        const child = spawn(pipCommand, [...pipPrefixArgs, 'install', '-r', reqPath], { cwd, env, stdio: 'inherit' });
         child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`pip install exited ${code}`))));
         child.on('error', reject);
       });
     } else if (descriptor.dependencies?.length) {
       await new Promise<void>((resolve, reject) => {
-        const child = spawn(pip, ['install', ...descriptor.dependencies!], { cwd, env, stdio: 'inherit' });
+        const child = spawn(pipCommand, [...pipPrefixArgs, 'install', ...descriptor.dependencies!], { cwd, env, stdio: 'inherit' });
         child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`pip install exited ${code}`))));
         child.on('error', reject);
       });
