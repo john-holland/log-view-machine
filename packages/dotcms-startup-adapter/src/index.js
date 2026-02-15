@@ -19,6 +19,7 @@ const READINESS_POLL_MS = 2000;
  * @param {{ info?: (msg: string) => void, warn?: (msg: string) => void, error?: (msg: string) => void }} [options.logger]
  * @param {string} [options.composePath] - Path to docker-compose file. Default from process.env.DOTCMS_COMPOSE_PATH or cwd-relative.
  * @param {string} [options.composeProject] - Docker Compose project name.
+ * @param {boolean} [options.pipeContainerLogs] - If true, stream docker compose logs -f dotcms to logger after start (background).
  * @returns {{ startUp(): Promise<void> }}
  */
 export function createDotcmsStartupAdapter(options) {
@@ -29,6 +30,7 @@ export function createDotcmsStartupAdapter(options) {
     logger = {},
     composePath = process.env.DOTCMS_COMPOSE_PATH || '',
     composeProject,
+    pipeContainerLogs = false,
   } = options;
 
   const log = (fn, msg) => { if (logger[fn]) logger[fn](msg); };
@@ -59,7 +61,16 @@ export function createDotcmsStartupAdapter(options) {
         shell: process.platform === 'win32',
       });
       let stderr = '';
-      proc.stderr?.on('data', (chunk) => { stderr += chunk; });
+      proc.stdout?.on('data', (chunk) => {
+        const lines = String(chunk).split('\n').filter(Boolean);
+        lines.forEach((line) => log('info', '[dotcms-startup-adapter] ' + line));
+      });
+      proc.stderr?.on('data', (chunk) => {
+        const s = String(chunk);
+        stderr += s;
+        const lines = s.split('\n').filter(Boolean);
+        lines.forEach((line) => log('warn', '[dotcms-startup-adapter] ' + line));
+      });
       proc.on('error', (err) => {
         log('error', '[dotcms-startup-adapter] spawn error: ' + (err?.message || err));
         reject(err);
@@ -69,7 +80,8 @@ export function createDotcmsStartupAdapter(options) {
           log('info', '[dotcms-startup-adapter] dotCMS start command completed');
           resolve();
         } else {
-          log('warn', '[dotcms-startup-adapter] docker compose exited with code ' + code + (stderr ? ': ' + stderr.slice(-500) : ''));
+          if (stderr && !stderr.endsWith('\n')) log('warn', '[dotcms-startup-adapter] (stderr) ' + stderr.slice(-200));
+          log('warn', '[dotcms-startup-adapter] docker compose exited with code ' + code);
           resolve(); // resolve so app can still start; caller can check DOTCMS_URL health elsewhere
         }
       });
@@ -95,6 +107,25 @@ export function createDotcmsStartupAdapter(options) {
     }
 
     log('warn', '[dotcms-startup-adapter] dotCMS readiness wait timed out; continuing anyway');
+  }
+
+  if (pipeContainerLogs && logger.info) {
+    const composeFile = composePath.trim() || path.join(process.cwd(), 'docker-compose.yml');
+    const logArgs = ['compose', '-f', composeFile];
+    if (composeProject) logArgs.push('-p', composeProject);
+    logArgs.push('logs', '-f', '--tail', '0', DEFAULT_COMPOSE_SERVICE);
+    const logsProc = spawn('docker', logArgs, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+    });
+    logsProc.stdout?.on('data', (chunk) => {
+      String(chunk).split('\n').filter(Boolean).forEach((line) => logger.info('[dotcms] ' + line));
+    });
+    logsProc.stderr?.on('data', (chunk) => {
+      String(chunk).split('\n').filter(Boolean).forEach((line) => logger.warn?.('[dotcms] ' + line) || logger.info('[dotcms] ' + line));
+    });
+    logsProc.on('error', () => {});
+    logsProc.unref?.();
   }
 
   return { startUp };

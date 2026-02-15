@@ -2,6 +2,14 @@
 
 A comprehensive Node.js backend example demonstrating proxy machines, GraphQL APIs, and SQL database integration with the Log View Machine library.
 
+---
+
+## For mod authors: external APIs and CORS
+
+**Mods that call external APIs need those service URLs to be on the CORS whitelist.** Test your mod locally first. When you need a new service URL added for your mod, **email in with your API needs** and we'll add it to the whitelist—we're happy to oblige.
+
+---
+
 ## Features
 
 - **Proxy Machines**: HTTP API, GraphQL, and Database proxy machines with `withStateGraphQL()` definitions

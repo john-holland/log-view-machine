@@ -220,6 +220,12 @@ export function expressCaveAdapter(options = {}) {
                     const key = req.get('x-api-key') || req.get('authorization');
                     if (key)
                         return next();
+                    const redirectPath = opts.redirectLoginPath?.replace(/\?.*$/, '');
+                    const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+                    if (redirectPath && (req.method || 'GET').toUpperCase() === 'GET' && !path.startsWith('/api')) {
+                        res.redirect(302, `${redirectPath}?auth_error=unauthorized&message=${encodeURIComponent('Authentication required (API key)')}`);
+                        return;
+                    }
                     res.status(401).json({ error: 'Authentication required (API key)' });
                 });
             }
@@ -228,7 +234,53 @@ export function expressCaveAdapter(options = {}) {
                     const auth = req.get('authorization');
                     if (auth?.startsWith('Bearer '))
                         return next();
+                    const redirectPath = opts.redirectLoginPath?.replace(/\?.*$/, '');
+                    const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+                    if (redirectPath && (req.method || 'GET').toUpperCase() === 'GET' && !path.startsWith('/api')) {
+                        res.redirect(302, `${redirectPath}?auth_error=unauthorized&message=${encodeURIComponent('Authentication required (JWT)')}`);
+                        return;
+                    }
                     res.status(401).json({ error: 'Authentication required (JWT)' });
+                });
+            }
+            if (opts.permissionMiddleware) {
+                const pm = opts.permissionMiddleware;
+                const levelOrder = pm.levelOrder ?? ['anonymous', 'user', 'admin'];
+                app.use(async (req, res, next) => {
+                    try {
+                        const user = await Promise.resolve(pm.getCurrentUser(req));
+                        const tenant = pm.getTenantName ? await Promise.resolve(pm.getTenantName(cave, req)) : undefined;
+                        const userWithTenant = tenant !== undefined ? { ...user, tenantId: tenant } : user;
+                        const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+                        const routed = cave.getRoutedConfig(path);
+                        const spelunkPermission = routed?.permission;
+                        let tomePermission;
+                        for (const tc of tomeConfigs) {
+                            const base = tc.routing?.basePath;
+                            if (base && path.startsWith(base)) {
+                                tomePermission = tc.permission;
+                                break;
+                            }
+                        }
+                        const spec = spelunkPermission ?? tomePermission ?? '>anonymous';
+                        if (!pm.evaluatePermission(userWithTenant, spec, levelOrder)) {
+                            const message = `Forbidden: required permission ${spec}`;
+                            const redirectPath = pm.redirectLoginPath?.replace(/\?.*$/, '');
+                            const isGet = (req.method || 'GET').toUpperCase() === 'GET';
+                            const isApiPath = path.startsWith('/api');
+                            if (redirectPath && isGet && !isApiPath) {
+                                const sep = redirectPath.includes('?') ? '&' : '?';
+                                res.redirect(302, `${redirectPath}${sep}auth_error=forbidden&message=${encodeURIComponent(message)}`);
+                                return;
+                            }
+                            res.status(403).json({ error: 'Forbidden', permission: spec });
+                            return;
+                        }
+                        next();
+                    }
+                    catch (e) {
+                        next(e);
+                    }
                 });
             }
             tomeManager = new TomeManager(app);
@@ -238,6 +290,9 @@ export function expressCaveAdapter(options = {}) {
             const tomes = Array.from(tomeManager.tomes.values());
             for (const tome of tomes) {
                 await tome.start();
+            }
+            if (context.tomeManagerRef) {
+                context.tomeManagerRef.current = tomeManager;
             }
             if (sections.registry === true) {
                 app.get(registryPath, (_req, res) => {

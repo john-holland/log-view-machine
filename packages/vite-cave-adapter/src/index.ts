@@ -25,6 +25,7 @@ export function viteCaveAdapter(options: ViteCaveAdapterOptions = {}): Plugin & 
       const spelunk = config.spelunk;
       if (spelunk.childCaves) {
         for (const [_name, _child] of Object.entries(spelunk.childCaves)) {
+          // todo: link path to request state machine event message
         }
       }
     }

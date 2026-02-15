@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { killProcessOnPort } from 'port-cavestartup-adapter';
 import { createLogger } from './logging-config.js';
 import { setupFishBurgerDemoRoutes } from './routes/fish-burger-demo.js';
 import { createFishBurgerRobotCopy } from './fish-burger-robotcopy.js';
@@ -21,6 +22,23 @@ app.use(cors({
   origin: process.env.EDITOR_ORIGIN || 'http://localhost:3000',
   credentials: true
 }));
+
+// Root: simple info page so GET / does not 404
+app.get('/', (req, res) => {
+  res.type('html');
+  res.send(`
+    <!DOCTYPE html>
+    <html><head><meta charset="utf-8"><title>Fish Burger Ecommerce</title></head>
+    <body style="font-family:sans-serif;max-width:600px;margin:2rem auto;padding:0 1rem;">
+      <h1>🛒 Fish Burger Ecommerce</h1>
+      <p>API server for the fish-burger mod. Use the editor at <a href="http://localhost:3000">localhost:3000</a> to try the Fish Burger Cart.</p>
+      <ul>
+        <li><a href="/health">Health</a></li>
+        <li><a href="/fish-burger-demo">Fish Burger Demo</a></li>
+      </ul>
+    </body></html>
+  `);
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -120,6 +138,7 @@ setupFishBurgerDemoRoutes(app, logger);
 
 // Start server
 const PORT = process.env.PORT || 3004;
+await killProcessOnPort(PORT, { logger });
 app.listen(PORT, () => {
   logger.info('Node Fish Burger server started', {
     port: PORT,

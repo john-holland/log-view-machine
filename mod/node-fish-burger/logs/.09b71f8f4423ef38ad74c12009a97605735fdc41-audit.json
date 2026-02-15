@@ -1,0 +1,25 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "logs\\.09b71f8f4423ef38ad74c12009a97605735fdc41-audit.json",
+    "files": [
+        {
+            "date": 1770928160392,
+            "name": "logs\\node-fish-burger-error-2026-02-12.log",
+            "hash": "5e0bb7c8d5634dbcfea8c43c385b7aee7359689243867f8a17009644dc792af6"
+        },
+        {
+            "date": 1770986022818,
+            "name": "logs\\node-fish-burger-error-2026-02-13.log",
+            "hash": "07ee4dfac48e6986ae7a7bbee8133a86d7cd19c4e776918cbb184e691d778505"
+        },
+        {
+            "date": 1771046492682,
+            "name": "logs\\node-fish-burger-error-2026-02-14.log",
+            "hash": "1f41a32a4bb5c1c886ebdb029523b112677b7dee9df3ecf7ca20d62aad6a3632"
+        }
+    ],
+    "hashType": "sha256"
+}

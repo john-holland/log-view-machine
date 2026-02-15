@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burger Cart Component</title>
+    <style>
+        .burger-cart-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .cart-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .cart-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .cart-header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .burger-builder-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+        }
+
+        .burger-builder-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .ingredients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ingredient-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .ingredient-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .ingredient-emoji {
+            font-size: 24px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .ingredient-name {
+            flex: 1;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .ingredient-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-ingredient {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .btn-ingredient:hover {
+            background: #5a6268;
+        }
+
+        .btn-ingredient.add {
+            background: #28a745;
+        }
+
+        .btn-ingredient.add:hover {
+            background: #218838;
+        }
+
+        .btn-ingredient.remove {
+            background: #dc3545;
+        }
+
+        .btn-ingredient.remove:hover {
+            background: #c82333;
+        }
+
+        .btn-ingredient:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ingredient-count {
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .builder-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .cart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .cart-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .cart-items {
+            margin-bottom: 20px;
+        }
+
+        .empty-cart {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .cart-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-summary {
+            border-top: 2px solid #e9ecef;
+            padding-top: 20px;
+            text-align: center;
+        }
+
+        .cart-total h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .checkout-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+        }
+
+        .loading-spinner, .adding-spinner, .removing-spinner, 
+        .adding-to-cart-spinner, .resetting-spinner, .checkout-spinner {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 18px;
+        }
+
+        .burger-cart-success, .burger-cart-error {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .burger-cart-success h2 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+
+        .burger-cart-error h2 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="burger-cart-container">
+        <div class="cart-header">
+            <h1>🍔 Burger Builder & Cart</h1>
+            <p>Customize your burger and manage your order</p>
+        </div>
+        
+        <!-- Burger Builder Section -->
+        <div class="burger-builder-section">
+            <h3>🥖 Build Your Burger</h3>
+            <div class="ingredients-grid">
+                <div class="ingredient-item" data-ingredient="bun">
+                    <span class="ingredient-emoji">🥖</span>
+                    <span class="ingredient-name">Bun</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('bun')">+</button>
+                        <span class="ingredient-count" id="bun-count">2</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('bun')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="beef">
+                    <span class="ingredient-emoji">🥩</span>
+                    <span class="ingredient-name">Beef Patty</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('beef')">+</button>
+                        <span class="ingredient-count" id="beef-count">1</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('beef')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="cheese">
+                    <span class="ingredient-emoji">🧀</span>
+                    <span class="ingredient-name">Cheese</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('cheese')">+</button>
+                        <span class="ingredient-count" id="cheese-count">1</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('cheese')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="lettuce">
+                    <span class="ingredient-emoji">🥬</span>
+                    <span class="ingredient-name">Lettuce</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('lettuce')">+</button>
+                        <span class="ingredient-count" id="lettuce-count">1</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('lettuce')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="tomato">
+                    <span class="ingredient-emoji">🍅</span>
+                    <span class="ingredient-name">Tomato</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('tomato')">+</button>
+                        <span class="ingredient-count" id="tomato-count">1</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('tomato')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="eggplant">
+                    <span class="ingredient-emoji">🍆</span>
+                    <span class="ingredient-name">Eggplant</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('eggplant')">+</button>
+                        <span class="ingredient-count" id="eggplant-count">0</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('eggplant')">-</button>
+                    </div>
+                </div>
+                
+                <div class="ingredient-item" data-ingredient="onion">
+                    <span class="ingredient-emoji">🧅</span>
+                    <span class="ingredient-name">Onion</span>
+                    <div class="ingredient-controls">
+                        <button class="btn-ingredient add" onclick="addIngredient('onion')">+</button>
+                        <span class="ingredient-count" id="onion-count">1</span>
+                        <button class="btn-ingredient remove" onclick="removeIngredient('onion')">-</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="builder-actions">
+                <button class="btn btn-secondary" onclick="resetIngredients()">
+                    🔄 Reset Ingredients
+                </button>
+                <button class="btn btn-primary" onclick="addCustomBurger()">
+                    🍔 Add to Cart
+                </button>
+            </div>
+        </div>
+        
+        <!-- Cart Section -->
+        <div class="cart-section">
+            <h3>🛒 Your Cart</h3>
+            <div id="cart-items" class="cart-items">
+                <p class="empty-cart">Your cart is empty</p>
+            </div>
+            
+            <div class="cart-summary">
+                <div id="cart-total" class="cart-total">
+                    <h4>Total: $0.00</h4>
+                </div>
+                <button class="btn btn-success checkout-btn" onclick="proceedToCheckout()">
+                    💳 Proceed to Checkout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Burger Builder Logic
+        const burgerIngredients = {
+            bun: 2,
+            beef: 1,
+            cheese: 1,
+            lettuce: 1,
+            tomato: 1,
+            eggplant: 0,
+            onion: 1
+        };
+
+        // Cart Items
+        let cartItems = [
+            { id: 1, name: 'Fish Burger', price: 12.99, quantity: 1 },
+            { id: 2, name: 'French Fries', price: 4.99, quantity: 1 },
+            { id: 3, name: 'Soda', price: 2.99, quantity: 1 },
+            { id: 4, name: 'Onion Rings', price: 5.99, quantity: 1 },
+            { id: 5, name: 'Milkshake', price: 6.99, quantity: 1 },
+            { id: 6, name: 'Side Salad', price: 3.99, quantity: 1 },
+            { id: 7, name: 'Chicken Wings', price: 8.99, quantity: 1 },
+            { id: 8, name: 'Ice Cream', price: 4.99, quantity: 1 }
+        ];
+
+        function addIngredient(type) {
+            if (burgerIngredients[type] !== undefined) {
+                burgerIngredients[type]++;
+                updateIngredientDisplay(type);
+                console.log(`Added ${type}, new count: ${burgerIngredients[type]}`);
+            }
+        }
+
+        function removeIngredient(type) {
+            if (burgerIngredients[type] !== undefined && burgerIngredients[type] > 0) {
+                burgerIngredients[type]--;
+                updateIngredientDisplay(type);
+                console.log(`Removed ${type}, new count: ${burgerIngredients[type]}`);
+            }
+        }
+
+        function updateIngredientDisplay(type) {
+            const countElement = document.getElementById(`${type}-count`);
+            if (countElement) {
+                countElement.textContent = burgerIngredients[type];
+                
+                // Update button states
+                const removeBtn = countElement.parentElement.querySelector('.remove');
+                if (removeBtn) {
+                    removeBtn.disabled = burgerIngredients[type] <= 0;
+                    removeBtn.style.opacity = burgerIngredients[type] <= 0 ? '0.5' : '1';
+                }
+            }
+        }
+
+        function resetIngredients() {
+            burgerIngredients.bun = 2;
+            burgerIngredients.beef = 1;
+            burgerIngredients.cheese = 1;
+            burgerIngredients.lettuce = 1;
+            burgerIngredients.tomato = 1;
+            burgerIngredients.eggplant = 0;
+            burgerIngredients.onion = 1;
+            
+            Object.keys(burgerIngredients).forEach(type => {
+                updateIngredientDisplay(type);
+            });
+            
+            alert('Ingredients reset to default!');
+        }
+
+        function addCustomBurger() {
+            let basePrice = 8.99;
+            let ingredientPrice = 0;
+            
+            Object.keys(burgerIngredients).forEach(type => {
+                if (burgerIngredients[type] > 0) {
+                    ingredientPrice += burgerIngredients[type] * 0.99;
+                }
+            });
+            
+            const totalPrice = basePrice + ingredientPrice;
+            const customBurger = {
+                id: Date.now(),
+                name: 'Custom Burger',
+                price: totalPrice,
+                quantity: 1,
+                ingredients: { ...burgerIngredients },
+                description: 'Custom built burger with your selected ingredients'
+            };
+            
+            cartItems.push(customBurger);
+            renderCart();
+            
+            alert(`Custom burger added to cart! Total price: $${totalPrice.toFixed(2)}`);
+        }
+
+        function renderCart() {
+            const cartContainer = document.getElementById('cart-items');
+            const totalElement = document.getElementById('cart-total');
+            
+            if (cartItems.length === 0) {
+                cartContainer.innerHTML = '<p class="empty-cart">Your cart is empty</p>';
+                totalElement.innerHTML = '<h4>Total: $0.00</h4>';
+                return;
+            }
+
+            const itemsHtml = cartItems.map(item => `
+                <div class="cart-item">
+                    <div class="item-info">
+                        <h4>${item.name}</h4>
+                        <p>Quantity: ${item.quantity} | Price: $${item.price}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-secondary" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                        <button class="btn btn-secondary" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                        <button class="btn btn-secondary" onclick="removeItem(${item.id})">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+
+            cartContainer.innerHTML = itemsHtml;
+
+            const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            totalElement.innerHTML = `<h4>Total: $${total.toFixed(2)}</h4>`;
+        }
+
+        function updateQuantity(itemId, newQuantity) {
+            if (newQuantity <= 0) {
+                removeItem(itemId);
+                return;
+            }
+
+            const item = cartItems.find(item => item.id === itemId);
+            if (item) {
+                item.quantity = newQuantity;
+                renderCart();
+            }
+        }
+
+        function removeItem(itemId) {
+            cartItems = cartItems.filter(item => item.id !== itemId);
+            renderCart();
+        }
+
+        function proceedToCheckout() {
+            const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const orderData = {
+                items: cartItems,
+                total: total,
+            };
+
+            sessionStorage.setItem('orderData', JSON.stringify(orderData));
+            window.location.href = '/checkout';
+        }
+
+        // Initialize on page load
+        function initializeBurgerBuilder() {
+            Object.keys(burgerIngredients).forEach(type => {
+                updateIngredientDisplay(type);
+            });
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBurgerBuilder();
+            renderCart();
+        });
+    </script>
+</body>
+</html>

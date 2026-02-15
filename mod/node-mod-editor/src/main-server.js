@@ -16,9 +16,13 @@ import { fileURLToPath } from 'url';
 
 import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, FishBurgerTomeConfig, EditorTomeConfig, createTomeConfig, createCaveServer } from 'log-view-machine';
 import { expressCaveAdapter } from 'express-cave-adapter';
+import { genericeditorCaveModAdapter } from 'genericeditor-cavemod-adapter';
 import { createDuckDBCaveDBAdapter } from 'duckdb-cavedb-adapter';
 import { buildPersistenceRegistry } from './persistence-registry.js';
 import { createDotCmsPamCaveAdapter } from 'dotcms-pam-cave-adapter';
+import { createDotcmsLoginAdapter, evaluatePermission, deriveTenantFromRequest } from 'dotcms-login-adapter';
+import { createEventedModLoader } from 'modload-eventedcavemodorder-adapter';
+import { createDotcmsCavemodLoaderAdapter } from 'dotcms-cavemodloader-adapter';
 import { setupDatabase, dbUtils } from './database/setup.js';
 import crypto from 'crypto';
 import { createGoogleTokenVerifier } from 'google-login-adapter';
@@ -65,6 +69,16 @@ const logger = winston.createLogger({
 // Create Express app
 const app = express();
 const port = process.env.PORT || 3000;
+const MOD_INDEX_URL = process.env.MOD_INDEX_URL || process.env.KOTLIN_MOD_INDEX_URL || 'http://localhost:8082';
+
+// Health check as first middleware so it never hits body parser (avoids 400 for GET /health from health-polling clients)
+app.use('/health', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.status(200).set('Content-Type', 'application/json').end(req.method === 'GET' ? JSON.stringify({ status: 'healthy', timestamp: new Date().toISOString(), uptime: process.uptime() }) : undefined);
+    return;
+  }
+  next();
+});
 
 // Setup middleware
 setupMiddleware(app, logger);
@@ -170,6 +184,24 @@ const loginHandler = AUTH_LOGIN_HANDLER === 'stub'
   ? createStubLoginHandler({ acceptedUser: process.env.STUB_LOGIN_USER || 'admin', acceptedPassword: process.env.STUB_LOGIN_PASSWORD || 'admin' })
   : createStubLoginHandler({ acceptedUser: process.env.STUB_LOGIN_USER || 'admin', acceptedPassword: process.env.STUB_LOGIN_PASSWORD || 'admin' });
 
+// Cave login adapter: standardized CaveUser + session for permission middleware
+const sessionStore = new Map();
+const SESSION_COOKIE = 'cave_sid';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+function getSessionUser(req) {
+  const cookie = req?.get?.('Cookie') || req?.headers?.cookie || '';
+  const m = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  const sid = m ? m[1].trim() : null;
+  if (!sid) return null;
+  return sessionStore.get(sid) || null;
+}
+const loginAdapter = createDotcmsLoginAdapter({
+  loginHandler,
+  getSessionUser,
+  levelOrder: ['anonymous', 'user', 'admin'],
+  loggedInLevel: 'user',
+});
+
 app.get('/api/editor/config', (req, res) => {
   res.json({
     publishRequiresLogin: PUBLISH_REQUIRES_LOGIN,
@@ -186,22 +218,29 @@ const db = await setupDatabase();
 // Create RobotCopy instance
 const robotCopy = createRobotCopy();
 
+// EditorLandingCave: Root landing page with features showcase
+const editorLandingSpelunk = {
+  route: '/',
+  container: 'landing',
+  childCaves: {
+    features: {
+      route: '/features',
+      container: 'features',
+      tomeId: 'features-tome',
+      isModableCave: true,
+    },
+  },
+};
+
 // Root Cave for node-mod-editor: route/entry describe where each feature is exposed (path → handler/Tome).
-// Editor childCaves: editor (main panel), library, cart, donation — each with route and tomeId for getRenderTarget.
+// Editor childCaves: editor (main panel), library, donation. Mod metadata comes from Index.
 const nodeExampleSpelunk = {
   childCaves: {
-    'fish-burger-api': {
-      route: '/api/fish-burger',
-      tomeId: 'fish-burger-tome',
-      tomes: { fishBurger: {} },
-    },
-    'fish-burger-demo': {
-      route: '/fish-burger-demo',
-    },
     editor: {
       route: '/editor',
       container: 'editor',
       tomeId: 'editor-tome',
+      permission: '>anonymous',
       childCaves: {
         library: {
           route: '/editor/library',
@@ -215,8 +254,18 @@ const nodeExampleSpelunk = {
         },
       },
     },
+    features: {
+      route: '/features',
+      container: 'features',
+      tomeId: 'features-tome',
+      permission: '>anonymous',
+    },
   },
 };
+
+// Create EditorLandingCave
+const EditorLandingCave = Cave('editor-landing', editorLandingSpelunk);
+
 // Library, Cart, Donation Tomes (inline so we work with current log-view-machine dist; or use LibraryTomeConfig etc. when built)
 const LibraryTomeConfig = createTomeConfig({
   id: 'library-tome',
@@ -231,11 +280,50 @@ const DonationTomeConfig = createTomeConfig({
   routing: { basePath: '/api/editor/donation', routes: { donationMachine: { path: '/', method: 'POST' } } },
 });
 
+// Features TomeConfig; mod metadata is fetched from Index via mod adapter fetchModMetadata
+const FeaturesTomeConfig = createTomeConfig({
+  id: 'features-tome',
+  name: 'Features',
+  description: 'Landing page features showcase',
+  isModableTome: true,
+  modMetadata: null,
+  permission: '>anonymous',
+  machines: {
+    featuresMachine: {
+      id: 'features-machine',
+      name: 'Features',
+      xstateConfig: {
+        id: 'features-machine',
+        initial: 'idle',
+        states: {
+          idle: {
+            on: { LOAD_MOD: 'modded' }
+          },
+          modded: {
+            on: {
+              INITIALIZE: 'idle',
+              LOAD_MOD_COMPLETE: 'idle',
+              UNLOAD_MOD: 'idle'
+            }
+          }
+        }
+      }
+    }
+  },
+  routing: {
+    basePath: '/api/features',
+    routes: {
+      featuresMachine: { path: '/', method: 'POST' }
+    }
+  }
+});
+
 const tomeConfigsList = [
   FishBurgerTomeConfig,
   EditorTomeConfig,
   LibraryTomeConfig,
   DonationTomeConfig,
+  FeaturesTomeConfig,
 ];
 
 // Persistence override: build registry from TomeConfig.persistence.adapter so store API uses the right backend per Tome
@@ -255,16 +343,66 @@ try {
 const persistenceRegistry = await buildPersistenceRegistry(tomeConfigsList, cavedbFactories);
 
 const cave = Cave('node-mod-editor', nodeExampleSpelunk);
-const caveAdapter = expressCaveAdapter({ app, registryPath: '/registry', cors: true });
+const caveAdapter = expressCaveAdapter({
+  app,
+  registryPath: '/registry',
+  cors: true,
+  redirectLoginPath: '/features',
+  permissionMiddleware: {
+    getCurrentUser: (req) => loginAdapter.getCurrentUser(req),
+    evaluatePermission,
+    levelOrder: ['anonymous', 'user', 'admin'],
+    getTenantName: (_cave, req) => deriveTenantFromRequest(req),
+    redirectLoginPath: '/features',
+  },
+});
+
+// Create mod adapter
+const modAdapter = genericeditorCaveModAdapter({
+  modIndexUrl: MOD_INDEX_URL,
+  fetchModMetadata: async (modId) => {
+    try {
+      const response = await fetch(`${MOD_INDEX_URL}/api/mods/${modId}`);
+      if (!response.ok) return undefined;
+      const modConfig = await response.json();
+      return modConfig.modMetadata;
+    } catch (error) {
+      console.error(`Failed to fetch mod metadata for ${modId}:`, error);
+      return undefined;
+    }
+  }
+});
+
+// Evented mod loader: load mods when features machine enters "modded", unload on logout state
+const { adapter: eventedModLoaderAdapter, getTenantChangeHandler } = createEventedModLoader({
+  load: { 'features-tome/featuresMachine': 'modded' },
+  unload: {},
+  pathToTomeMachine: (path) => {
+    if (path === 'features-tome/featuresMachine') return { tomeId: 'features-tome', machineId: 'featuresMachine' };
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length >= 2) return { tomeId: parts[0], machineId: parts[1] };
+    if (parts.length === 1) return { tomeId: parts[0], machineId: parts[0] };
+    return undefined;
+  },
+  onLoadMods: () => { /* client refetches mod list on next visit; optional: broadcast or invalidate cache */ },
+  onUnloadMods: () => {},
+});
+
+// Mod loader config (dotCMS timeout/CORS); tenant from URL when not provided
+const modLoaderConfig = createDotcmsCavemodLoaderAdapter({
+  timeoutMs: 15000,
+  dotCmsBaseUrl: process.env.DOTCMS_URL || 'http://localhost:8080',
+});
+
 await createCaveServer({
   cave,
   tomeConfigs: tomeConfigsList,
   sections: { registry: true },
-  plugins: [caveAdapter],
+  plugins: [caveAdapter, eventedModLoaderAdapter, modAdapter],
 });
 const tomeManager = caveAdapter.getTomeManager();
 if (tomeManager) {
-  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'donation-tome']) {
+  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'donation-tome', 'features-tome']) {
     const tome = tomeManager.getTome(tomeId);
     if (tome && typeof tome.synchronizeWithCave === 'function') {
       tome.synchronizeWithCave(cave);
@@ -543,7 +681,12 @@ app.use('/assets', express.static(path.join(process.cwd(), 'src/component-middle
   }
 }));
 
-// Home page - Fish Burger Example
+// Favicon: avoid 404 (no icon file; 204 stops browser from retrying)
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+// Home page – mods from Index, link to features
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -551,7 +694,7 @@ app.get('/', (req, res) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Log View Machine - Fish Burger Example</title>
+        <title>Log View Machine</title>
         <style>
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -570,18 +713,8 @@ app.get('/', (req, res) => {
                 backdrop-filter: blur(10px);
                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             }
-            h1 {
-                text-align: center;
-                margin-bottom: 30px;
-                font-size: 2.5em;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            }
-            .nav-links {
-                display: flex;
-                justify-content: center;
-                gap: 20px;
-                margin-bottom: 40px;
-            }
+            h1 { text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+            .nav-links { display: flex; justify-content: center; gap: 20px; margin-bottom: 40px; flex-wrap: wrap; }
             .nav-link {
                 background: rgba(255, 255, 255, 0.2);
                 color: white;
@@ -591,56 +724,12 @@ app.get('/', (req, res) => {
                 transition: all 0.3s ease;
                 border: 1px solid rgba(255, 255, 255, 0.3);
             }
-            .nav-link:hover {
-                background: rgba(255, 255, 255, 0.3);
-                transform: translateY(-2px);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            }
-            .content {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 30px;
-                margin-top: 30px;
-            }
-            .fish-burger-demo {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            .demo-button {
-                background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-                color: white;
-                border: none;
-                padding: 15px 30px;
-                border-radius: 25px;
-                font-size: 1.1em;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            }
-            .demo-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-            }
-            .features {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 20px;
-                margin-top: 30px;
-            }
-            .feature {
-                background: rgba(255, 255, 255, 0.1);
-                padding: 20px;
-                border-radius: 10px;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-            }
-            .feature h3 {
-                margin-top: 0;
-                color: #ffd700;
-            }
-            .feature-mod {
-                border: 2px solid #ffd700;
-                background: rgba(255, 215, 0, 0.1);
-            }
+            .nav-link:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+            .content { background: rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 30px; margin-top: 30px; }
+            .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
+            .feature { background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); }
+            .feature h3 { margin-top: 0; color: #ffd700; }
+            .feature-mod { border: 2px solid #ffd700; background: rgba(255, 215, 0, 0.1); }
             .feature-button {
                 background: linear-gradient(45deg, #ff6b6b, #ee5a24);
                 color: white;
@@ -652,512 +741,225 @@ app.get('/', (req, res) => {
                 transition: all 0.3s ease;
                 margin-top: 10px;
             }
-            .feature-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            }
+            .feature-button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
+            #mods-loading { color: rgba(255,255,255,0.8); }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🐟 Log View Machine</h1>
-            
+            <h1>Log View Machine</h1>
             <div class="nav-links">
-                <a href="/" class="nav-link">🏠 Home</a>
-                <a href="/editor" class="nav-link">✏️ Editor</a>
-                <a href="/api/teleporthq/demo" class="nav-link">🚀 TeleportHQ Demo</a>
-                <a href="/health" class="nav-link">💚 Health</a>
+                <a href="/" class="nav-link">Home</a>
+                <a href="/features" class="nav-link">Features (login &amp; mods)</a>
+                <a href="/editor" class="nav-link">Editor</a>
+                <a href="/api/teleporthq/demo" class="nav-link">TeleportHQ Demo</a>
+                <a href="/health" class="nav-link">Health</a>
             </div>
-            
             <div class="content">
-                <div class="features">
+                <div class="features" id="features-list">
                     <div class="feature">
-                        <h3>🎯 State Management</h3>
+                        <h3>State Management</h3>
                         <p>Advanced state machines with XState integration for complex workflows.</p>
                     </div>
                     <div class="feature">
-                        <h3>📊 Logging & Tracing</h3>
+                        <h3>Logging & Tracing</h3>
                         <p>Comprehensive logging with OpenTelemetry integration for observability.</p>
                     </div>
                     <div class="feature">
-                        <h3>🔧 Component Editor</h3>
+                        <h3>Component Editor</h3>
                         <p>Visual component editor with real-time preview and state machine visualization.</p>
                     </div>
                     <div class="feature">
-                        <h3>🚀 TeleportHQ Integration</h3>
+                        <h3>TeleportHQ Integration</h3>
                         <p>Seamless integration with TeleportHQ for component generation and management.</p>
                     </div>
-                    <div class="feature feature-mod" data-mod-id="fish-burger-mod">
-                        <h3>🛒 Fish Burger Cart</h3>
-                        <p>Interactive shopping cart with fish burger state machine. Demonstrates mod system replacing hardcoded features.</p>
-                        <button class="feature-button" onclick="loadFishBurgerMod()">Try Fish Burger Cart</button>
+                    <div id="mods-container">
+                        <p id="mods-loading">Loading mods…</p>
                     </div>
                 </div>
             </div>
         </div>
-        
         <script>
-            async function loadFishBurgerMod() {
+            (async function() {
+                const container = document.getElementById('mods-container');
                 try {
-                    // Fetch mod configuration
-                    const modResponse = await fetch('/api/mods/fish-burger-mod');
-                    if (!modResponse.ok) {
-                        throw new Error('Failed to load mod configuration');
-                    }
-                    const modConfig = await modResponse.json();
-                    
-                    // Load mod assets
-                    const templateResponse = await fetch(modConfig.assets.templates + 'fish-burger-demo/templates/demo-template.html');
-                    const template = await templateResponse.text();
-                    
-                    // Create mod container
-                    const modContainer = document.createElement('div');
-                    modContainer.id = 'fish-burger-mod-container';
-                    modContainer.innerHTML = template;
-                    modContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; overflow-y: auto;';
-                    
-                    // Add close button
-                    const closeBtn = document.createElement('button');
-                    closeBtn.textContent = '✕ Close';
-                    closeBtn.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10001; padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;';
-                    closeBtn.onclick = () => {
-                        document.body.removeChild(modContainer);
-                        document.body.removeChild(closeBtn);
-                    };
-                    
-                    document.body.appendChild(modContainer);
-                    document.body.appendChild(closeBtn);
-                    
-                    // Load mod scripts
-                    const script = document.createElement('script');
-                    script.type = 'module';
-                    script.src = modConfig.serverUrl + '/assets/js/fish-burger-demo/main.js';
-                    modContainer.appendChild(script);
-                    
-                    // Load mod styles
-                    const link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = modConfig.serverUrl + '/assets/css/fish-burger-demo/demo-styles.css';
-                    document.head.appendChild(link);
-                    
-                } catch (error) {
-                    console.error('Error loading fish burger mod:', error);
-                    alert('Failed to load Fish Burger Cart mod. Please check the console for details.');
+                    const r = await fetch('/api/mods', { credentials: 'include' });
+                    const data = r.ok ? await r.json() : { mods: [] };
+                    const mods = Array.isArray(data.mods) ? data.mods : [];
+                    document.getElementById('mods-loading').remove();
+                    mods.forEach(function(m) {
+                        const div = document.createElement('div');
+                        div.className = 'feature feature-mod';
+                        div.setAttribute('data-mod-id', m.id);
+                        div.innerHTML = '<h3>' + (m.name || m.id) + '</h3><p>' + (m.description || '') + '</p><a href="/features" class="feature-button">Open in Features</a>';
+                        container.appendChild(div);
+                    });
+                } catch (e) {
+                    document.getElementById('mods-loading').textContent = 'Mods unavailable. Try the Features page.';
                 }
-            }
+            })();
         </script>
     </body>
     </html>
   `);
 });
 
-// Mod API endpoints
-app.get('/api/mods', (req, res) => {
-  res.json({
-    mods: [
-      {
-        id: 'fish-burger-mod',
-        name: 'Fish Burger Cart',
-        description: 'Interactive shopping cart with fish burger state machine',
-        version: '1.0.0',
-        serverUrl: process.env.FISH_BURGER_SERVER_URL || 'http://localhost:3004',
-        assets: {
-          templates: '/mods/fish-burger/templates/',
-          styles: '/mods/fish-burger/styles/',
-          scripts: '/mods/fish-burger/scripts/'
-        }
-      }
-    ]
-  });
-});
-
-app.get('/api/mods/:modId', (req, res) => {
-  const { modId } = req.params;
-  if (modId === 'fish-burger-mod') {
-    res.json({
-      id: 'fish-burger-mod',
-      name: 'Fish Burger Cart',
-      description: 'Interactive shopping cart with fish burger state machine. Demonstrates mod system replacing hardcoded features.',
-      version: '1.0.0',
-      serverUrl: process.env.FISH_BURGER_SERVER_URL || 'http://localhost:3004',
-      assets: {
-        templates: '/mods/fish-burger/templates/',
-        styles: '/mods/fish-burger/styles/',
-        scripts: '/mods/fish-burger/scripts/'
-      },
-      entryPoints: {
-        cart: '/mods/fish-burger/cart',
-        demo: '/mods/fish-burger/demo'
-      }
-    });
-  } else {
-    res.status(404).json({ error: 'Mod not found' });
+// Mod API: proxy to Index (forward Authorization); use mod loader config for timeout and tenant
+app.get('/api/mods', async (req, res) => {
+  try {
+    const tenant = deriveTenantFromRequest(req);
+    const loaderConfig = modLoaderConfig.getModLoaderConfig(tenant);
+    const headers = {};
+    const auth = req.get('Authorization');
+    if (auth) headers['Authorization'] = auth;
+    const cookie = req.get('Cookie');
+    if (cookie) headers['Cookie'] = cookie;
+    const controller = new AbortController();
+    const timeoutId = loaderConfig.timeoutMs ? setTimeout(() => controller.abort(), loaderConfig.timeoutMs) : null;
+    const r = await fetch(`${MOD_INDEX_URL}/api/mods`, { headers, signal: controller.signal }).finally(() => { if (timeoutId) clearTimeout(timeoutId); });
+    const data = await r.json().catch(() => ({ mods: [] }));
+    res.status(r.status).json(data);
+  } catch (e) {
+    logger.warn('Mod index unavailable', { error: e.message });
+    res.json({ mods: [] });
   }
 });
 
-// Fish Burger Demo Page
-app.get('/fish-burger-demo', (req, res) => {
+app.get('/api/mods/:modId', async (req, res) => {
+  const { modId } = req.params;
+  try {
+    const tenant = deriveTenantFromRequest(req);
+    const loaderConfig = modLoaderConfig.getModLoaderConfig(tenant);
+    const headers = {};
+    const auth = req.get('Authorization');
+    if (auth) headers['Authorization'] = auth;
+    const cookie = req.get('Cookie');
+    if (cookie) headers['Cookie'] = cookie;
+    const controller = new AbortController();
+    const timeoutId = loaderConfig.timeoutMs ? setTimeout(() => controller.abort(), loaderConfig.timeoutMs) : null;
+    const r = await fetch(`${MOD_INDEX_URL}/api/mods/${encodeURIComponent(modId)}`, { headers, signal: controller.signal }).finally(() => { if (timeoutId) clearTimeout(timeoutId); });
+    if (!r.ok) {
+      return res.status(r.status).json(r.status === 404 ? { error: 'Mod not found' } : await r.json().catch(() => ({})));
+    }
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    logger.warn('Mod index unavailable', { modId, error: e.message });
+    res.status(502).json({ error: 'Mod index unavailable' });
+  }
+});
+
+// Features page (login, presence, mod list). Next.js may also serve /features when frontend is used.
+app.get('/features', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Fish Burger Demo</title>
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                color: white;
-            }
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 20px;
-                padding: 40px;
-                backdrop-filter: blur(10px);
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            }
-            h1 {
-                text-align: center;
-                margin-bottom: 30px;
-                font-size: 2.5em;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            }
-            .demo-controls {
-                display: flex;
-                justify-content: center;
-                gap: 15px;
-                margin-bottom: 30px;
-                flex-wrap: wrap;
-            }
-            .demo-button {
-                background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 25px;
-                font-size: 1em;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            }
-            .demo-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-            }
-            .demo-button:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-                transform: none;
-            }
-            .status {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 20px;
-                margin: 20px 0;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-            }
-            .logs {
-                background: rgba(0, 0, 0, 0.3);
-                border-radius: 10px;
-                padding: 20px;
-                margin-top: 20px;
-                max-height: 300px;
-                overflow-y: auto;
-                font-family: 'Courier New', monospace;
-                font-size: 0.9em;
-            }
-            .log-entry {
-                margin-bottom: 5px;
-                padding: 5px;
-                border-radius: 5px;
-            }
-            .log-info { background: rgba(0, 255, 0, 0.2); }
-            .log-error { background: rgba(255, 0, 0, 0.2); }
-            .log-warn { background: rgba(255, 255, 0, 0.2); color: #333; }
-            .back-link {
-                display: inline-block;
-                margin-bottom: 20px;
-                color: white;
-                text-decoration: none;
-                padding: 10px 20px;
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 10px;
-                transition: all 0.3s ease;
-            }
-            .back-link:hover {
-                background: rgba(255, 255, 255, 0.3);
-            }
-        </style>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Features</title>
+      <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { margin-top: 0; }
+        .section { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin: 16px 0; }
+        .section h2 { margin-top: 0; font-size: 1.1em; }
+        .login-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+        input { padding: 10px 16px; margin: 0; border-radius: 8px; border: 1px solid #555; background: #fff; color: #222; font-size: 1rem; }
+        #login-btn { padding: 10px 18px; margin: 0; border-radius: 8px; border: none; background: #667eea; color: white; font-size: 1rem; cursor: pointer; }
+        #login-btn:hover { opacity: 0.9; }
+        #login-status { margin-left: 8px; font-size: 14px; color: #ccc; }
+        #presence-list, #mod-list { margin: 8px 0; font-size: 14px; color: #aaa; }
+        .mod-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin: 8px 0; }
+        .user-badge { display: inline-block; background: #667eea; color: white; padding: 4px 10px; border-radius: 20px; margin: 4px 4px 4px 0; font-size: 12px; }
+      </style>
     </head>
     <body>
-        <div class="container">
-            <a href="/" class="back-link">← Back to Home</a>
-            <h1>🍔 Fish Burger Demo</h1>
-            
-            <div class="demo-controls">
-                <button class="demo-button" onclick="sendEvent('START_COOKING')">Start Cooking</button>
-                <button class="demo-button" onclick="sendEvent('UPDATE_PROGRESS')">Update Progress</button>
-                <button class="demo-button" onclick="sendEvent('COMPLETE_COOKING')">Complete Cooking</button>
-                <button class="demo-button" onclick="sendEvent('ERROR')">Simulate Error</button>
-                <button class="demo-button" onclick="sendEvent('RETRY')">Retry</button>
-                <button class="demo-button" onclick="sendEvent('RESET')">Reset</button>
-            </div>
-            
-            <div class="status" id="status">
-                <h3>Current Status: <span id="current-state">idle</span></h3>
-                <p>Order ID: <span id="order-id">-</span></p>
-                <p>Cooking Time: <span id="cooking-time">0</span> seconds</p>
-                <p>Temperature: <span id="temperature">0</span>°C</p>
-            </div>
-            
-            <div class="logs" id="logs">
-                <h3>Logs</h3>
-                <div id="log-entries"></div>
-            </div>
+      <div class="container">
+        <h1>Features</h1>
+        <div class="section" id="login-section">
+          <h2>Login</h2>
+          <div class="login-row">
+            <input type="text" id="login-username" placeholder="Username" aria-label="Username" />
+            <input type="password" id="login-password" placeholder="Password" aria-label="Password" />
+            <button type="button" id="login-btn">Log in</button>
+            <span id="login-status"></span>
+          </div>
         </div>
-        
-        <script>
-            let currentState = 'idle';
-            let orderId = null;
-            let cookingTime = 0;
-            let temperature = 0;
-            
-            async function sendEvent(eventType) {
-                try {
-                    let payload = {
-                        timestamp: new Date().toISOString(),
-                        cookingTime: cookingTime,
-                        temperature: temperature
-                    };
-                    if (eventType === 'UPDATE_PROGRESS') {
-                        payload.cookingTime = (cookingTime || 0) + 10;
-                        payload.temperature = Math.min((temperature || 0) + 15, 220);
-                    }
-                    if (eventType === 'START_COOKING') {
-                        payload.orderId = 'order-' + Date.now();
-                    }
-                    const response = await fetch('/api/state-machines/fish-burger/events', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            event: eventType,
-                            data: payload
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        updateStatus(result);
-                        addLog('info', \`Event '\${eventType}' sent successfully\`);
-                    } else {
-                        const errBody = await response.text();
-                        let errMsg = \`Failed to send event '\${eventType}' (\${response.status})\`;
-                        try {
-                            const errJson = JSON.parse(errBody);
-                            if (errJson.message) errMsg += ': ' + errJson.message;
-                        } catch (_) {
-                            if (errBody) errMsg += ': ' + errBody.slice(0, 80);
-                        }
-                        addLog('error', errMsg);
-                    }
-                } catch (error) {
-                    addLog('error', \`Error sending event: \${error.message}\`);
-                }
+        <div class="section">
+          <h2>Who's here</h2>
+          <div id="presence-list">—</div>
+        </div>
+        <div class="section">
+          <h2>Mods</h2>
+          <div id="mod-list">Loading…</div>
+        </div>
+      </div>
+      <script>
+        (function() {
+          var params = new URLSearchParams(window.location.search);
+          var authError = params.get('auth_error');
+          var message = params.get('message');
+          if (authError || message) {
+            console.log('[Auth redirect] auth_error=' + (authError || '') + ' message=' + (message || ''));
+            try {
+              var cleanUrl = window.location.origin + window.location.pathname;
+              if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, document.title || '', cleanUrl);
+              }
+            } catch (e) {}
+          }
+        })();
+        const api = (path, opts) => fetch(path, { credentials: 'include', ...opts });
+        async function loadPresence() {
+          try {
+            const r = await api('/api/editor/presence?caveOrTomeId=features-tome');
+            const list = r.ok ? await r.json() : [];
+            const el = document.getElementById('presence-list');
+            el.innerHTML = Array.isArray(list) && list.length ? list.map(u => '<span class="user-badge">' + (u.user || u) + '</span>').join('') : 'No one yet';
+          } catch (_) { document.getElementById('presence-list').textContent = '—'; }
+        }
+        async function loadMods() {
+          try {
+            const r = await api('/api/mods');
+            const data = r.ok ? await r.json() : { mods: [] };
+            const mods = Array.isArray(data.mods) ? data.mods : [];
+            const el = document.getElementById('mod-list');
+            el.innerHTML = mods.length ? mods.map(m => '<div class="mod-card"><strong>' + (m.name || m.id) + '</strong><br>' + (m.description || '') + '</div>').join('') : 'No mods for your account.';
+          } catch (_) { document.getElementById('mod-list').textContent = 'Could not load mods.'; }
+        }
+        async function updatePresence(user, location) {
+          try {
+            await api('/api/editor/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user, location }) });
+          } catch (_) {}
+        }
+        document.getElementById('login-btn').onclick = async () => {
+          const username = document.getElementById('login-username').value.trim();
+          const password = document.getElementById('login-password').value;
+          if (!username || !password) { document.getElementById('login-status').textContent = 'Enter username and password'; return; }
+          try {
+            const r = await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+            const data = await r.json().catch(() => ({}));
+            document.getElementById('login-status').textContent = data.success ? 'Logged in as ' + (data.user?.username || data.user?.email) : (data.error || 'Login failed');
+            if (data.success) {
+              var who = (data.user && (data.user.username || data.user.email)) || username;
+              await updatePresence(who, 'features-tome');
+              loadMods();
+              loadPresence();
             }
-            
-            function addLog(level, message) {
-                const logEntries = document.getElementById('log-entries');
-                const logEntry = document.createElement('div');
-                logEntry.className = \`log-entry log-\${level}\`;
-                logEntry.textContent = \`[\${new Date().toLocaleTimeString()}] \${message}\`;
-                logEntries.appendChild(logEntry);
-                logEntries.scrollTop = logEntries.scrollHeight;
-            }
-            
-            // When cooking completes, add burger to cart and show link
-            let lastAddedOrderId = null;
-            async function maybeAddToCart() {
-                if (currentState !== 'order_complete' || !orderId || lastAddedOrderId === orderId) return;
-                lastAddedOrderId = orderId;
-                try {
-                    const r = await fetch('/api/cart/add', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            item: {
-                                id: orderId,
-                                name: 'Fish Burger',
-                                price: 9.99,
-                                orderId,
-                                cookingTime,
-                                temperature
-                            }
-                        })
-                    });
-                    if (r.ok) {
-                        addLog('info', 'Added to cart! View cart →');
-                        const cartLink = document.createElement('a');
-                        cartLink.href = '/cart';
-                        cartLink.textContent = ' View cart';
-                        cartLink.className = 'back-link';
-                        cartLink.style.marginLeft = '8px';
-                        const statusEl = document.getElementById('status');
-                        if (statusEl && !document.getElementById('cart-link')) {
-                            cartLink.id = 'cart-link';
-                            statusEl.appendChild(cartLink);
-                        }
-                    }
-                } catch (e) {
-                    addLog('error', 'Failed to add to cart: ' + e.message);
-                }
-            }
-            function updateStatus(result) {
-                currentState = result.currentState;
-                document.getElementById('current-state').textContent = currentState;
-                if (result.data) {
-                    if (result.data.orderId != null) orderId = result.data.orderId;
-                    if (result.data.cookingTime != null) cookingTime = result.data.cookingTime;
-                    if (result.data.temperature != null) temperature = result.data.temperature;
-                }
-                document.getElementById('order-id').textContent = orderId || '-';
-                document.getElementById('cooking-time').textContent = cookingTime;
-                document.getElementById('temperature').textContent = temperature;
-                maybeAddToCart();
-            }
-            // Initialize
-            addLog('info', 'Fish Burger Demo initialized');
-        </script>
+          } catch (e) { document.getElementById('login-status').textContent = 'Request failed'; }
+        };
+        loadPresence(); loadMods();
+        setInterval(loadPresence, 15000);
+      </script>
     </body>
     </html>
   `);
 });
 
-// Cart page: receives cooked burgers, payment-free checkout
-app.get('/cart', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Cart – Cooked Burgers</title>
-        <style>
-            * { box-sizing: border-box; }
-            body {
-                font-family: system-ui, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                min-height: 100vh;
-                color: #eee;
-            }
-            .container { max-width: 560px; margin: 0 auto; }
-            .back-link {
-                display: inline-block;
-                margin-bottom: 20px;
-                color: white;
-                text-decoration: none;
-                padding: 10px 20px;
-                background: rgba(255,255,255,0.2);
-                border-radius: 10px;
-            }
-            .back-link:hover { background: rgba(255,255,255,0.3); }
-            h1 { margin: 0 0 20px; }
-            .cart-list {
-                background: rgba(255,255,255,0.08);
-                border-radius: 12px;
-                padding: 16px;
-                margin: 20px 0;
-                list-style: none;
-            }
-            .cart-list li {
-                padding: 12px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .cart-list li:last-child { border-bottom: none; }
-            .empty { text-align: center; color: #999; padding: 24px; }
-            .total { font-size: 1.2em; margin: 16px 0; }
-            .checkout-btn {
-                background: linear-gradient(45deg, #2ecc71, #27ae60);
-                color: white;
-                border: none;
-                padding: 14px 28px;
-                border-radius: 25px;
-                font-size: 1em;
-                cursor: pointer;
-            }
-            .checkout-btn:hover { opacity: 0.9; }
-            .checkout-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            .success-msg { background: rgba(46, 204, 113, 0.3); padding: 16px; border-radius: 10px; margin-top: 20px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <a href="/fish-burger-demo" class="back-link">← Back to Fish Burger Demo</a>
-            <h1>🛒 Cart</h1>
-            <p>Cooked burgers ready for checkout (no payment).</p>
-            <ul class="cart-list" id="cart-list"></ul>
-            <p class="total" id="total-line"></p>
-            <button class="checkout-btn" id="checkout-btn" disabled>Checkout (free)</button>
-            <div class="success-msg" id="success-msg" style="display:none;">
-                Order complete. No payment required. Thank you!
-            </div>
-        </div>
-        <script>
-            const listEl = document.getElementById('cart-list');
-            const totalEl = document.getElementById('total-line');
-            const btn = document.getElementById('checkout-btn');
-            const successEl = document.getElementById('success-msg');
-            function render(cart) {
-                const items = cart?.cart?.items ?? [];
-                listEl.innerHTML = '';
-                if (items.length === 0) {
-                    listEl.innerHTML = '<li class="empty">No items. Cook a burger and complete cooking to add it here.</li>';
-                    totalEl.textContent = '';
-                    btn.disabled = true;
-                    return;
-                }
-                items.forEach(function(item) {
-                    const li = document.createElement('li');
-                    li.innerHTML = '<span>🍔 ' + (item.name || 'Burger') + '</span><span>$' + (item.price ?? 0).toFixed(2) + '</span>';
-                    listEl.appendChild(li);
-                });
-                const total = (cart?.cart?.total ?? 0);
-                totalEl.textContent = 'Total: $' + total.toFixed(2);
-                btn.disabled = false;
-            }
-            fetch('/api/cart/status').then(function(r) { return r.json(); }).then(render).catch(function() {
-                listEl.innerHTML = '<li class="empty">Could not load cart.</li>';
-            });
-            btn.addEventListener('click', function() {
-                btn.disabled = true;
-                fetch('/api/cart/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.success) {
-                            successEl.style.display = 'block';
-                            listEl.innerHTML = '<li class="empty">Cart is empty.</li>';
-                            totalEl.textContent = '';
-                        }
-                    })
-                    .catch(function() { btn.disabled = false; });
-            });
-        </script>
-    </body>
-    </html>
-  `);
-});
+// Redirect legacy routes to features (no fish-burger/cart pages in editor)
+app.get('/fish-burger-demo', (req, res) => res.redirect(302, '/features'));
+app.get('/cart', (req, res) => res.redirect(302, '/features'));
 
 // Editor: render-target for Cave getRenderTarget(path) — used by generic-editor entry to resolve container/tomeId.
 app.get('/api/editor/render-target', (req, res) => {
@@ -1194,21 +996,24 @@ app.post('/api/editor/presence', express.json(), async (req, res) => {
   }
 });
 
-// Editor login: uses loginHandler adapter, then DB users (activated sign-ups)
+// Editor login: login adapter (CaveUser + session), then DB users (activated sign-ups)
 app.post('/api/login', express.json(), async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ success: false, error: 'Username and password are required' });
   }
-  let result = await loginHandler.login({ username, password });
-  if (!result) {
+  let caveUser = await loginAdapter.login({ username, password });
+  if (!caveUser) {
     const user = await dbUtils.getUserByUsername(username) || await dbUtils.getUserByEmail(username);
     if (user && user.password_hash === password) {
-      result = { user: { id: String(user.id), username: user.username, email: user.email } };
+      caveUser = { id: String(user.id), username: user.username, email: user.email, permissionLevel: 'user' };
     }
   }
-  if (result) {
-    return res.json({ success: true, user: result.user });
+  if (caveUser) {
+    const sessionId = crypto.randomBytes(24).toString('hex');
+    sessionStore.set(sessionId, caveUser);
+    res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, maxAge: SESSION_MAX_AGE_MS, sameSite: 'lax' });
+    return res.json({ success: true, user: { id: caveUser.id, username: caveUser.username, email: caveUser.email } });
   }
   res.status(401).json({ success: false, error: 'Invalid credentials' });
 });
@@ -1327,6 +1132,22 @@ app.post('/api/editor/publish', express.json(), async (req, res) => {
   res.json({ ok: true, message: 'Component published successfully!' });
 });
 
+// Proxy dotCMS health so the editor (browser) uses same-origin; server uses DOTCMS_URL.
+const DOTCMS_URL = (process.env.DOTCMS_URL || 'http://localhost:8080').replace(/\/$/, '');
+app.get('/api/editor/dotcms-health', (req, res) => {
+  const url = `${DOTCMS_URL}/api/health`;
+  fetch(url, { method: 'GET' })
+    .then((proxied) => {
+      res.status(proxied.status).set('Content-Type', proxied.headers.get('Content-Type') || 'application/json');
+      return proxied.text();
+    })
+    .then((body) => res.send(body))
+    .catch((err) => {
+      logger.debug('dotCMS health proxy error: %s', err?.message || err);
+      res.status(502).json({ error: 'dotCMS unreachable', message: err?.message || 'Connection refused' });
+    });
+});
+
 // Editor pages: SPA-style so /editor, /editor/library, /editor/cart, /editor/donation, /editor/signup, /editor/activate serve the same shell.
 app.get('/editor', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
@@ -1348,30 +1169,10 @@ app.get('/editor/activate', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
 });
 
-app.get('/editor/redeem', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/redeem-tome-widget.html'));
-});
-app.get('/editor/signup', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
-});
-app.get('/editor/activate', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
-});
-
-// Cart Component Test Page
-app.get('/cart-test', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-test.html'));
-});
-
-// Cart Component Integration Test Page
-app.get('/cart-integration-test', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-integration-test.html'));
-});
-
-// Cart Component Demo Page
-app.get('/cart-demo', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/cart-demo.html'));
-});
+// Redirect legacy cart test/demo pages to features
+app.get('/cart-test', (req, res) => res.redirect(302, '/features'));
+app.get('/cart-integration-test', (req, res) => res.redirect(302, '/features'));
+app.get('/cart-demo', (req, res) => res.redirect(302, '/features'));
 
 // Create HTTP server
 const server = createServer(app);
@@ -1432,14 +1233,19 @@ if (process.env.SKIP_SERVER_LISTEN !== '1') {
   });
   await otelStartup.startUp();
 
-  const startDotcms = process.env.START_DOTCMS === 'true';
+  // Start dotCMS in development by default (unless START_DOTCMS=false). In production, only when START_DOTCMS=true.
+  const startDotcms = process.env.NODE_ENV !== 'production'
+    ? process.env.START_DOTCMS !== 'false'
+    : process.env.START_DOTCMS === 'true';
   const dotcmsStartup = createDotcmsStartupAdapter({
     startDotcms,
-    unleashIsEnabled: (name) => unleashToggle.isEnabled(name),
-    dotCmsUrl: process.env.DOTCMS_URL || undefined,
+    unleashIsEnabled: (name) =>
+      name === 'dotcms-startup-enabled' ? Promise.resolve(startDotcms) : unleashToggle.isEnabled(name),
+    dotCmsUrl: process.env.DOTCMS_URL || 'http://localhost:8080',
     logger,
-    composePath: composePath || process.env.DOTCMS_COMPOSE_PATH,
+    composePath: composePath || process.env.DOTCMS_COMPOSE_PATH || path.join(process.cwd(), 'docker-compose.yml'),
     composeProject,
+    pipeContainerLogs: true,
   });
   await dotcmsStartup.startUp();
 
@@ -1462,12 +1268,8 @@ if (process.env.SKIP_SERVER_LISTEN !== '1') {
     logger.info(`🔌 WebSocket endpoint: ws://localhost:${port}/graphql`);
     logger.info(`📈 Health check: http://localhost:${port}/health`);
     logger.info(`🏠 Home page: http://localhost:${port}/`);
+    logger.info(`📋 Features: http://localhost:${port}/features`);
     logger.info(`✏️ Editor: http://localhost:${port}/editor`);
-    logger.info(`🛒 Cart Test: http://localhost:${port}/cart-test`);
-    logger.info(`🔧 Cart Integration Test: http://localhost:${port}/cart-integration-test`);
-    logger.info(`🎯 Cart Demo: http://localhost:${port}/cart-demo`);
-    logger.info(`🍔 Fish Burger Demo: http://localhost:${port}/fish-burger-demo`);
-    logger.info(`🛒 Cart (cooked burgers, payment-free checkout): http://localhost:${port}/cart`);
   });
 }
 

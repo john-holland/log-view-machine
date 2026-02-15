@@ -9,9 +9,41 @@
   },
   "serverUrl": "http://localhost:3004",
   "assets": {
-    "templates": "assets/templates/",
-    "styles": "assets/styles/",
-    "scripts": "assets/scripts/"
+    "templates": "/mods/fish-burger/templates/",
+    "styles": "/mods/fish-burger/styles/",
+    "scripts": "/mods/fish-burger/scripts/"
   },
-  "features": ["cart", "state-machine", "checkout"]
+  "features": ["cart", "state-machine", "checkout"],
+  "modMetadata": {
+    "pathReplacements": {
+      "/features": {
+        "modTomeId": "fish-burger-mod-tome",
+        "spelunk": {
+          "route": "/features",
+          "tomeId": "fish-burger-mod-tome",
+          "childCaves": {
+            "cart": {
+              "route": "/features/cart",
+              "tomeId": "fish-burger-cart-tome"
+            }
+          }
+        }
+      }
+    },
+    "assetLinks": {
+      "templates": "/mods/fish-burger/templates/",
+      "styles": "/mods/fish-burger/styles/",
+      "scripts": "/mods/fish-burger/scripts/",
+      "serverUrl": "http://localhost:3004"
+    },
+    "spelunkMap": {
+      "features-cart": {
+        "route": "/features/cart",
+        "modTomeId": "fish-burger-cart-tome"
+      },
+      "*": {
+        "modCaveId": "fish-burger-mod-cave"
+      }
+    }
+  }
 }

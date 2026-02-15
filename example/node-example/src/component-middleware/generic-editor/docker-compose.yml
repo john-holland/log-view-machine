@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # dotCMS Instance
+  dotcms:
+    image: dotcms/dotcms:latest
+    container_name: dotcms-test
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_BASE_URL=jdbc:postgresql://postgres:5432/dotcms
+      - DB_USERNAME=dotcms
+      - DB_PASSWORD=dotcms
+      - DOTCMS_DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - DOTCMS_DB_DRIVER=org.postgresql.Driver
+      - DOTCMS_DB_URL=jdbc:postgresql://postgres:5432/dotcms
+      - DOTCMS_DB_USERNAME=dotcms
+      - DOTCMS_DB_PASSWORD=dotcms
+      - DOTCMS_DB_HBM2DDL_AUTO=create-drop
+    volumes:
+      - dotcms_data:/opt/dotcms
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13
+    container_name: postgres-dotcms
+    environment:
+      - POSTGRES_DB=dotcms
+      - POSTGRES_USER=dotcms
+      - POSTGRES_PASSWORD=dotcms
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Generic Editor Service
+  generic-editor:
+    build: .
+    container_name: generic-editor
+    ports:
+      - "3000:3000"
+    environment:
+      - DOTCMS_URL=http://dotcms:8080
+      - DOTCMS_API_KEY=demo-key
+      - DOTCMS_ADMIN_USER=admin@dotcms.com
+      - DOTCMS_ADMIN_PASSWORD=admin
+      - NODE_ENV=development
+    volumes:
+      - generic_editor_data:/app/data
+      - ./templates:/app/templates:ro
+    depends_on:
+      - dotcms
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for dotCMS to be ready...' &&
+        while ! curl -f http://dotcms:8080/api/v1/system/status; do
+          sleep 10
+        done &&
+        echo 'dotCMS is ready! Registering templates...' &&
+        node register-templates.js &&
+        echo 'Starting generic editor...' &&
+        node server.js
+      "
+
+volumes:
+  dotcms_data:
+  postgres_data:
+  generic_editor_data: 
+        echo 'Waiting for dotCMS to be ready...' &&
+        while ! curl -f http://dotcms:8080/api/v1/system/status; do
+          sleep 10
+        done &&
+        echo 'dotCMS is ready! Registering templates...' &&
+        node register-templates.js &&
+        echo 'Starting generic editor...' &&
+        node server.js
+      "
+
+volumes:
+  dotcms_data:
+  postgres_data:
+  generic_editor_data: 

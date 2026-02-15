@@ -2,6 +2,12 @@
 
 Example mod demonstrating fish burger state machine with shopping cart functionality.
 
+---
+
+**External APIs:** Mods that call external services need those URLs on the CORS whitelist. Test your mod locally first. When you need a new API URL added, **email in with your API needs** and we'll add it to the whitelist—we're happy to oblige.
+
+---
+
 This mod replaces the removed `cart-tome` functionality, proving that the mod system can replace hardcoded features.
 
 ## Features

@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# Gradle wrapper script for Unix (kotlin-mod-index).
+# Requires JAVA_HOME or java on PATH.
+#
+set -e
+DIRNAME="$(cd "$(dirname "$0")" && pwd)"
+APP_HOME="$(cd "$DIRNAME" && pwd)"
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+exec java -Dfile.encoding=UTF-8 -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

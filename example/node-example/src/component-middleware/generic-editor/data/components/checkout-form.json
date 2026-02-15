@@ -1,0 +1,56 @@
+{
+  "id": "checkout-form",
+  "name": "Checkout Form",
+  "description": "E-commerce checkout form component",
+  "type": "form",
+  "semanticVersions": [
+    "1.0.0"
+  ],
+  "template": "\n              <div class=\"checkout-form\" data-component-id=\"{{componentId}}\">\n                <h2>Complete Your Order</h2>\n                <form>\n                  <input type=\"email\" placeholder=\"Email\" />\n                  <input type=\"text\" placeholder=\"Name\" />\n                  <button type=\"submit\">Submit Order</button>\n                </form>\n              </div>\n            ",
+  "styles": "\n              .checkout-form {\n                padding: 20px;\n                border: 1px solid #ddd;\n                border-radius: 4px;\n              }\n              .checkout-form input {\n                display: block;\n                width: 100%;\n                margin: 10px 0;\n                padding: 8px;\n                border: 1px solid #ccc;\n                border-radius: 4px;\n              }\n              .checkout-form button {\n                background: #28a745;\n                color: white;\n                padding: 10px 20px;\n                border: none;\n                border-radius: 4px;\n                cursor: pointer;\n              }\n            ",
+  "stateMachine": {
+    "id": "checkout-state",
+    "name": "Checkout State Machine",
+    "config": {
+      "id": "checkoutState",
+      "initial": "idle",
+      "states": {
+        "idle": {
+          "on": {
+            "START": "filling"
+          }
+        },
+        "filling": {
+          "on": {
+            "SUBMIT": "validating"
+          }
+        },
+        "validating": {
+          "on": {
+            "VALID": "success",
+            "INVALID": "error"
+          }
+        },
+        "success": {
+          "type": "final"
+        },
+        "error": {
+          "on": {
+            "RETRY": "filling"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "author": "E-commerce Team",
+    "created": "2025-08-02T22:06:29.345Z",
+    "tags": [
+      "form",
+      "checkout",
+      "ecommerce"
+    ]
+  },
+  "lastModified": "2025-08-02T22:06:29.348Z",
+  "source": "local"
+}

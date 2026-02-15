@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Component Integration Test</title>
+    <link rel="stylesheet" href="assets/components/cart-component/styles/cart-styles.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .integration-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .test-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .test-header {
+            background: #333;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .test-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .test-content {
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        
+        .test-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        
+        .test-btn.secondary {
+            background: #6c757d;
+        }
+        
+        .test-btn.secondary:hover {
+            background: #545b62;
+        }
+        
+        .test-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .status-display {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .cart-panel {
+            grid-column: 1 / -1;
+        }
+        
+        .cart-panel .test-content {
+            padding: 0;
+        }
+        
+        .cart-panel .cart-component {
+            margin: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="integration-container">
+        <div class="test-panel">
+            <div class="test-header">
+                <h1>🧪 Component Testing</h1>
+            </div>
+            <div class="test-content">
+                <div class="test-section">
+                    <h3>Component Lifecycle</h3>
+                    <div class="test-buttons">
+                                            <button class="test-btn" data-test="initialization">Test Init</button>
+                    <button class="test-btn" data-test="metadata">Test Metadata</button>
+                    <button class="test-btn" data-test="status">Test Status</button>
+                    <button class="test-btn secondary" data-test="clear">Clear</button>
+                    </div>
+                    <div class="test-output" id="test-output">Ready to test...</div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>Cart Operations</h3>
+                    <div class="test-buttons">
+                                            <button class="test-btn" data-test="add-ingredients">Add Items</button>
+                    <button class="test-btn" data-test="cart-info">Cart Info</button>
+                    <button class="test-btn" data-test="clear-cart">Clear Cart</button>
+                    </div>
+                    <div class="test-output" id="cart-test-output">Ready to test cart operations...</div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>Component Status</h3>
+                    <div id="component-status">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-panel">
+            <div class="test-header">
+                <h1>🔧 Behavior Testing</h1>
+            </div>
+            <div class="test-content">
+                <div class="test-section">
+                    <h3>Event Handling</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testEventListeners()">Test Events</button>
+                        <button class="test-btn" onclick="testDOMInteraction()">Test DOM</button>
+                        <button class="test-btn" onclick="testStorage()">Test Storage</button>
+                    </div>
+                    <div class="test-output" id="behavior-test-output">Ready to test behavior...</div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>Integration Points</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testGenericEditor()">Test GE Integration</button>
+                        <button class="test-btn" onclick="testStateMachine()">Test State Machine</button>
+                        <button class="test-btn" onclick="testPersistence()">Test Persistence</button>
+                    </div>
+                    <div class="test-output" id="integration-test-output">Ready to test integration...</div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>Error Handling</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testErrorScenarios()">Test Errors</button>
+                        <button class="test-btn" onclick="testEdgeCases()">Test Edge Cases</button>
+                        <button class="test-btn secondary" onclick="resetComponent()">Reset</button>
+                    </div>
+                    <div class="test-output" id="error-test-output">Ready to test error handling...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-panel cart-panel">
+            <div class="test-header">
+                <h1>🛒 Live Cart Component</h1>
+            </div>
+            <div class="test-content">
+                <div id="cart-component-container">
+                    <!-- Cart component will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CartComponent } from './assets/components/cart-component/index.js';
+        
+        let cartComponent = null;
+        let testOutputs = {};
+        
+        // Initialize test outputs
+        ['test-output', 'cart-test-output', 'behavior-test-output', 'integration-test-output', 'error-test-output'].forEach(id => {
+            testOutputs[id] = '';
+        });
+        
+        // Initialize cart component
+        async function initializeCartComponent() {
+            try {
+                logTest('test-output', '🚀 Initializing cart component...');
+                
+                cartComponent = new CartComponent();
+                const success = await cartComponent.initialize();
+                
+                if (success) {
+                    logTest('test-output', '✅ Cart component initialized successfully');
+                    updateComponentStatus();
+                    
+                    // Load the cart template into the container
+                    const container = document.getElementById('cart-component-container');
+                    const response = await fetch('./assets/components/cart-component/templates/cart-template.html');
+                    const template = await response.text();
+                    container.innerHTML = template;
+                    
+                    // Initialize the behavior after template is loaded
+                    setTimeout(() => {
+                        if (cartComponent.behavior) {
+                            logTest('test-output', '🎯 Cart template loaded and behavior ready');
+                        }
+                    }, 100);
+                    
+                } else {
+                    logTest('test-output', '❌ Failed to initialize cart component');
+                }
+                
+            } catch (error) {
+                logTest('test-output', `❌ Error initializing cart component: ${error.message}`);
+                console.error('Cart component initialization error:', error);
+            }
+        }
+        
+        // Test functions
+        function testInitialization() {
+            logTest('test-output', '🧪 Testing component initialization...');
+            if (cartComponent) {
+                logTest('test-output', `✅ Component ID: ${cartComponent.getMetadata().id}`);
+                logTest('test-output', `✅ Component Name: ${cartComponent.getMetadata().name}`);
+                logTest('test-output', `✅ Component Version: ${cartComponent.getMetadata().version}`);
+                logTest('test-output', `✅ Is Initialized: ${cartComponent.isInitialized}`);
+            } else {
+                logTest('test-output', '❌ Cart component not available');
+            }
+        };
+        
+        function testMetadata() {
+            logTest('test-output', '🧪 Testing component metadata...');
+            if (cartComponent) {
+                const metadata = cartComponent.getMetadata();
+                logTest('test-output', `✅ Metadata: ${JSON.stringify(metadata, null, 2)}`);
+            } else {
+                logTest('test-output', '❌ Cart component not available');
+            }
+        };
+        
+        function testStatus() {
+            logTest('test-output', '🧪 Testing component status...');
+            if (cartComponent) {
+                const status = cartComponent.getStatus();
+                logTest('test-output', `✅ Status: ${JSON.stringify(status, null, 2)}`);
+            } else {
+                logTest('test-output', '❌ Cart component not available');
+            }
+        };
+        
+        function testAddIngredients() {
+            logTest('cart-test-output', '🧪 Testing ingredient addition...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    cartComponent.addIngredient('bun', 'sesame', 2.99, '🥯 Sesame Bun');
+                    cartComponent.addIngredient('patty', 'beef', 4.99, '🥩 Beef Patty');
+                    cartComponent.addIngredient('cheese', 'cheddar', 1.49, '🧀 Cheddar');
+                    logTest('cart-test-output', '✅ Added 3 ingredients to cart');
+                    updateComponentStatus();
+                } catch (error) {
+                    logTest('cart-test-output', `❌ Error adding ingredients: ${error.message}`);
+                }
+            } else {
+                logTest('cart-test-output', '❌ Cart component not ready');
+            }
+        };
+        
+        function testCartInfo() {
+            logTest('cart-test-output', '🧪 Testing cart information...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    const status = cartComponent.getStatus();
+                    logTest('cart-test-output', `✅ Cart Status: ${JSON.stringify(status, null, 2)}`);
+                    
+                    const cart = cartComponent.behavior.getCart();
+                    logTest('cart-test-output', `✅ Cart Items: ${cart.length}`);
+                    
+                    if (cart.length > 0) {
+                        cart.forEach(item => {
+                            logTest('cart-test-output', `  - ${item.name}: $${item.price} x${item.quantity}`);
+                        });
+                    }
+                } catch (error) {
+                    logTest('cart-test-output', `❌ Error testing cart operations: ${error.message}`);
+                }
+            } else {
+                logTest('cart-test-output', '❌ Cart component not ready');
+            }
+        };
+        
+        function testClearCart() {
+            logTest('cart-test-output', '🧪 Testing cart clearing...');
+            if (cartComponent && cartComponent.isInitialized) {
+                try {
+                    cartComponent.behavior.clearCart();
+                    logTest('cart-test-output', '✅ Cart cleared successfully');
+                    updateComponentStatus();
+                } catch (error) {
+                    logTest('cart-test-output', `❌ Error clearing cart: ${error.message}`);
+                }
+            } else {
+                logTest('cart-test-output', '❌ Cart component not ready');
+            }
+        };
+        
+        function testEventListeners() {
+            logTest('behavior-test-output', '🧪 Testing event listeners...');
+            if (cartComponent && cartComponent.behavior) {
+                try {
+                    const eventListeners = cartComponent.behavior.eventListeners;
+                    logTest('behavior-test-output', `✅ Event listeners count: ${eventListeners.size}`);
+                    
+                    for (const [key, listener] of eventListeners) {
+                        logTest('behavior-test-output', `  - ${key}: ${listener.event} on ${listener.element.id || 'unknown'}`);
+                    }
+                } catch (error) {
+                    logTest('behavior-test-output', `❌ Error testing event listeners: ${error.message}`);
+                }
+            } else {
+                logTest('behavior-test-output', '❌ Cart behavior not available');
+            }
+        };
+        
+        function testDOMInteraction() {
+            logTest('behavior-test-output', '🧪 Testing DOM interaction...');
+            if (cartComponent && cartComponent.behavior) {
+                try {
+                    const ingredientButtons = document.querySelectorAll('.ingredient-btn');
+                    logTest('behavior-test-output', `✅ Found ${ingredientButtons.length} ingredient buttons`);
+                    
+                    const cartItems = document.querySelectorAll('.cart-item');
+                    logTest('behavior-test-output', `✅ Found ${cartItems.length} cart items`);
+                    
+                    const cartTotal = document.querySelector('.cart-total');
+                    logTest('behavior-test-output', `✅ Cart total element: ${cartTotal ? 'found' : 'not found'}`);
+                } catch (error) {
+                    logTest('behavior-test-output', `❌ Error testing DOM interaction: ${error.message}`);
+                }
+            } else {
+                logTest('behavior-test-output', '❌ Cart behavior not available');
+            }
+        };
+        
+        function testStorage() {
+            logTest('behavior-test-output', '🧪 Testing storage...');
+            if (cartComponent && cartComponent.behavior) {
+                try {
+                    const savedCart = localStorage.getItem('fish-burger-cart');
+                    logTest('behavior-test-output', `✅ Local storage cart: ${savedCart ? 'found' : 'not found'}`);
+                    
+                    if (savedCart) {
+                        const cart = JSON.parse(savedCart);
+                        logTest('behavior-test-output', `✅ Stored cart items: ${cart.length}`);
+                    }
+                } catch (error) {
+                    logTest('behavior-test-output', `❌ Error testing storage: ${error.message}`);
+                }
+            } else {
+                logTest('behavior-test-output', '❌ Cart behavior not available');
+            }
+        };
+        
+        function testGenericEditor() {
+            logTest('integration-test-output', '🧪 Testing Generic Editor integration...');
+            try {
+                // Check if we're in the generic editor context
+                const isGenericEditor = window.location.pathname.includes('generic-editor');
+                logTest('integration-test-output', `✅ Generic Editor context: ${isGenericEditor ? 'yes' : 'no'}`);
+                
+                // Check for generic editor components
+                const geComponents = document.querySelectorAll('[class*="generic-editor"]');
+                logTest('integration-test-output', `✅ Generic Editor components found: ${geComponents.length}`);
+                
+                logTest('integration-test-output', '✅ Generic Editor integration test completed');
+            } catch (error) {
+                logTest('integration-test-output', `❌ Error testing Generic Editor integration: ${error.message}`);
+            }
+        };
+        
+        function testStateMachine() {
+            logTest('integration-test-output', '🧪 Testing state machine integration...');
+            try {
+                // Check if state machines are available
+                const hasStateMachines = typeof window.createViewStateMachine === 'function';
+                logTest('integration-test-output', `✅ State machine creator: ${hasStateMachines ? 'available' : 'not available'}`);
+                
+                // Check for XState
+                const hasXState = typeof window.XState !== 'undefined';
+                logTest('integration-test-output', `✅ XState: ${hasXState ? 'available' : 'not available'}`);
+                
+                logTest('integration-test-output', '✅ State machine integration test completed');
+            } catch (error) {
+                logTest('integration-test-output', `❌ Error testing state machine integration: ${error.message}`);
+            }
+        };
+        
+        function testPersistence() {
+            logTest('integration-test-output', '🧪 Testing persistence...');
+            try {
+                // Test localStorage
+                const testKey = 'cart-test-persistence';
+                localStorage.setItem(testKey, 'test-value');
+                const retrieved = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+                
+                logTest('integration-test-output', `✅ Local storage: ${retrieved === 'test-value' ? 'working' : 'not working'}`);
+                
+                // Check for persistence manager
+                const hasPersistence = typeof window.createPersistenceManager === 'function';
+                logTest('integration-test-output', `✅ Persistence manager: ${hasPersistence ? 'available' : 'not available'}`);
+                
+                logTest('integration-test-output', '✅ Persistence test completed');
+            } catch (error) {
+                logTest('integration-test-output', `❌ Error testing persistence: ${error.message}`);
+            }
+        };
+        
+        function testErrorScenarios() {
+            logTest('error-test-output', '🧪 Testing error scenarios...');
+            try {
+                // Test with invalid data
+                if (cartComponent && cartComponent.behavior) {
+                    try {
+                        cartComponent.behavior.addToCart(null);
+                        logTest('error-test-output', '⚠️ Should have thrown error for null data');
+                    } catch (error) {
+                        logTest('error-test-output', `✅ Correctly caught error: ${error.message}`);
+                    }
+                }
+                
+                // Test with undefined component
+                try {
+                    const undefinedComponent = null;
+                    undefinedComponent.getStatus();
+                    logTest('error-test-output', '⚠️ Should have thrown error for undefined component');
+                } catch (error) {
+                    logTest('error-test-output', `✅ Correctly caught error: ${error.message}`);
+                }
+                
+                logTest('error-test-output', '✅ Error scenario tests completed');
+            } catch (error) {
+                logTest('error-test-output', `❌ Error in error testing: ${error.message}`);
+            }
+        };
+        
+        function testEdgeCases() {
+            logTest('error-test-output', '🧪 Testing edge cases...');
+            try {
+                // Test empty cart operations
+                if (cartComponent && cartComponent.behavior) {
+                    const emptyCart = cartComponent.behavior.isCartEmpty();
+                    logTest('error-test-output', `✅ Empty cart check: ${emptyCart}`);
+                    
+                    const emptyCartTotal = cartComponent.behavior.getCartTotal();
+                    logTest('error-test-output', `✅ Empty cart total: $${emptyCartTotal}`);
+                    
+                    const emptyCartCount = cartComponent.behavior.getCartItemCount();
+                    logTest('error-test-output', `✅ Empty cart count: ${emptyCartCount}`);
+                }
+                
+                // Test with zero quantities
+                if (cartComponent && cartComponent.behavior) {
+                    try {
+                        cartComponent.behavior.updateIngredientQuantity('test-id', 0);
+                        logTest('error-test-output', '✅ Zero quantity handled correctly');
+                    } catch (error) {
+                        logTest('error-test-output', `⚠️ Zero quantity error: ${error.message}`);
+                    }
+                }
+                
+                logTest('error-test-output', '✅ Edge case tests completed');
+            } catch (error) {
+                logTest('error-test-output', `❌ Error in edge case testing: ${error.message}`);
+            }
+        };
+        
+        function resetComponent() {
+            logTest('error-test-output', '🔄 Resetting component...');
+            try {
+                if (cartComponent) {
+                    cartComponent.destroy();
+                    cartComponent = null;
+                }
+                
+                // Clear cart from storage
+                localStorage.removeItem('fish-burger-cart');
+                
+                // Reinitialize
+                setTimeout(() => {
+                    initializeCartComponent();
+                }, 100);
+                
+                logTest('error-test-output', '✅ Component reset completed');
+            } catch (error) {
+                logTest('error-test-output', `❌ Error resetting component: ${error.message}`);
+            }
+        };
+        
+        function clearTestOutput() {
+            Object.keys(testOutputs).forEach(id => {
+                testOutputs[id] = '';
+                document.getElementById(id).textContent = 'Output cleared...';
+            });
+        };
+        
+        // Utility functions
+        function logTest(outputId, message) {
+            if (testOutputs[outputId]) {
+                testOutputs[outputId] += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            } else {
+                testOutputs[outputId] = `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            }
+            
+            const element = document.getElementById(outputId);
+            if (element) {
+                element.textContent = testOutputs[outputId];
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+        
+        function updateComponentStatus() {
+            if (cartComponent) {
+                const status = cartComponent.getStatus();
+                document.getElementById('component-status').innerHTML = `
+                    <div class="status-display">
+                        <strong>Status:</strong> ${status.status}<br>
+                        <strong>Message:</strong> ${status.message}<br>
+                        <strong>Cart Items:</strong> ${status.cartItemCount}<br>
+                        <strong>Cart Total:</strong> $${status.cartTotal.toFixed(2)}<br>
+                        <strong>Is Empty:</strong> ${status.isCartEmpty ? 'Yes' : 'No'}
+                    </div>
+                `;
+            }
+        }
+        
+        // Setup event listeners for test buttons
+        function setupEventListeners() {
+            const testButtons = document.querySelectorAll('[data-test]');
+            testButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const testType = e.target.dataset.test;
+                    switch (testType) {
+                        case 'initialization':
+                            testInitialization();
+                            break;
+                        case 'metadata':
+                            testMetadata();
+                            break;
+                        case 'status':
+                            testStatus();
+                            break;
+                        case 'add-ingredients':
+                            testAddIngredients();
+                            break;
+                        case 'cart-info':
+                            testCartInfo();
+                            break;
+                        case 'clear-cart':
+                            testClearCart();
+                            break;
+                        case 'clear':
+                            clearTestOutput();
+                            break;
+                    }
+                });
+            });
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('test-output', '📱 Page loaded, initializing cart component...');
+            setupEventListeners();
+            initializeCartComponent();
+        });
+        
+        // Update status every 3 seconds
+        setInterval(() => {
+            if (cartComponent) {
+                updateComponentStatus();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

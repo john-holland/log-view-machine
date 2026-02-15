@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Burger with Tome Integration Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            margin: 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+        }
+        
+        .demo-section h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .status-card h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .status-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #f57c00;
+        }
+        
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #388e3c;
+        }
+        
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-warning:hover:not(:disabled) {
+            background: #f57c00;
+        }
+        
+        .btn-info {
+            background: #00bcd4;
+            color: white;
+        }
+        
+        .btn-info:hover:not(:disabled) {
+            background: #0097a7;
+        }
+        
+        .logs-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .logs-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        .log-entry {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-timestamp {
+            color: #666;
+            margin-right: 10px;
+        }
+        
+        .log-level {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .log-info .log-level {
+            color: #2196f3;
+        }
+        
+        .log-success .log-level {
+            color: #4caf50;
+        }
+        
+        .log-error .log-level {
+            color: #f44336;
+        }
+        
+        .log-message {
+            color: #333;
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #f44336;
+        }
+        
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #4caf50;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐟 Fish Burger with Tome Integration</h1>
+            <p>Connected to Generic Editor backend via RobotCopy proxy machines</p>
+        </div>
+        
+        <div class="content">
+            <div class="demo-section">
+                <h2>📊 System Status</h2>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <h3>Generic Editor</h3>
+                        <div class="status-value" id="generic-editor-status">Checking...</div>
+                    </div>
+                    <div class="status-card">
+                        <h3>Fish Burger Backend</h3>
+                        <div class="status-value" id="fish-burger-backend-status">Checking...</div>
+                    </div>
+                    <div class="status-card">
+                        <h3>Tome Connection</h3>
+                        <div class="status-value" id="tome-connection-status">Checking...</div>
+                    </div>
+                    <div class="status-card">
+                        <h3>Current State</h3>
+                        <div class="status-value" id="current-state">idle</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>🎮 Cooking Controls</h2>
+                <div class="controls">
+                    <button class="btn btn-primary" id="start-cooking-btn" onclick="startCooking()">
+                        🍳 Start Cooking
+                    </button>
+                    <button class="btn btn-secondary" id="update-progress-btn" onclick="updateProgress()" disabled>
+                        📈 Update Progress
+                    </button>
+                    <button class="btn btn-success" id="complete-cooking-btn" onclick="completeCooking()" disabled>
+                        ✅ Complete Cooking
+                    </button>
+                    <button class="btn btn-warning" id="reset-btn" onclick="reset()" disabled>
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>🔧 Debug Controls</h2>
+                <div class="controls">
+                    <button class="btn btn-info" onclick="getTrace()">
+                        📊 Get Trace
+                    </button>
+                    <button class="btn btn-info" onclick="getMessageHistory()">
+                        📝 Get Message History
+                    </button>
+                    <button class="btn btn-info" onclick="getState()">
+                        📋 Get Current State
+                    </button>
+                </div>
+            </div>
+            
+            <div id="message-container"></div>
+            
+            <div class="logs-section">
+                <h2>📋 Activity Logs</h2>
+                <div class="logs-container" id="logs-container">
+                    <div class="log-entry log-info">
+                        <span class="log-timestamp">Loading...</span>
+                        <span class="log-level">[INFO]</span>
+                        <span class="log-message">Initializing Fish Burger Demo...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            genericEditorUrl: 'http://localhost:3000',
+            fishBurgerBackendUrl: 'http://localhost:3000' // Integrated into Generic Editor
+        };
+        
+        // State management
+        let currentState = {
+            status: 'idle',
+            orderId: null,
+            cookingTime: 0,
+            temperature: 0,
+            isConnected: false
+        };
+        
+        let logs = [];
+        
+        // Utility functions
+        function addLog(level, message, data = null) {
+            const logEntry = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleTimeString(),
+                level,
+                message,
+                data
+            };
+            
+            logs.unshift(logEntry);
+            if (logs.length > 50) logs = logs.slice(0, 50);
+            
+            updateLogsDisplay();
+        }
+        
+        function updateLogsDisplay() {
+            const container = document.getElementById('logs-container');
+            container.innerHTML = logs.map(log => `
+                <div class="log-entry log-${log.level}">
+                    <span class="log-timestamp">${log.timestamp}</span>
+                    <span class="log-level">[${log.level.toUpperCase()}]</span>
+                    <span class="log-message">${log.message}</span>
+                    ${log.data ? `<details><summary>Details</summary><pre>${JSON.stringify(log.data, null, 2)}</pre></details>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function showMessage(type, message) {
+            const container = document.getElementById('message-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.textContent = message;
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+        
+        function updateStatus() {
+            document.getElementById('current-state').textContent = currentState.status;
+            document.getElementById('tome-connection-status').textContent = currentState.isConnected ? 'Connected' : 'Disconnected';
+        }
+        
+        function updateButtons() {
+            const startBtn = document.getElementById('start-cooking-btn');
+            const progressBtn = document.getElementById('update-progress-btn');
+            const completeBtn = document.getElementById('complete-cooking-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            startBtn.disabled = currentState.status !== 'idle' || !currentState.isConnected;
+            progressBtn.disabled = currentState.status !== 'processing';
+            completeBtn.disabled = !['processing', 'ready'].includes(currentState.status);
+            resetBtn.disabled = currentState.status !== 'completed' && currentState.status !== 'error';
+        }
+        
+        // API functions
+        async function checkHealth() {
+            try {
+                // Check Generic Editor (includes Fish Burger integration)
+                const geResponse = await fetch(`${config.genericEditorUrl}/health`);
+                const geStatus = geResponse.ok ? 'Healthy' : 'Unhealthy';
+                document.getElementById('generic-editor-status').textContent = geStatus;
+                
+                // Fish Burger Backend is now integrated into Generic Editor
+                document.getElementById('fish-burger-backend-status').textContent = 'Integrated';
+                
+                addLog('info', 'Health check completed', { genericEditor: geStatus, fishBurgerBackend: 'Integrated' });
+                
+            } catch (error) {
+                addLog('error', 'Health check failed', { error: error.message });
+                document.getElementById('generic-editor-status').textContent = 'Error';
+                document.getElementById('fish-burger-backend-status').textContent = 'Error';
+            }
+        }
+        
+        async function getState() {
+            try {
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/state`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentState = { ...currentState, ...result.state };
+                    updateStatus();
+                    updateButtons();
+                    addLog('info', 'State retrieved', result.state);
+                    showMessage('success', 'State retrieved successfully');
+                } else {
+                    addLog('error', 'Failed to get state', result.error);
+                    showMessage('error', 'Failed to get state');
+                }
+            } catch (error) {
+                addLog('error', 'Error getting state', { error: error.message });
+                showMessage('error', 'Error getting state');
+            }
+        }
+        
+        async function startCooking() {
+            try {
+                const orderData = {
+                    orderId: `order-${Date.now()}`,
+                    ingredients: ['fish-patty', 'bun', 'lettuce', 'tomato', 'cheese'],
+                    traceId: `trace-${Date.now()}`
+                };
+                
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/start-cooking`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentState = { ...currentState, ...result.state };
+                    updateStatus();
+                    updateButtons();
+                    addLog('success', 'Cooking started', result.state);
+                    showMessage('success', 'Cooking started successfully');
+                } else {
+                    addLog('error', 'Failed to start cooking', result.error);
+                    showMessage('error', 'Failed to start cooking');
+                }
+            } catch (error) {
+                addLog('error', 'Error starting cooking', { error: error.message });
+                showMessage('error', 'Error starting cooking');
+            }
+        }
+        
+        async function updateProgress() {
+            try {
+                const progressData = {
+                    timeIncrement: 1,
+                    temperature: Math.min(currentState.temperature + 10, 200)
+                };
+                
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/update-progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(progressData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentState = { ...currentState, ...result.state };
+                    updateStatus();
+                    updateButtons();
+                    addLog('info', 'Progress updated', result.state);
+                } else {
+                    addLog('error', 'Failed to update progress', result.error);
+                    showMessage('error', 'Failed to update progress');
+                }
+            } catch (error) {
+                addLog('error', 'Error updating progress', { error: error.message });
+                showMessage('error', 'Error updating progress');
+            }
+        }
+        
+        async function completeCooking() {
+            try {
+                const completionData = {
+                    finalCookingTime: currentState.cookingTime,
+                    finalTemperature: currentState.temperature
+                };
+                
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/complete-cooking`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(completionData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentState = { ...currentState, ...result.state };
+                    updateStatus();
+                    updateButtons();
+                    addLog('success', 'Cooking completed', result.state);
+                    showMessage('success', 'Cooking completed successfully');
+                } else {
+                    addLog('error', 'Failed to complete cooking', result.error);
+                    showMessage('error', 'Failed to complete cooking');
+                }
+            } catch (error) {
+                addLog('error', 'Error completing cooking', { error: error.message });
+                showMessage('error', 'Error completing cooking');
+            }
+        }
+        
+        async function reset() {
+            try {
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentState = { ...currentState, ...result.state };
+                    updateStatus();
+                    updateButtons();
+                    addLog('info', 'State reset', result.state);
+                    showMessage('success', 'State reset successfully');
+                } else {
+                    addLog('error', 'Failed to reset state', result.error);
+                    showMessage('error', 'Failed to reset state');
+                }
+            } catch (error) {
+                addLog('error', 'Error resetting state', { error: error.message });
+                showMessage('error', 'Error resetting state');
+            }
+        }
+        
+        async function getTrace() {
+            try {
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/trace`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('info', 'Trace retrieved', result.trace);
+                    showMessage('success', 'Trace retrieved successfully');
+                } else {
+                    addLog('error', 'Failed to get trace', result.error);
+                    showMessage('error', 'Failed to get trace');
+                }
+            } catch (error) {
+                addLog('error', 'Error getting trace', { error: error.message });
+                showMessage('error', 'Error getting trace');
+            }
+        }
+        
+        async function getMessageHistory() {
+            try {
+                const response = await fetch(`${config.genericEditorUrl}/api/fish-burger/messages`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('info', 'Message history retrieved', { count: result.messages.messages.length });
+                    showMessage('success', 'Message history retrieved successfully');
+                } else {
+                    addLog('error', 'Failed to get message history', result.error);
+                    showMessage('error', 'Failed to get message history');
+                }
+            } catch (error) {
+                addLog('error', 'Error getting message history', { error: error.message });
+                showMessage('error', 'Error getting message history');
+            }
+        }
+        
+        // Initialize
+        async function initialize() {
+            addLog('info', 'Initializing Fish Burger Demo...');
+            
+            // Check health
+            await checkHealth();
+            
+            // Get initial state
+            await getState();
+            
+            addLog('success', 'Fish Burger Demo initialized');
+        }
+        
+        // Start the demo
+        initialize();
+        
+        // Periodic health checks
+        setInterval(checkHealth, 30000); // Every 30 seconds
+    </script>
+</body>
+</html> 

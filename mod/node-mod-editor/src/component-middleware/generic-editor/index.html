@@ -2909,11 +2909,13 @@
                     editors.css = ace.edit('css-ace-editor');
                     editors.css.setTheme('ace/theme/monokai');
                     editors.css.session.setMode('ace/mode/css');
+                    editors.css.session.setUseWorker(false);
                     editors.css.setValue('/* CSS styles will appear here */\nbody {\n  font-family: Arial, sans-serif;\n  margin: 0;\n  padding: 20px;\n}');
 
                     editors.js = ace.edit('js-ace-editor');
                     editors.js.setTheme('ace/theme/monokai');
                     editors.js.session.setMode('ace/mode/javascript');
+                    editors.js.session.setUseWorker(false);
                     editors.js.setValue(`// Component script — runs in the preview iframe.
 // Available in this context: document, window, the rendered HTML/CSS.
 // Optional: use a single function that receives (element, component) when the preview mounts.
@@ -2925,6 +2927,7 @@ function test() {
                     editors.json = ace.edit('json-ace-editor');
                     editors.json.setTheme('ace/theme/monokai');
                     editors.json.session.setMode('ace/mode/json');
+                    editors.json.session.setUseWorker(false);
                     editors.json.setValue(`{
   "config": {
     "id": "sampleMachine",
@@ -5198,9 +5201,9 @@ function test() {
         }
 
         function updateGestureIndicator(gestureType) {
+            const state = zoomStateMachine ? zoomStateMachine.getCurrentState() : 'idle';
             const indicator = document.getElementById('gesture-indicator');
             if (indicator) {
-                const state = zoomStateMachine.getCurrentState();
                 let displayText = `State: ${state}`;
                 
                 if (gestureType) {
@@ -5219,7 +5222,7 @@ function test() {
             // Always update canvas grabber state indicator for consistency
             const grabberStateIndicator = document.getElementById('canvas-grabber-state');
             if (grabberStateIndicator) {
-                grabberStateIndicator.textContent = `State: ${state.toUpperCase()}`;
+                grabberStateIndicator.textContent = `State: ${String(state).toUpperCase()}`;
                 grabberStateIndicator.classList.toggle('active', state === 'canvas_dragging');
             }
         }
@@ -5445,7 +5448,7 @@ function test() {
 
         // dotCMS Integration
         function connectToDotCMS() {
-            console.log('Connecting to dotCMS...');
+            if (typeof console.debug === 'function') console.debug('Connecting to dotCMS...');
             const statusElement = document.getElementById('dotcms-status');
             const statusElementMobile = document.getElementById('dotcms-status-mobile');
             
@@ -5472,11 +5475,9 @@ function test() {
                 showMessage('warning', 'dotCMS connection timeout');
             }, 10000); // 10 second timeout
             
-            // Simulate connection attempt with proper error handling
-            fetch(`${config.dotCMSUrl}/api/health`, { 
-                method: 'GET',
-                mode: 'cors',
-                timeout: 8000
+            // Use server proxy so DOTCMS_URL is configured in one place and CORS is avoided
+            fetch(`${config.apiUrl}/api/editor/dotcms-health`, {
+                method: 'GET'
             })
             .then(response => {
                 clearTimeout(connectionTimeout);
@@ -5497,18 +5498,31 @@ function test() {
             })
             .catch(error => {
                 clearTimeout(connectionTimeout);
-                console.error('dotCMS connection failed:', error);
-                
-                // Error state
-                if (statusElement) {
-                    statusElement.className = 'dotcms-status error';
-                    statusElement.innerHTML = '❌ Connection failed';
+                const isNetworkError = error instanceof TypeError && (error.message === 'Failed to fetch' || error.message?.includes('fetch'));
+                const isRefused = String(error.message || '').toLowerCase().includes('refused') || isNetworkError;
+                if (isRefused) {
+                    if (typeof console.debug === 'function') console.debug('dotCMS not available (optional):', error.message);
+                    if (statusElement) {
+                        statusElement.className = 'dotcms-status timeout';
+                        statusElement.innerHTML = '○ dotCMS not running (optional)';
+                    }
+                    if (statusElementMobile) {
+                        statusElementMobile.className = 'dotcms-status timeout';
+                        statusElementMobile.innerHTML = '○ dotCMS not running (optional)';
+                    }
+                    showMessage('info', 'dotCMS is not running. Optional for local editing—connect when you need dotCMS.');
+                } else {
+                    console.error('dotCMS connection failed:', error);
+                    if (statusElement) {
+                        statusElement.className = 'dotcms-status error';
+                        statusElement.innerHTML = '❌ Connection failed';
+                    }
+                    if (statusElementMobile) {
+                        statusElementMobile.className = 'dotcms-status error';
+                        statusElementMobile.innerHTML = '❌ Connection failed';
+                    }
+                    showMessage('error', `Failed to connect to dotCMS: ${error.message}`);
                 }
-                if (statusElementMobile) {
-                    statusElementMobile.className = 'dotcms-status error';
-                    statusElementMobile.innerHTML = '❌ Connection failed';
-                }
-                showMessage('error', `Failed to connect to dotCMS: ${error.message}`);
             });
         }
 

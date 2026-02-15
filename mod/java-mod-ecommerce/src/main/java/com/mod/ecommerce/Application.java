@@ -1,8 +1,8 @@
 package com.mod.ecommerce;
 
+import com.mod.ecommerce.webhook.TipTopJarWebhookHandler;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
-import com.mod.ecommerce.webhook.TipTopJarWebhookHandler;
 import com.mod.ecommerce.api.RedeemHandler;
 import com.mod.ecommerce.database.DatabaseManager;
 import org.slf4j.Logger;

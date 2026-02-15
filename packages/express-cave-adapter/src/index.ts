@@ -5,7 +5,7 @@
 
 import express, { type Application, type Request, type Response } from 'express';
 import { TomeManager } from 'log-view-machine';
-import type { CaveServerAdapter, CaveServerContext, NormalizedRequest, NormalizedResponse } from 'log-view-machine';
+import type { CaveServerAdapter, CaveServerContext, CaveInstance, NormalizedRequest, NormalizedResponse } from 'log-view-machine';
 
 export interface CorsOptions {
   origin?: string | string[] | RegExp;
@@ -31,6 +31,25 @@ export interface CircuitBreakerAdapterConfig {
   name?: string;
 }
 
+/** Minimal CaveUser for permission middleware (aligns with dotcms-login-adapter CaveUser). */
+export interface CaveUserForPermission {
+  id: string;
+  permissionLevel: string;
+  username?: string;
+  email?: string;
+  tenantId?: string;
+}
+
+/** Optional permission middleware: resolve user, tenant, required permission from spelunk/tome, evaluate. */
+export interface PermissionMiddlewareOptions {
+  getCurrentUser(req: Request): CaveUserForPermission | Promise<CaveUserForPermission>;
+  evaluatePermission(user: CaveUserForPermission, spec: string, levelOrder: string[]): boolean;
+  levelOrder?: string[];
+  getTenantName?(cave: CaveInstance, req: Request): string | Promise<string>;
+  /** When set, GET requests that would get 403 redirect here with auth_error=forbidden&message=... (API paths are still 403 JSON). */
+  redirectLoginPath?: string;
+}
+
 export interface ExpressCaveAdapterOptions {
   /** Optional: use an existing Express app. If not provided, one is created. */
   app?: Application;
@@ -46,6 +65,10 @@ export interface ExpressCaveAdapterOptions {
   throttle?: ThrottleAdapterConfig;
   /** Optional: circuit breaker config; when resourceMonitor is in context, middleware returns 503 when open. */
   circuitBreaker?: CircuitBreakerAdapterConfig;
+  /** Optional: permission check middleware using spelunk.permission and TomeConfig.permission. */
+  permissionMiddleware?: PermissionMiddlewareOptions;
+  /** When set, GET non-API requests that get 401 or 403 redirect here with auth_error and message query params. */
+  redirectLoginPath?: string;
 }
 
 function toNormalizedRequest(req: Request): NormalizedRequest {
@@ -263,6 +286,12 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
         app.use((req: Request, res: Response, next: () => void) => {
           const key = req.get('x-api-key') || req.get('authorization');
           if (key) return next();
+          const redirectPath = opts.redirectLoginPath?.replace(/\?.*$/, '');
+          const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+          if (redirectPath && (req.method || 'GET').toUpperCase() === 'GET' && !path.startsWith('/api')) {
+            res.redirect(302, `${redirectPath}?auth_error=unauthorized&message=${encodeURIComponent('Authentication required (API key)')}`);
+            return;
+          }
           res.status(401).json({ error: 'Authentication required (API key)' });
         });
       }
@@ -271,7 +300,53 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
         app.use((req: Request, res: Response, next: () => void) => {
           const auth = req.get('authorization');
           if (auth?.startsWith('Bearer ')) return next();
+          const redirectPath = opts.redirectLoginPath?.replace(/\?.*$/, '');
+          const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+          if (redirectPath && (req.method || 'GET').toUpperCase() === 'GET' && !path.startsWith('/api')) {
+            res.redirect(302, `${redirectPath}?auth_error=unauthorized&message=${encodeURIComponent('Authentication required (JWT)')}`);
+            return;
+          }
           res.status(401).json({ error: 'Authentication required (JWT)' });
+        });
+      }
+
+      if (opts.permissionMiddleware) {
+        const pm = opts.permissionMiddleware;
+        const levelOrder = pm.levelOrder ?? ['anonymous', 'user', 'admin'];
+        app.use(async (req: Request, res: Response, next: (err?: any) => void) => {
+          try {
+            const user = await Promise.resolve(pm.getCurrentUser(req));
+            const tenant = pm.getTenantName ? await Promise.resolve(pm.getTenantName(cave, req)) : undefined;
+            const userWithTenant = tenant !== undefined ? { ...user, tenantId: tenant } : user;
+            const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+            const routed = cave.getRoutedConfig(path);
+            const spelunkPermission = (routed as { permission?: string })?.permission;
+            let tomePermission: string | undefined;
+            for (const tc of tomeConfigs) {
+              const base = tc.routing?.basePath;
+              if (base && path.startsWith(base)) {
+                tomePermission = (tc as { permission?: string }).permission;
+                break;
+              }
+            }
+            const spec = spelunkPermission ?? tomePermission ?? '>anonymous';
+            if (!pm.evaluatePermission(userWithTenant, spec, levelOrder)) {
+              const message = `Forbidden: required permission ${spec}`;
+              const redirectPath = pm.redirectLoginPath?.replace(/\?.*$/, '');
+              const isGet = (req.method || 'GET').toUpperCase() === 'GET';
+              const isApiPath = path.startsWith('/api');
+              if (redirectPath && isGet && !isApiPath) {
+                const sep = redirectPath.includes('?') ? '&' : '?';
+                res.redirect(302, `${redirectPath}${sep}auth_error=forbidden&message=${encodeURIComponent(message)}`);
+                return;
+              }
+              res.status(403).json({ error: 'Forbidden', permission: spec });
+              return;
+            }
+            next();
+          } catch (e) {
+            next(e);
+          }
         });
       }
 
@@ -284,6 +359,10 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
       const tomes = Array.from(tomeManager.tomes.values()) as Array<{ start(): Promise<void> }>;
       for (const tome of tomes) {
         await tome.start();
+      }
+
+      if (context.tomeManagerRef) {
+        context.tomeManagerRef.current = tomeManager;
       }
 
       if (sections.registry === true) {

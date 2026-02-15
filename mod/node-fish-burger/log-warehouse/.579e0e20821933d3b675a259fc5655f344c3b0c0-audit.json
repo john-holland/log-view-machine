@@ -1,0 +1,25 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "log-warehouse\\.579e0e20821933d3b675a259fc5655f344c3b0c0-audit.json",
+    "files": [
+        {
+            "date": 1770928160394,
+            "name": "log-warehouse\\node-fish-burger-warehouse-2026-02-12.log",
+            "hash": "7660d19656ae815560b2846723e98e313f23d9df227501cec4d662678bff24eb"
+        },
+        {
+            "date": 1770986022834,
+            "name": "log-warehouse\\node-fish-burger-warehouse-2026-02-13.log",
+            "hash": "6279eb898cb427787f8a1f53e7214071b4b9ed13fdacfba6b858db77d6145b8e"
+        },
+        {
+            "date": 1771046492684,
+            "name": "log-warehouse\\node-fish-burger-warehouse-2026-02-14.log",
+            "hash": "debbbb27614636e60c9bead2156e195c3e5edce6176933638289b6db999fa03d"
+        }
+    ],
+    "hashType": "sha256"
+}

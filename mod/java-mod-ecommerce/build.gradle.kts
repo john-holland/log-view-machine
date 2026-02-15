@@ -1,6 +1,7 @@
 plugins {
     java
     application
+    id("com.mod.cave-adapters")
 }
 
 repositories {
@@ -24,12 +25,16 @@ application {
     mainClass.set("com.mod.ecommerce.Application")
 }
 
+caveAdapters {
+    port.set(8083)
+}
+
 tasks.test {
     useJUnitPlatform()
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(20))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }

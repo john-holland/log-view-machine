@@ -1,5 +1,13 @@
 # 🧭 Quick Navigation Index
 
+---
+
+## ⚠️ **For mod authors: external APIs**
+
+Mods that call external APIs require those URLs to be on the CORS whitelist. **Test locally first.** Need a new service URL? **Email in with your API needs** and we'll add it—we're happy to oblige.
+
+---
+
 ## 🚀 **Start Here**
 - **[README.md](README.md)** - Main project overview
 - **[README-ORGANIZED.md](README-ORGANIZED.md)** - Detailed project structure

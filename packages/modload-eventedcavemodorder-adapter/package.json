@@ -1,0 +1,19 @@
+{
+  "name": "modload-eventedcavemodorder-adapter",
+  "version": "1.0.0",
+  "description": "Event-driven mod load/unload adapter: trigger on LVM state transitions and tenant change",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

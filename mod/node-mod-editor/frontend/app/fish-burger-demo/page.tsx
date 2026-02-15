@@ -1,7 +1,5 @@
-import dynamic from 'next/dynamic';
-
-const FishBurgerClient = dynamic(() => import('./FishBurgerClient'), { ssr: false });
+import { redirect } from 'next/navigation';
 
 export default function FishBurgerDemoPage() {
-  return <FishBurgerClient />;
+  redirect('/features');
 }

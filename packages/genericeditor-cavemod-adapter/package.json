@@ -1,0 +1,19 @@
+{
+  "name": "genericeditor-cavemod-adapter",
+  "version": "1.0.0",
+  "description": "Cave mod adapter for generic editor - replaces Caves and Tomes via path entry points",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

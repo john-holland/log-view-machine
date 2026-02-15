@@ -1,0 +1,212 @@
+{
+  "cursor_coda": {
+    "last_updated": "2025-08-07 21:07:18",
+    "project": "Generic Editor - Component Builder",
+    "version": "1.0",
+    "context_responses": {
+      "performance_issue": [
+        "I need to profile the zoom/pan system to find bottlenecks",
+        "Let me check the state machine transitions for optimization",
+        "I should consider debouncing the canvas updates",
+        "Let me analyze the flexbox layout performance"
+      ],
+      "stuck": [
+        "Let me step back and check the state machine logic",
+        "I should try a simpler approach to the layout first",
+        "Let me break this down into smaller components",
+        "I need to check the tab switching implementation"
+      ],
+      "layout_issue": [
+        "Let me check the flexbox layout structure",
+        "I should verify the CSS grid implementation",
+        "Let me test the responsive design breakpoints",
+        "I need to check for conflicting CSS rules"
+      ],
+      "state_machine_issue": [
+        "Let me trace through the state machine transitions",
+        "I should check the event handling logic",
+        "Let me verify the mouse enter/leave handlers",
+        "I need to debug the zoom/pan state management"
+      ]
+    },
+    "narrative_templates": {
+      "problem_start": [
+        "Let me analyze this editor issue systematically",
+        "First, I'll understand the component structure and requirements",
+        "I'll break this down into manageable sub-components"
+      ],
+      "optimization_start": [
+        "The editor works, but let me optimize the performance",
+        "I'll look for state machine optimizations first",
+        "Let me analyze the canvas rendering bottlenecks"
+      ],
+      "implementation_start": [
+        "Now I'll implement a working editor feature",
+        "I'll start with a clear, readable approach",
+        "Let me build this step by step with proper state management"
+      ],
+      "layout_implementation": [
+        "I'll implement the layout using modern CSS techniques",
+        "Let me start with flexbox for the side panels",
+        "I'll ensure responsive design works across devices"
+      ],
+      "meta_flow_documentation": [
+        "I'll create beautiful meta-flow documentation for this component",
+        "Let me start with the business logic and user flows",
+        "I'll include visual diagrams and code examples",
+        "I'll document pact test scenarios and error handling"
+      ]
+    },
+    "sections": {
+      "editor_architecture": {
+        "development_style": [
+          "Use state machines for complex interactions",
+          "Implement responsive design with flexbox/grid",
+          "Follow component-based architecture",
+          "Maintain clean separation of concerns",
+          "Remember routing in design decisions",
+          "Remember the component list and editor are separate components",
+          "Use subViews in the /views/ directory for the component being edited to abstract large tsx view() statements"
+        ],
+        "title": "Editor Architecture Principles",
+        "key_questions": [
+          "What is the current state machine state?",
+          "How does the layout system work?",
+          "What are the component boundaries?",
+          "How should I handle user interactions?"
+        ],
+        "preface": "The Generic Editor uses a sophisticated state machine for zoom/pan interactions and modern CSS for responsive layouts. Always consider the current state and user context when making changes."
+      },
+      "state_machine_design": {
+        "development_style": [
+          "Design states for clear user intent",
+          "Handle transitions gracefully",
+          "Provide debugging capabilities",
+          "Maintain state consistency"
+        ],
+        "title": "State Machine Design",
+        "key_questions": [
+          "What user action triggered this state?",
+          "How should the state transition?",
+          "What debugging information is available?",
+          "Is the state machine in a consistent state?"
+        ],
+        "preface": "The zoom/pan state machine manages complex user interactions. States include idle, canvas_hover, editor_hover, canvas_dragging, canvas_zooming, editor_scrolling, touch_started, and touch_moving."
+      },
+      "meta_flow_documentation": {
+        "development_style": [
+          "Always document state machines with meta-flow",
+          "Use beautiful typography and visual hierarchy",
+          "Include code examples and state diagrams",
+          "Document pact test scenarios clearly",
+          "Show component integration points",
+          "Explain business logic in human terms",
+          "Include error handling and recovery paths",
+          "Document version changes and migrations"
+        ],
+        "title": "Meta-Flow Documentation Standards",
+        "key_questions": [
+          "What does this state machine do in business terms?",
+          "How do users interact with this component?",
+          "What are the expected behaviors and edge cases?",
+          "How does this integrate with other components?",
+          "What pact test scenarios should we document?",
+          "How do we handle errors and recovery?",
+          "What are the performance considerations?"
+        ],
+        "preface": "Meta-flow documentation makes complex state machines beautiful and readable. Every component should have clear, visual documentation that explains both technical implementation and business logic. This helps designers, developers, QA teams, and stakeholders understand the system."
+      },
+      "layout_system": {
+        "development_style": [
+          "Use flexbox for component layouts",
+          "Implement CSS Grid for main structure",
+          "Ensure responsive breakpoints",
+          "Maintain consistent spacing",
+          "Editor layout contains a header, tab bar, diff and publishing button menu, a central canvas, left panel component search listings, right panel component properties, and a responsive design footer",
+          "header with: [title, dotcms health, persistence storage health, diff button]",
+          "tab bar under the header listing contains [Preview, HTML Editor, CSS Editor, JavaScript, State Machine, XState Visualization]",
+          "Large Editor has two side panels, one for the component list and one for the component editor",
+          "Small Editor has fullscreen canvas with stacked panels, one for the component list and one for the component editor",
+          "The component list in both small and large features: dotcms login, component search, component list, dotCMS integration, persistence, diff & compare",
+          "The component editor in both small and large features: Current component properties, State machine's loaded list, SASS, view templates, Save / Publish / Export functions, and a Developer Mode checkbox"
+        ],
+        "title": "Layout System Design",
+        "key_questions": [
+          "What layout system should I use?",
+          "How does this affect responsive design?",
+          "Are there any layout conflicts?",
+          "How should I handle spacing and alignment?"
+        ],
+        "preface": "The layout system uses CSS Grid for main structure and Flexbox for component layouts. Side panels use flexbox with consistent spacing and responsive design."
+      },
+      "component_development": {
+        "development_style": [
+          "Follow component lifecycle patterns",
+          "Implement proper event handling",
+          "Maintain component state",
+          "Use consistent naming conventions"
+        ],
+        "title": "Component Development",
+        "key_questions": [
+          "What is the component lifecycle?",
+          "How should events be handled?",
+          "What state does this component manage?",
+          "How does this component integrate with others?"
+        ],
+        "preface": "Components follow a clear lifecycle with proper event handling and state management. Each component should be self-contained and integrate cleanly with the overall system."
+      },
+      "performance_optimization": {
+        "development_style": [
+          "Profile before optimizing",
+          "Use debouncing for frequent events",
+          "Optimize canvas rendering",
+          "Minimize DOM manipulation"
+        ],
+        "title": "Performance Optimization",
+        "key_questions": [
+          "What is the performance bottleneck?",
+          "How can I reduce unnecessary updates?",
+          "What can be debounced or throttled?",
+          "How can I optimize the rendering pipeline?"
+        ],
+        "preface": "Performance is critical for smooth user experience. Focus on debouncing frequent events, optimizing canvas rendering, and minimizing DOM manipulation."
+      },
+      "debugging_strategy": {
+        "development_style": [
+          "Use console logging strategically",
+          "Leverage state machine debugging",
+          "Test responsive design",
+          "Verify event handling"
+        ],
+        "title": "Debugging Methodology",
+        "key_questions": [
+          "What is the current state machine state?",
+          "Are events being handled correctly?",
+          "Is the layout rendering properly?",
+          "What debugging tools are available?"
+        ],
+        "preface": "Debugging involves checking state machine states, event handling, layout rendering, and using available debugging tools like debugTabState() and debugZoomState()."
+      },
+      "responsive_design": {
+        "development_style": [
+          "Test across different screen sizes",
+          "Use CSS media queries effectively",
+          "Ensure touch-friendly interactions",
+          "Maintain consistent UX",
+          "Large Editor has two side panels, one for the component list and one for the component editor",
+          "Small Editor has fullscreen canvas with stacked panels, one for the component list and one for the component editor",
+          "The component list in both small and large features: dotcms login, component search, component list, dotCMS integration, persistence, diff & compare",
+          "The component editor in both small and large features: Current component properties, State machine's loaded list, SASS, view templates, Save / Publish / Export functions, and a Developer Mode checkbox"
+        ],
+        "title": "Responsive Design",
+        "key_questions": [
+          "How does this work on mobile?",
+          "Are touch interactions optimized?",
+          "Do breakpoints work correctly?",
+          "Is the UX consistent across devices?"
+        ],
+        "preface": "Responsive design is crucial for the editor. Test across different screen sizes, ensure touch-friendly interactions, and maintain consistent UX across devices."
+      }
+    }
+  }
+}

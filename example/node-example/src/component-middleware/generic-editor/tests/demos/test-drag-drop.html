@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag & Drop Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .component-list {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .component-item {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .component-item:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .component-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .editor-area {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .editor {
+            min-height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            transition: all 0.2s;
+        }
+        
+        .editor.drag-over {
+            border: 2px dashed #667eea !important;
+            background: rgba(102, 126, 234, 0.1) !important;
+        }
+        
+        .editor h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Drag & Drop Test</h1>
+    <p>Test the drag and drop functionality by dragging components from the left panel to the editors on the right.</p>
+    
+    <div class="test-container">
+        <div class="component-list">
+            <h3>📦 Components</h3>
+            <div class="component-item" draggable="true" data-component='{"name":"Button","template":"<button class=\"btn\">Click me</button>","styles":".btn { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; }","script":"console.log(\"Button component loaded\");"}'>
+                <strong>Button Component</strong><br>
+                <small>A simple button component</small>
+            </div>
+            
+            <div class="component-item" draggable="true" data-component='{"name":"Card","template":"<div class=\"card\"><div class=\"card-header\">Header</div><div class=\"card-body\">Content</div></div>","styles":".card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; } .card-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; } .card-body { padding: 15px; }","script":"console.log(\"Card component loaded\");"}'>
+                <strong>Card Component</strong><br>
+                <small>A card layout component</small>
+            </div>
+            
+            <div class="component-item" draggable="true" data-component='{"name":"Form","template":"<form class=\"form\"><input type=\"text\" placeholder=\"Enter text\" /><button type=\"submit\">Submit</button></form>","styles":".form { display: flex; gap: 10px; } .form input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; } .form button { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; }","script":"document.querySelector(\".form\").addEventListener(\"submit\", (e) => { e.preventDefault(); console.log(\"Form submitted\"); });"}'>
+                <strong>Form Component</strong><br>
+                <small>A form input component</small>
+            </div>
+        </div>
+        
+        <div class="editor-area">
+            <h3>📝 Editors</h3>
+            
+            <div class="editor" data-type="html">
+                <h3>HTML Editor</h3>
+                <p>Drop components here to add HTML content...</p>
+            </div>
+            
+            <div class="editor" data-type="css">
+                <h3>CSS Editor</h3>
+                <p>Drop components here to add CSS styles...</p>
+            </div>
+            
+            <div class="editor" data-type="js">
+                <h3>JavaScript Editor</h3>
+                <p>Drop components here to add JavaScript code...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="success-message" id="success-message"></div>
+    
+    <script>
+        // Initialize drag and drop
+        function initializeDragAndDrop() {
+            const componentItems = document.querySelectorAll('.component-item');
+            const editors = document.querySelectorAll('.editor');
+            
+            // Make components draggable
+            componentItems.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.dataset.component);
+                    item.classList.add('dragging');
+                });
+                
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                });
+            });
+            
+            // Make editors droppable
+            editors.forEach(editor => {
+                editor.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    editor.classList.add('drag-over');
+                });
+                
+                editor.addEventListener('dragleave', (e) => {
+                    if (!editor.contains(e.relatedTarget)) {
+                        editor.classList.remove('drag-over');
+                    }
+                });
+                
+                editor.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    editor.classList.remove('drag-over');
+                    
+                    try {
+                        const componentData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        insertComponentIntoEditor(componentData, editor);
+                    } catch (error) {
+                        console.error('Failed to parse dropped component:', error);
+                    }
+                });
+            });
+        }
+        
+        // Insert component into editor
+        function insertComponentIntoEditor(componentData, editor) {
+            const editorType = editor.dataset.type;
+            let content = '';
+            
+            switch (editorType) {
+                case 'html':
+                    content = componentData.template;
+                    break;
+                case 'css':
+                    content = componentData.styles;
+                    break;
+                case 'js':
+                    content = componentData.script;
+                    break;
+            }
+            
+            // Add content to editor
+            const contentElement = document.createElement('div');
+            contentElement.innerHTML = `<pre><code>${content}</code></pre>`;
+            editor.appendChild(contentElement);
+            
+            // Show success message
+            showMessage(`Component "${componentData.name}" inserted into ${editorType.toUpperCase()} editor`);
+        }
+        
+        // Show success message
+        function showMessage(message) {
+            const messageElement = document.getElementById('success-message');
+            messageElement.textContent = message;
+            messageElement.style.display = 'block';
+            
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeDragAndDrop);
+    </script>
+</body>
+</html> 
