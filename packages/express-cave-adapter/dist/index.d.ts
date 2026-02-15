@@ -41,6 +41,8 @@ export interface PermissionMiddlewareOptions {
     getTenantName?(cave: CaveInstance, req: Request): string | Promise<string>;
     /** When set, GET requests that would get 403 redirect here with auth_error=forbidden&message=... (API paths are still 403 JSON). */
     redirectLoginPath?: string;
+    /** Path prefixes that bypass permission check (e.g. /api/login, /api/editor/presence) so anonymous users can log in and see presence. */
+    allowAnonymousPaths?: string[];
 }
 export interface ExpressCaveAdapterOptions {
     /** Optional: use an existing Express app. If not provided, one is created. */

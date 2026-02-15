@@ -1,0 +1,19 @@
+{
+  "name": "pythonapp-caveservice-adapter",
+  "version": "1.0.0",
+  "description": "Cave service adapter: register and run named Python app shells with optional pip install",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "log-view-machine": "*"
+  },
+  "devDependencies": {
+    "log-view-machine": "*",
+    "typescript": "^5.0.0"
+  }
+}

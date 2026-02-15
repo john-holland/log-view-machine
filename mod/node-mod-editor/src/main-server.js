@@ -258,7 +258,7 @@ const nodeExampleSpelunk = {
       route: '/features',
       container: 'features',
       tomeId: 'features-tome',
-      permission: '>anonymous',
+      permission: '>=anonymous',
     },
   },
 };
@@ -287,7 +287,7 @@ const FeaturesTomeConfig = createTomeConfig({
   description: 'Landing page features showcase',
   isModableTome: true,
   modMetadata: null,
-  permission: '>anonymous',
+  permission: '>=anonymous',
   machines: {
     featuresMachine: {
       id: 'features-machine',
@@ -354,6 +354,7 @@ const caveAdapter = expressCaveAdapter({
     levelOrder: ['anonymous', 'user', 'admin'],
     getTenantName: (_cave, req) => deriveTenantFromRequest(req),
     redirectLoginPath: '/features',
+    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods'],
   },
 });
 

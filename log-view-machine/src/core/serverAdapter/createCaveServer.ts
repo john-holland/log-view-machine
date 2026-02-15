@@ -6,7 +6,19 @@
 import type { CaveInstance } from '../Cave/Cave';
 import type { TomeConfig } from '../Cave/tome/TomeConfig';
 import type { RobotCopy } from '../Cave/tome/viewstatemachine/robotcopy/RobotCopy';
-import type { CaveServerAdapter, CaveServerContext } from './CaveServerAdapter';
+import type { CaveServerAdapter, CaveServerContext, AppShellRegistry, AppShellDescriptor } from './CaveServerAdapter';
+
+function createDefaultAppShellRegistry(): AppShellRegistry {
+  const map = new Map<string, AppShellDescriptor>();
+  return {
+    register(name: string, descriptor: AppShellDescriptor): void {
+      map.set(name, { ...descriptor, name });
+    },
+    get(name: string): AppShellDescriptor | undefined {
+      return map.get(name);
+    },
+  };
+}
 
 export interface CreateCaveServerConfig {
   cave: CaveInstance;
@@ -32,6 +44,8 @@ export async function createCaveServer(config: CreateCaveServerConfig): Promise<
   await cave.initialize();
 
   const tomeManagerRef = { current: null as import('../Cave/tome/TomeConfig').TomeManager | null };
+  const appShellRegistry = createDefaultAppShellRegistry();
+  const appShellRegistryRef = { current: appShellRegistry };
   const context: CaveServerContext = {
     cave,
     tomeConfigs,
@@ -41,6 +55,7 @@ export async function createCaveServer(config: CreateCaveServerConfig): Promise<
     resourceMonitor,
     metricsReporter,
     tomeManagerRef,
+    appShellRegistryRef,
   };
 
   for (const plugin of plugins) {

@@ -247,6 +247,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Documentation
 
 - [Installation Guide](INSTALLATION.md)
+- [Architecture and Cave](docs/ARCHITECTURE_AND_CAVE.md)
+- [Cave services and appShell registry](docs/CAVE_SERVICES_APPSHELL.md)
 - [Tracing Integration](docs/tracing-integration.md)
 - [Checklist](CHECKLIST.md)
 

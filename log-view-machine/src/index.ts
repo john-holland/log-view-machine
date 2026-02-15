@@ -127,6 +127,8 @@ export {
 export type {
   CaveServerAdapter,
   CaveServerContext,
+  AppShellDescriptor,
+  AppShellRegistry,
   NormalizedRequest,
   NormalizedResponse,
   NormalizedRequestHandler,

@@ -11,6 +11,33 @@ import type {
   RouteHandlerBag,
 } from './types';
 
+/**
+ * Descriptor for a named app shell (e.g. a Python script) that can be run by name.
+ * *-caveservice-adapters register descriptors in context.appShellRegistryRef.
+ */
+export interface AppShellDescriptor {
+  name: string;
+  scriptPath: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  pythonPath?: string;
+  requirementsPath?: string;
+  dependencies?: string[];
+  /** When true or 'once', run pip install before first run; 'always' runs on every apply or run. */
+  pipInstall?: boolean | 'always' | 'once';
+  /** Optional path to a virtualenv; when set, pip and python are resolved from this venv. */
+  venvPath?: string;
+}
+
+/**
+ * Registry of named app shells. createCaveServer provides a default implementation;
+ * *-caveservice-adapters use context.appShellRegistryRef.current to register or look up descriptors.
+ */
+export interface AppShellRegistry {
+  register(name: string, descriptor: AppShellDescriptor): void;
+  get(name: string): AppShellDescriptor | undefined;
+}
+
 /** Context passed to each adapter when createCaveServer applies plugins. */
 export interface CaveServerContext {
   cave: import('../Cave/Cave').CaveInstance;
@@ -31,6 +58,11 @@ export interface CaveServerContext {
   getCaveDBAdapter?(tomeId: string): import('../cavedb/CaveDBAdapter').CaveDBAdapter | Promise<import('../cavedb/CaveDBAdapter').CaveDBAdapter> | undefined;
   /** Optional: ref set by express-cave-adapter after creating TomeManager so plugins applied after it can subscribe to tome machines (e.g. evented mod loader). */
   tomeManagerRef?: { current: import('../Cave/tome/TomeConfig').TomeManager | null };
+  /**
+   * Optional: ref to the app shell registry. createCaveServer sets this so *-caveservice-adapters can
+   * register named app shells (e.g. Python apps) and other code can look them up or run them by name.
+   */
+  appShellRegistryRef?: { current: AppShellRegistry };
 }
 
 /**

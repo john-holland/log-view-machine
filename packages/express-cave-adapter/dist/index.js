@@ -246,12 +246,16 @@ export function expressCaveAdapter(options = {}) {
             if (opts.permissionMiddleware) {
                 const pm = opts.permissionMiddleware;
                 const levelOrder = pm.levelOrder ?? ['anonymous', 'user', 'admin'];
+                const allowAnonymousPaths = pm.allowAnonymousPaths ?? [];
                 app.use(async (req, res, next) => {
                     try {
+                        const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+                        if (allowAnonymousPaths.some((p) => path === p || path.startsWith(p + '/'))) {
+                            return next();
+                        }
                         const user = await Promise.resolve(pm.getCurrentUser(req));
                         const tenant = pm.getTenantName ? await Promise.resolve(pm.getTenantName(cave, req)) : undefined;
                         const userWithTenant = tenant !== undefined ? { ...user, tenantId: tenant } : user;
-                        const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
                         const routed = cave.getRoutedConfig(path);
                         const spelunkPermission = routed?.permission;
                         let tomePermission;

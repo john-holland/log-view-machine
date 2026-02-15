@@ -48,6 +48,8 @@ export interface PermissionMiddlewareOptions {
   getTenantName?(cave: CaveInstance, req: Request): string | Promise<string>;
   /** When set, GET requests that would get 403 redirect here with auth_error=forbidden&message=... (API paths are still 403 JSON). */
   redirectLoginPath?: string;
+  /** Path prefixes that bypass permission check (e.g. /api/login, /api/editor/presence) so anonymous users can log in and see presence. */
+  allowAnonymousPaths?: string[];
 }
 
 export interface ExpressCaveAdapterOptions {
@@ -313,12 +315,16 @@ export function expressCaveAdapter(options: ExpressCaveAdapterOptions = {}): Cav
       if (opts.permissionMiddleware) {
         const pm = opts.permissionMiddleware;
         const levelOrder = pm.levelOrder ?? ['anonymous', 'user', 'admin'];
+        const allowAnonymousPaths = pm.allowAnonymousPaths ?? [];
         app.use(async (req: Request, res: Response, next: (err?: any) => void) => {
           try {
+            const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
+            if (allowAnonymousPaths.some((p) => path === p || path.startsWith(p + '/'))) {
+              return next();
+            }
             const user = await Promise.resolve(pm.getCurrentUser(req));
             const tenant = pm.getTenantName ? await Promise.resolve(pm.getTenantName(cave, req)) : undefined;
             const userWithTenant = tenant !== undefined ? { ...user, tenantId: tenant } : user;
-            const path = req.path || (req.originalUrl || req.url || '').split('?')[0];
             const routed = cave.getRoutedConfig(path);
             const spelunkPermission = (routed as { permission?: string })?.permission;
             let tomePermission: string | undefined;

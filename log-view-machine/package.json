@@ -1,0 +1,21 @@
+{
+  "name": "log-view-machine",
+  "version": "2.1.0",
+  "description": "Log View Machine - state machine library with Cave, Tomes, adapters",
+  "type": "module",
+  "main": "dist/index.esm.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "build:esm": "node scripts/build-esm.mjs",
+    "test": "echo \"No tests configured\"",
+    "dev": "npm run build"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.0.0"
+  }
+}
