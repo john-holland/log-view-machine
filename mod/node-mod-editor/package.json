@@ -34,6 +34,8 @@
     "docker:run": "docker run -p 3001:3001 node-mod-editor"
   },
   "dependencies": {
+    "@xstate/react": "^4.0.0",
+    "react": "^18.0.0",
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.45.1",
     "@opentelemetry/instrumentation": "^0.45.1",
