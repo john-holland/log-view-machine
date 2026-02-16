@@ -35,6 +35,7 @@ import { createStateMachines } from './machines/state-machines.js';
 import { setupWebSocketServer } from './websocket/server.js';
 import { setupMiddleware } from './middleware/index.js';
 import { setupRoutes } from './routes/index.js';
+import { libraryRouter } from './library/router.js';
 import { killProcessOnPort } from 'port-cavestartup-adapter';
 import { createUnleashCaveTogglesAdapter } from 'unleash-cavetoggles-adapter';
 import { createDotcmsStartupAdapter } from 'dotcms-startup-adapter';
@@ -354,7 +355,7 @@ const caveAdapter = expressCaveAdapter({
     levelOrder: ['anonymous', 'user', 'admin'],
     getTenantName: (_cave, req) => deriveTenantFromRequest(req),
     redirectLoginPath: '/features',
-    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods'],
+    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods', '/api/geocode'],
   },
 });
 
@@ -878,6 +879,7 @@ app.get('/features', (req, res) => {
     <body>
       <div class="container">
         <h1>Features</h1>
+        <p><a href="/library" style="color:#8af">Library (upload, search, map)</a></p>
         <div class="section" id="login-section">
           <h2>Login</h2>
           <div class="login-row">
@@ -943,7 +945,8 @@ app.get('/features', (req, res) => {
             const data = await r.json().catch(() => ({}));
             document.getElementById('login-status').textContent = data.success ? 'Logged in as ' + (data.user?.username || data.user?.email) : (data.error || 'Login failed');
             if (data.success) {
-              var who = (data.user && (data.user.username || data.user.email)) || username;
+              if (data.redirectUrl) { window.location.href = data.redirectUrl; return; }
+              var who = (data.user && (data.user.username || data.user?.email)) || username;
               await updatePresence(who, 'features-tome');
               loadMods();
               loadPresence();
@@ -1014,10 +1017,16 @@ app.post('/api/login', express.json(), async (req, res) => {
     const sessionId = crypto.randomBytes(24).toString('hex');
     sessionStore.set(sessionId, caveUser);
     res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, maxAge: SESSION_MAX_AGE_MS, sameSite: 'lax' });
-    return res.json({ success: true, user: { id: caveUser.id, username: caveUser.username, email: caveUser.email } });
+    return res.json({ success: true, user: { id: caveUser.id, username: caveUser.username, email: caveUser.email }, redirectUrl: '/library' });
   }
   res.status(401).json({ success: false, error: 'Invalid credentials' });
 });
+
+// Library API: attach login adapter for owner_id; mount router
+app.use('/api/library', (req, res, next) => {
+  req.loginAdapter = loginAdapter;
+  next();
+}, libraryRouter);
 
 // Sign-up: store pending activation, update presence, send magic link email
 app.post('/api/signup', express.json(), async (req, res) => {
@@ -1147,6 +1156,28 @@ app.get('/api/editor/dotcms-health', (req, res) => {
       logger.debug('dotCMS health proxy error: %s', err?.message || err);
       res.status(502).json({ error: 'dotCMS unreachable', message: err?.message || 'Connection refused' });
     });
+});
+
+// Library page (logged-in landing): require auth, serve Library SPA
+app.get('/library', (req, res) => {
+  const user = loginAdapter.getCurrentUser(req);
+  if (!user) return res.redirect(302, '/features');
+  res.sendFile(path.join(process.cwd(), 'src/library/library.html'));
+});
+
+// Geocode for address -> lat/lon (Nominatim)
+app.get('/api/geocode', async (req, res) => {
+  const address = (req.query.address || '').toString().trim();
+  if (!address) return res.status(400).json({ error: 'address query required' });
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'ContinuumCave/1.0' } });
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) return res.json({ lat: null, lon: null });
+    res.json({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+  } catch (err) {
+    res.status(502).json({ error: err.message || 'Geocode failed' });
+  }
 });
 
 // Editor pages: SPA-style so /editor, /editor/library, /editor/cart, /editor/donation, /editor/signup, /editor/activate serve the same shell.
