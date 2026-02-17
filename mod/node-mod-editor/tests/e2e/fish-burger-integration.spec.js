@@ -4,54 +4,53 @@ const TEST_TIMEOUT_MS = 60_000;
 const NAV_TIMEOUT_MS = 20_000;
 
 /**
- * Fish Burger Demo – headed-capable integration tests.
+ * Fish Burger Demo – integration tests via Features page and mod Open Demo flow.
+ * Navigate to /features, click Open Demo on fish-burger mod card, assert mod iframe loads.
+ * Requires kotlin-mod-index and node-fish-burger to be running for full flow.
  * Run with: npm run test:e2e (or test:e2e:headed for visible browser).
- * Each test has a 1-minute timeout so it does not hang.
  */
 test.describe('Fish Burger Demo - Integration', () => {
   test.setTimeout(TEST_TIMEOUT_MS);
   test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
   test.beforeEach(async ({ page }) => {
+    await page.goto('/features', { timeout: NAV_TIMEOUT_MS });
+    await expect(page.locator('h1')).toContainText('Features', { timeout: NAV_TIMEOUT_MS });
+  });
+
+  test('loads features page with mods section', async ({ page }) => {
+    await expect(page.locator('h2', { hasText: /Mods/i })).toBeVisible();
+    await expect(page.locator('#mod-list, [id="mod-list"]').or(page.locator('section').filter({ hasText: /Mods/ }))).toBeVisible();
+  });
+
+  test('Open Demo opens modal with iframe when mod has demo', async ({ page }) => {
+    // Wait for mod list to load (Loading… then mod cards or "No mods")
+    await page.waitForFunction(
+      () => {
+        const el = document.getElementById('mod-list');
+        if (!el) return false;
+        const text = el.textContent || '';
+        return text !== 'Loading…' && text !== 'Loading...';
+      },
+      { timeout: 10_000 }
+    );
+    const openDemoBtn = page.getByRole('button', { name: /Open Demo/i }).first();
+    const count = await openDemoBtn.count();
+    if (count === 0) {
+      test.skip();
+      return;
+    }
+    await openDemoBtn.click();
+    // Modal should appear with iframe
+    const modal = page.locator('.mod-modal.open, [class*="mod-modal"][class*="open"]').or(page.locator('[style*="position: fixed"]').filter({ has: page.locator('iframe') }));
+    await expect(modal).toBeVisible({ timeout: 5_000 });
+    const iframe = page.locator('#mod-modal-iframe, iframe[title*="demo" i], iframe').first();
+    await expect(iframe).toBeVisible();
+    await expect(iframe).toHaveAttribute('src', /mods\/fish-burger\/demo|fish-burger-demo/, { timeout: 3_000 });
+  });
+
+  test('fish-burger-demo redirects to features', async ({ page }) => {
     await page.goto('/fish-burger-demo', { timeout: NAV_TIMEOUT_MS });
-    await page.waitForSelector('.container', { timeout: NAV_TIMEOUT_MS });
-  });
-
-  test('loads fish burger demo page', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Fish Burger Demo');
-    await expect(page.locator('.container')).toBeVisible();
-    await expect(page.locator('#status')).toBeVisible();
-    await expect(page.locator('#current-state')).toHaveText('idle');
-  });
-
-  test('shows demo control buttons', async ({ page }) => {
-    const buttons = page.locator('.demo-button');
-    await expect(buttons).toHaveCount(6);
-    await expect(page.getByRole('button', { name: /Start Cooking/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Update Progress/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Complete Cooking/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Simulate Error/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Reset/i })).toBeVisible();
-  });
-
-  test('start cooking updates state', async ({ page }) => {
-    await expect(page.locator('#current-state')).toHaveText('idle');
-    await page.getByRole('button', { name: /Start Cooking/i }).click();
-    await expect(page.locator('#current-state')).not.toHaveText('idle', { timeout: 10_000 });
-  });
-
-  test('reset returns to idle', async ({ page }) => {
-    await page.getByRole('button', { name: /Start Cooking/i }).click();
-    await expect(page.locator('#current-state')).not.toHaveText('idle', { timeout: 10_000 });
-    await page.getByRole('button', { name: /Reset/i }).click();
-    // Wait for RESET API to respond and UI to update (server restarts machine to initial state)
-    await expect(page.locator('#current-state')).toHaveText('idle', { timeout: 15_000 });
-  });
-
-  test('back link goes to home', async ({ page }) => {
-    await expect(page.locator('a.back-link[href="/"]')).toHaveAttribute('href', '/');
-    await page.locator('a.back-link').click();
-    await expect(page).toHaveURL(/\//);
+    await expect(page).toHaveURL(/\/features/);
   });
 });

@@ -5,7 +5,13 @@ import { useEffect, useState } from 'react';
 const API_BASE = typeof window !== 'undefined' ? '' : process.env.BACKEND_CAVE_URL || 'http://localhost:3000';
 
 type PresenceEntry = { user: string; location?: string; at?: string };
-type ModEntry = { id: string; name?: string; description?: string };
+type ModEntry = {
+  id: string;
+  name?: string;
+  description?: string;
+  serverUrl?: string;
+  entryPoints?: { demo?: string; cart?: string };
+};
 
 export default function FeaturesPage() {
   const [presence, setPresence] = useState<PresenceEntry[]>([]);
@@ -15,6 +21,7 @@ export default function FeaturesPage() {
   const [loginStatus, setLoginStatus] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [modDemoOpen, setModDemoOpen] = useState<ModEntry | null>(null);
 
   const fetchPresence = async () => {
     try {
@@ -149,25 +156,93 @@ export default function FeaturesPage() {
           <p style={{ margin: 0, color: '#666' }}>Loading…</p>
         ) : mods.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {mods.map((m) => (
-              <div
-                key={m.id}
-                style={{
-                  padding: 14,
-                  background: 'rgba(255,255,255,0.8)',
-                  borderRadius: 10,
-                  border: '1px solid #eee',
-                }}
-              >
-                <strong>{m.name || m.id}</strong>
-                {m.description && <p style={{ margin: '8px 0 0', fontSize: 14, color: '#555' }}>{m.description}</p>}
-              </div>
-            ))}
+            {mods.map((m: ModEntry) => {
+              const demoUrl = m.serverUrl
+                ? `${(m.serverUrl || '').replace(/\/$/, '')}${m.entryPoints?.demo || '/fish-burger-demo'}`
+                : null;
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    padding: 14,
+                    background: 'rgba(255,255,255,0.8)',
+                    borderRadius: 10,
+                    border: '1px solid #eee',
+                  }}
+                >
+                  <strong>{m.name || m.id}</strong>
+                  {m.description && <p style={{ margin: '8px 0 0', fontSize: 14, color: '#555' }}>{m.description}</p>}
+                  {demoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setModDemoOpen(m)}
+                      style={{
+                        marginTop: 10,
+                        padding: '8px 16px',
+                        borderRadius: 8,
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                      }}
+                    >
+                      Open Demo
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p style={{ margin: 0, color: '#666' }}>No mods for your account. Log in to see mods assigned to you.</p>
         )}
       </section>
+
+      {modDemoOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setModDemoOpen(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              width: '90%',
+              maxWidth: 900,
+              height: '80%',
+              borderRadius: 12,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: 12, background: '#f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong>{modDemoOpen.name || modDemoOpen.id} – Demo</strong>
+              <button
+                type="button"
+                onClick={() => setModDemoOpen(null)}
+                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #ccc', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+            <iframe
+              src={`${(modDemoOpen.serverUrl || '').replace(/\/$/, '')}${modDemoOpen.entryPoints?.demo || '/fish-burger-demo'}`}
+              title={`${modDemoOpen.name || modDemoOpen.id} demo`}
+              style={{ flex: 1, border: 'none', width: '100%' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

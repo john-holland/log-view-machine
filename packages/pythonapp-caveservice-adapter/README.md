@@ -43,6 +43,10 @@ const descriptor = pythonAdapter.getAppShell('myTool');
 
 See [Cave services and appShell registry](../../docs/CAVE_SERVICES_APPSHELL.md) for the full contract and **CaveServiceAdapter** convention.
 
+## Python library (cave-python-app)
+
+A companion **pip-installable** Python package in `python/` defines a minimal contract for Cave Python app shells (entrypoint helper, optional env). Install with `pip install -e python` from this package directory. See [python/README.md](python/README.md).
+
 ## Tests
 
 - **Unit tests** (`npm test`): Mock `child_process.spawn`; cover `apply`, `getAppShell`, `runAppShell`, and descriptor registration.

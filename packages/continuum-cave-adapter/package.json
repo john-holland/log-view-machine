@@ -1,0 +1,8 @@
+{
+  "name": "continuum-cave-adapter",
+  "version": "1.0.0",
+  "description": "Proxy Cave requests to the continuum library server (optional: point Cave at continuum)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

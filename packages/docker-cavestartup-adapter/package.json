@@ -1,0 +1,8 @@
+{
+  "name": "docker-cavestartup-adapter",
+  "version": "1.0.0",
+  "description": "Start arbitrary services via docker-compose at Cave app startup (config-driven provisioning)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {}
+}

@@ -35,13 +35,15 @@ import { createStateMachines } from './machines/state-machines.js';
 import { setupWebSocketServer } from './websocket/server.js';
 import { setupMiddleware } from './middleware/index.js';
 import { setupRoutes } from './routes/index.js';
-import { libraryRouter } from './library/router.js';
 import { killProcessOnPort } from 'port-cavestartup-adapter';
 import { createUnleashCaveTogglesAdapter } from 'unleash-cavetoggles-adapter';
 import { createDotcmsStartupAdapter } from 'dotcms-startup-adapter';
 import { createUnleashStartupAdapter } from 'unleash-cavestartup-adapter';
 import { createOtelStartupAdapter } from 'opentelemetry-cavestartup-adapter';
 import { createStubOtelCaveMetricsAdapter, createOtelCaveMetricsAdapter } from 'opentelemetry-cavemetrics-adapter';
+import { createPythonAppCaveServiceAdapter } from 'pythonapp-caveservice-adapter';
+import { createDockerStartupAdapter } from 'docker-cavestartup-adapter';
+import { createContinuumCaveAdapter } from 'continuum-cave-adapter';
 // import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
 
 // Load environment variables
@@ -355,7 +357,7 @@ const caveAdapter = expressCaveAdapter({
     levelOrder: ['anonymous', 'user', 'admin'],
     getTenantName: (_cave, req) => deriveTenantFromRequest(req),
     redirectLoginPath: '/features',
-    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods', '/api/geocode'],
+    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods'],
   },
 });
 
@@ -396,11 +398,28 @@ const modLoaderConfig = createDotcmsCavemodLoaderAdapter({
   dotCmsBaseUrl: process.env.DOTCMS_URL || 'http://localhost:8080',
 });
 
+// Python app shell registry: optional config from env or file (see PYTHON_APPS_JSON / PYTHON_APPS_CONFIG)
+let pythonAppsConfig = {};
+try {
+  const configPath = process.env.PYTHON_APPS_CONFIG;
+  const jsonEnv = process.env.PYTHON_APPS_JSON;
+  if (jsonEnv && jsonEnv.trim()) {
+    pythonAppsConfig = JSON.parse(jsonEnv);
+  } else if (configPath) {
+    const fs = await import('fs');
+    const content = fs.readFileSync(configPath, 'utf8');
+    pythonAppsConfig = JSON.parse(content);
+  }
+} catch (err) {
+  logger.warn('[pythonapp-caveservice-adapter] Could not load Python apps config: ' + (err?.message || err));
+}
+const pythonAppAdapter = createPythonAppCaveServiceAdapter({ apps: pythonAppsConfig });
+
 await createCaveServer({
   cave,
   tomeConfigs: tomeConfigsList,
   sections: { registry: true },
-  plugins: [caveAdapter, eventedModLoaderAdapter, modAdapter],
+  plugins: [caveAdapter, eventedModLoaderAdapter, modAdapter, pythonAppAdapter],
 });
 const tomeManager = caveAdapter.getTomeManager();
 if (tomeManager) {
@@ -411,6 +430,27 @@ if (tomeManager) {
     }
   }
 }
+
+// Continuum library proxy: when CONTINUUM_LIBRARY_URL is set, proxy /api/continuum/library/* to the continuum server (tenant from request)
+createContinuumCaveAdapter({
+  continuumBaseUrl: process.env.CONTINUUM_LIBRARY_URL || '',
+  getTenantFromRequest: (req) => deriveTenantFromRequest(req),
+  logger,
+}).mount(app, '/api/continuum/library');
+
+// App shell: run registered Python app by name (optional; requires PYTHON_APPS_JSON or PYTHON_APPS_CONFIG)
+app.post('/api/app-shell/:name/run', express.json(), async (req, res) => {
+  try {
+    const name = req.params.name;
+    const args = Array.isArray(req.body?.args) ? req.body.args : [];
+    const child = await pythonAppAdapter.runAppShell(name, args);
+    res.status(202).json({ status: 'started', name, args });
+    child.on('close', (code) => logger.info('[app-shell] ' + name + ' exited with code ' + code));
+    child.on('error', (err) => logger.warn('[app-shell] ' + name + ' error: ' + (err?.message || err)));
+  } catch (err) {
+    res.status(400).json({ error: err?.message || String(err) });
+  }
+});
 
 // Create state machines
 const stateMachines = await createStateMachines(db, robotCopy);
@@ -873,13 +913,20 @@ app.get('/features', (req, res) => {
         #login-status { margin-left: 8px; font-size: 14px; color: #ccc; }
         #presence-list, #mod-list { margin: 8px 0; font-size: 14px; color: #aaa; }
         .mod-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin: 8px 0; }
+        .mod-card .open-demo-btn { margin-top: 10px; padding: 8px 16px; border-radius: 8px; border: none; background: #667eea; color: white; font-size: 14px; cursor: pointer; }
+        .mod-card .open-demo-btn:hover { opacity: 0.9; }
+        .mod-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .mod-modal.open { display: flex; }
+        .mod-modal-content { background: #1a1a2e; width: 90%; max-width: 900px; height: 80%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .mod-modal-header { padding: 12px; background: rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; }
+        .mod-modal-close { padding: 6px 12px; border-radius: 6px; border: 1px solid #555; background: #333; color: #eee; cursor: pointer; }
+        .mod-modal-close:hover { background: #444; }
         .user-badge { display: inline-block; background: #667eea; color: white; padding: 4px 10px; border-radius: 20px; margin: 4px 4px 4px 0; font-size: 12px; }
       </style>
     </head>
     <body>
       <div class="container">
         <h1>Features</h1>
-        <p><a href="/library" style="color:#8af">Library (upload, search, map)</a></p>
         <div class="section" id="login-section">
           <h2>Login</h2>
           <div class="login-row">
@@ -896,6 +943,15 @@ app.get('/features', (req, res) => {
         <div class="section">
           <h2>Mods</h2>
           <div id="mod-list">Loading…</div>
+        </div>
+      </div>
+      <div class="mod-modal" id="mod-modal">
+        <div class="mod-modal-content" onclick="event.stopPropagation()">
+          <div class="mod-modal-header">
+            <strong id="mod-modal-title">Mod Demo</strong>
+            <button type="button" class="mod-modal-close" id="mod-modal-close">Close</button>
+          </div>
+          <iframe id="mod-modal-iframe" title="Mod demo" style="flex:1;border:none;width:100%;"></iframe>
         </div>
       </div>
       <script>
@@ -928,7 +984,27 @@ app.get('/features', (req, res) => {
             const data = r.ok ? await r.json() : { mods: [] };
             const mods = Array.isArray(data.mods) ? data.mods : [];
             const el = document.getElementById('mod-list');
-            el.innerHTML = mods.length ? mods.map(m => '<div class="mod-card"><strong>' + (m.name || m.id) + '</strong><br>' + (m.description || '') + '</div>').join('') : 'No mods for your account.';
+            el.innerHTML = mods.length ? mods.map(m => {
+              const demoPath = (m.entryPoints && m.entryPoints.demo) ? m.entryPoints.demo : '/fish-burger-demo';
+              const serverUrl = (m.serverUrl || '').replace(/\/$/, '');
+              const demoUrl = serverUrl ? (serverUrl + demoPath) : null;
+              let card = '<div class="mod-card" data-mod-id="' + (m.id || '').replace(/"/g, '&quot;') + '" data-demo-url="' + (demoUrl || '').replace(/"/g, '&quot;') + '" data-mod-name="' + (m.name || m.id || '').replace(/"/g, '&quot;') + '"><strong>' + (m.name || m.id) + '</strong><br>' + (m.description || '');
+              if (demoUrl) card += '<br><button type="button" class="open-demo-btn">Open Demo</button>';
+              card += '</div>';
+              return card;
+            }).join('') : 'No mods for your account.';
+            el.querySelectorAll('.open-demo-btn').forEach(function(btn) {
+              btn.onclick = function() {
+                var card = btn.closest('.mod-card');
+                var url = card && card.getAttribute('data-demo-url');
+                var name = card && card.getAttribute('data-mod-name');
+                if (url) {
+                  document.getElementById('mod-modal-iframe').src = url;
+                  document.getElementById('mod-modal-title').textContent = (name || 'Mod') + ' – Demo';
+                  document.getElementById('mod-modal').classList.add('open');
+                }
+              };
+            });
           } catch (_) { document.getElementById('mod-list').textContent = 'Could not load mods.'; }
         }
         async function updatePresence(user, location) {
@@ -945,13 +1021,20 @@ app.get('/features', (req, res) => {
             const data = await r.json().catch(() => ({}));
             document.getElementById('login-status').textContent = data.success ? 'Logged in as ' + (data.user?.username || data.user?.email) : (data.error || 'Login failed');
             if (data.success) {
-              if (data.redirectUrl) { window.location.href = data.redirectUrl; return; }
               var who = (data.user && (data.user.username || data.user?.email)) || username;
               await updatePresence(who, 'features-tome');
               loadMods();
               loadPresence();
             }
           } catch (e) { document.getElementById('login-status').textContent = 'Request failed'; }
+        };
+        document.getElementById('mod-modal-close').onclick = function() {
+          document.getElementById('mod-modal').classList.remove('open');
+          document.getElementById('mod-modal-iframe').src = '';
+        };
+        document.getElementById('mod-modal').onclick = function() {
+          document.getElementById('mod-modal').classList.remove('open');
+          document.getElementById('mod-modal-iframe').src = '';
         };
         loadPresence(); loadMods();
         setInterval(loadPresence, 15000);
@@ -1017,16 +1100,10 @@ app.post('/api/login', express.json(), async (req, res) => {
     const sessionId = crypto.randomBytes(24).toString('hex');
     sessionStore.set(sessionId, caveUser);
     res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, maxAge: SESSION_MAX_AGE_MS, sameSite: 'lax' });
-    return res.json({ success: true, user: { id: caveUser.id, username: caveUser.username, email: caveUser.email }, redirectUrl: '/library' });
+    return res.json({ success: true, user: { id: caveUser.id, username: caveUser.username, email: caveUser.email } });
   }
   res.status(401).json({ success: false, error: 'Invalid credentials' });
 });
-
-// Library API: attach login adapter for owner_id; mount router
-app.use('/api/library', (req, res, next) => {
-  req.loginAdapter = loginAdapter;
-  next();
-}, libraryRouter);
 
 // Sign-up: store pending activation, update presence, send magic link email
 app.post('/api/signup', express.json(), async (req, res) => {
@@ -1158,28 +1235,6 @@ app.get('/api/editor/dotcms-health', (req, res) => {
     });
 });
 
-// Library page (logged-in landing): require auth, serve Library SPA
-app.get('/library', (req, res) => {
-  const user = loginAdapter.getCurrentUser(req);
-  if (!user) return res.redirect(302, '/features');
-  res.sendFile(path.join(process.cwd(), 'src/library/library.html'));
-});
-
-// Geocode for address -> lat/lon (Nominatim)
-app.get('/api/geocode', async (req, res) => {
-  const address = (req.query.address || '').toString().trim();
-  if (!address) return res.status(400).json({ error: 'address query required' });
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'ContinuumCave/1.0' } });
-    const data = await r.json();
-    if (!Array.isArray(data) || data.length === 0) return res.json({ lat: null, lon: null });
-    res.json({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
-  } catch (err) {
-    res.status(502).json({ error: err.message || 'Geocode failed' });
-  }
-});
-
 // Editor pages: SPA-style so /editor, /editor/library, /editor/cart, /editor/donation, /editor/signup, /editor/activate serve the same shell.
 app.get('/editor', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/component-middleware/generic-editor/index.html'));
@@ -1280,6 +1335,20 @@ if (process.env.SKIP_SERVER_LISTEN !== '1') {
     pipeContainerLogs: true,
   });
   await dotcmsStartup.startUp();
+
+  // Generic Docker provisioning: when DOCKER_STARTUP_COMPOSE_PATH is set, run docker compose up -d for configured services
+  const dockerStartup = createDockerStartupAdapter({
+    enabled: !!process.env.DOCKER_STARTUP_COMPOSE_PATH,
+    isEnabled: (name) => unleashToggle.isEnabled(name),
+    toggleName: 'docker-startup-enabled',
+    composePath: process.env.DOCKER_STARTUP_COMPOSE_PATH || undefined,
+    composeProject: process.env.DOCKER_STARTUP_PROJECT || undefined,
+    services: process.env.DOCKER_STARTUP_SERVICES ? process.env.DOCKER_STARTUP_SERVICES.split(',').map((s) => s.trim()).filter(Boolean) : ['app'],
+    readinessUrl: process.env.DOCKER_STARTUP_READINESS_URL || undefined,
+    readinessTimeoutMs: Number(process.env.DOCKER_STARTUP_READINESS_TIMEOUT_MS) || 90000,
+    logger,
+  });
+  await dockerStartup.startUp();
 
   const otelEndpoint = (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || '').trim();
   const otelServiceName = (process.env.OTEL_SERVICE_NAME || '').trim();

@@ -10,11 +10,12 @@ export default {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
   
-  // Test file patterns (include editor auth unit test)
+  // Test file patterns (include editor auth unit test, mod API Pact tests)
   testMatch: [
     '**/zoom-state-machine.cjs.test.js',
     '**/__tests__/can-publish.cjs.test.js',
-    '**/__tests__/cave-adapters.test.js'
+    '**/__tests__/cave-adapters.test.js',
+    '**/mod-api-client/*.pact.test.js'
   ],
   
   // Setup files
@@ -44,8 +45,8 @@ export default {
   // Restore mocks between tests
   restoreMocks: true,
   
-  // Transform ignore patterns
+  // Transform ignore patterns (transform @pact-foundation/pact for ESM)
   transformIgnorePatterns: [
-    'node_modules/(?!(babel-jest)/)'
+    'node_modules/(?!(babel-jest|@pact-foundation/pact)/)'
   ],
 };

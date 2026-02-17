@@ -71,7 +71,34 @@ await createCaveServer({
 
 ---
 
+## node-mod-editor (Cave 2.x) config
+
+The mod wires **pythonapp-caveservice-adapter** and loads app config from:
+
+- **PYTHON_APPS_JSON**: JSON string of `{ "appName": { "scriptPath": "...", "cwd": "...", ... } }`.
+- **PYTHON_APPS_CONFIG**: Path to a JSON file with the same structure.
+
+If neither is set, the adapter is still applied but registers no apps. Example:
+
+```json
+{
+  "continuum": {
+    "scriptPath": "C:/Users/John/continuum/serve_library.py",
+    "cwd": "C:/Users/John/continuum"
+  }
+}
+```
+
+To run a registered app by name: **POST /api/app-shell/:name/run** with optional body `{ "args": ["--port", "5050"] }`. Returns 202 when the process has started.
+
+## docker-cavestartup-adapter (Cave 2.x)
+
+Generic Docker provisioning at startup. When **DOCKER_STARTUP_COMPOSE_PATH** is set, the mod runs `docker compose -f <path> up -d <services>`. Configure via env: `DOCKER_STARTUP_COMPOSE_PATH`, `DOCKER_STARTUP_PROJECT`, `DOCKER_STARTUP_SERVICES` (comma-separated), optional `DOCKER_STARTUP_READINESS_URL` and timeout. See [packages/docker-cavestartup-adapter/README.md](../packages/docker-cavestartup-adapter/README.md).
+
+---
+
 ## Related
 
 - **log-view-machine** exports **AppShellDescriptor**, **AppShellRegistry**, and **CaveServerContext** (with **appShellRegistryRef**).
 - **pythonapp-caveservice-adapter** implements a concrete CaveServiceAdapter: registers Python app descriptors, runs pip install (Option A: from Node), and exposes **runAppShell(name, args?)** / **getAppShell(name)**.
+- **cave-python-app** (pip): Companion Python package for the contract (entrypoint, env). `pip install -e packages/pythonapp-caveservice-adapter/python`. See [packages/pythonapp-caveservice-adapter/python/README.md](../packages/pythonapp-caveservice-adapter/python/README.md).

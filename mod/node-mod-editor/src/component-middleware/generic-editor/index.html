@@ -3220,6 +3220,7 @@ function test() {
                 const dy = e.clientY - noShiftDragStartY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist > DRAG_THRESHOLD_PX && (Date.now() - panHintLastShown) > PAN_HINT_COOLDOWN_MS) {
+                    console.log('[Editor] Non-shift drag detected; showing pan hint');
                     showPanHint();
                     panHintLastShown = Date.now();
                     noShiftDragActive = false;

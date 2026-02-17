@@ -2,12 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Cave } from 'log-view-machine';
 import { getSlotComponent, getSlotKey, registerSlot, type SlotProps } from '../../slot-registry';
 import dynamic from 'next/dynamic';
 
-const FishBurgerClient = dynamic(() => import('../../fish-burger-demo/FishBurgerClient'), { ssr: false });
 const DonationSlot = dynamic(() => import('../../donation/page'), { ssr: false });
+
+function ModSlotPlaceholder({ path, container, tomeId }: SlotProps) {
+  return (
+    <div>
+      <h2>Editor slot</h2>
+      <p>Load a mod from the Features page to see content here.</p>
+      <p>Path: {path}, container: {container ?? '-'}, tomeId: {tomeId ?? '-'}</p>
+      <p><Link href="/features">Go to Features</Link></p>
+    </div>
+  );
+}
 
 function LibraryPlaceholder({ path, container, tomeId }: SlotProps) {
   return (
@@ -31,11 +42,11 @@ function CartPlaceholder({ path, container, tomeId }: SlotProps) {
 
 // One-time registration (idempotent)
 if (typeof getSlotComponent('editor') === 'undefined') {
-  registerSlot('editor', FishBurgerClient as React.ComponentType<SlotProps>);
+  registerSlot('editor', ModSlotPlaceholder);
   registerSlot('library', LibraryPlaceholder);
   registerSlot('cart', CartPlaceholder);
   registerSlot('donation', DonationSlot as React.ComponentType<SlotProps>);
-  registerSlot('editor-tome', FishBurgerClient as React.ComponentType<SlotProps>);
+  registerSlot('editor-tome', ModSlotPlaceholder);
   registerSlot('library-tome', LibraryPlaceholder);
   registerSlot('cart-tome', CartPlaceholder);
   registerSlot('donation-tome', DonationSlot as React.ComponentType<SlotProps>);
