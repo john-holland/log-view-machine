@@ -44,6 +44,7 @@ import { createStubOtelCaveMetricsAdapter, createOtelCaveMetricsAdapter } from '
 import { createPythonAppCaveServiceAdapter } from 'pythonapp-caveservice-adapter';
 import { createDockerStartupAdapter } from 'docker-cavestartup-adapter';
 import { createContinuumCaveAdapter } from 'continuum-cave-adapter';
+import { createSharePointCaveAdapter } from 'sharepoint-cave-adapter';
 // import { runTeleportHQDemo } from './component-middleware/teleportHQ/demo.js';
 
 // Load environment variables
@@ -431,12 +432,29 @@ if (tomeManager) {
   }
 }
 
+// Per-tenant API keys for Continuum (optional). Env CONTINUUM_TENANT_KEYS='{"tenant1":"key1","tenant2":"key2"}'.
+let continuumTenantKeys = {};
+try {
+  const raw = (process.env.CONTINUUM_TENANT_KEYS || '').trim();
+  if (raw) continuumTenantKeys = JSON.parse(raw);
+} catch (_) {}
+const getTenantApiKey = Object.keys(continuumTenantKeys).length
+  ? (tenantId) => continuumTenantKeys[tenantId] ?? null
+  : undefined;
+
 // Continuum library proxy: when CONTINUUM_LIBRARY_URL is set, proxy /api/continuum/library/* to the continuum server (tenant from request)
 createContinuumCaveAdapter({
   continuumBaseUrl: process.env.CONTINUUM_LIBRARY_URL || '',
   getTenantFromRequest: (req) => deriveTenantFromRequest(req),
+  getTenantApiKey,
   logger,
 }).mount(app, '/api/continuum/library');
+
+// SharePoint adapter: upload/download and stream/embed when Azure env (or getTenantCredentials) is set
+createSharePointCaveAdapter({
+  getTenantFromRequest: (req) => deriveTenantFromRequest(req),
+  logger,
+}).mount(app, '/api/sharepoint');
 
 // App shell: run registered Python app by name (optional; requires PYTHON_APPS_JSON or PYTHON_APPS_CONFIG)
 app.post('/api/app-shell/:name/run', express.json(), async (req, res) => {

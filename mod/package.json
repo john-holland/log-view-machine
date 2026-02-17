@@ -9,13 +9,18 @@
     "start:editor": "npm run start --workspace=node-mod-editor",
     "start:ecommerce": "npm run start --workspace=node-fish-burger",
     "start:index": "cd kotlin-mod-index && gradle run",
-    "build": "npm run build:editor && npm run build:index",
+    "build": "npm run build:editor && npm run build:index && npm run build:pact",
     "build:editor": "npm run build --workspace=node-mod-editor",
-    "build:index": "node -e \"require('child_process').execSync('cd kotlin-mod-index && ' + (process.platform === 'win32' ? 'gradlew.bat' : './gradlew') + ' build -x test', {stdio:'inherit'})\""
+    "build:index": "node -e \"require('child_process').execSync('cd kotlin-mod-index && ' + (process.platform === 'win32' ? 'gradlew.bat' : './gradlew') + ' build -x test', {stdio:'inherit'})\"",
+    "build:pact": "npm run test:pact --workspace=node-mod-editor && node node_modules/pact-cavemod-adapter/scripts/write-results.js pass || (node node_modules/pact-cavemod-adapter/scripts/write-results.js fail && exit 1)",
+    "test:pact": "npm run test:pact --workspace=node-mod-editor"
   },
   "workspaces": [
     "node-mod-editor",
     "node-fish-burger",
     "examples/fish-burger-mod"
-  ]
+  ],
+  "devDependencies": {
+    "pact-cavemod-adapter": "file:../packages/pact-cavemod-adapter"
+  }
 }

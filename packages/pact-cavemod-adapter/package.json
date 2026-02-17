@@ -1,0 +1,13 @@
+{
+  "name": "pact-cavemod-adapter",
+  "version": "1.0.0",
+  "description": "PACT contract and test runner for mod APIs; writes pact-results.json and defines pactStatus for mod index",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "pact-cavemod-write-results": "scripts/write-results.js"
+  },
+  "scripts": {},
+  "keywords": ["pact", "mod", "cave", "contract"],
+  "license": "MIT"
+}

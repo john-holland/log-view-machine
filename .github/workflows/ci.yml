@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  mod-build-and-pact:
+    name: Mod build and PACT
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Install mod workspace dependencies
+        run: npm install
+        working-directory: mod
+
+      - name: Build editor
+        run: npm run build:editor
+        working-directory: mod
+
+      - name: Run PACT consumer tests and write results
+        run: npm run build:pact
+        working-directory: mod
+
+      - name: Upload pact-results.json
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pact-results
+          path: mod/pact-results.json
+
+  build-index:
+    name: Build mod index
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build kotlin-mod-index
+        run: cd mod/kotlin-mod-index && (./gradlew build -x test 2>/dev/null || ./gradlew.bat build -x test)

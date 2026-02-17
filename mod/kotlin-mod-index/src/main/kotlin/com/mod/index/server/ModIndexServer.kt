@@ -54,7 +54,9 @@ data class ModConfig(
     val serverUrl: String,
     val assets: Map<String, String>,
     val entryPoints: Map<String, String>? = null,
-    val modMetadata: ModMetadata? = null
+    val modMetadata: ModMetadata? = null,
+    val pactStatus: String? = null,
+    val pactVerifiedAt: String? = null
 )
 
 @Serializable

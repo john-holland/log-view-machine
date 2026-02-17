@@ -50,6 +50,7 @@
     "axios": "^1.11.0",
     "compression": "^1.8.1",
     "continuum-cave-adapter": "file:../../packages/continuum-cave-adapter",
+    "sharepoint-cave-adapter": "file:../../packages/sharepoint-cave-adapter",
     "cors": "^2.8.5",
     "docker-cavestartup-adapter": "file:../../packages/docker-cavestartup-adapter",
     "dotcms-cavemodloader-adapter": "file:../../packages/dotcms-cavemodloader-adapter",

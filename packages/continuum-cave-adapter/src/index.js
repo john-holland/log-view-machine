@@ -2,12 +2,14 @@
  * Continuum Cave Adapter
  * Mounts proxy routes so Cave can offer the continuum library API (search, documents, download).
  * Set CONTINUUM_LIBRARY_URL (e.g. http://localhost:5050) and optionally pass getTenantFromRequest(req).
+ * When getTenantApiKey(tenantId) is provided, sends X-API-Key per tenant for Continuum per-tenant auth.
  */
 
 /**
  * @param {Object} options
  * @param {string} options.continuumBaseUrl - Base URL of the continuum server (e.g. from process.env.CONTINUUM_LIBRARY_URL).
  * @param {(req: import('express').Request) => string} [options.getTenantFromRequest] - Return tenant for X-Tenant-ID (e.g. deriveTenantFromRequest(req)).
+ * @param {(tenantId: string) => string | Promise<string | null>} [options.getTenantApiKey] - Return API key for tenant; when present, adapter sends X-API-Key to Continuum.
  * @param {{ info?: (msg: string) => void, warn?: (msg: string) => void }} [options.logger]
  * @returns {{ mount(app: import('express').Application, basePath?: string): void }}
  */
@@ -15,10 +17,20 @@ export function createContinuumCaveAdapter(options) {
   const {
     continuumBaseUrl = process.env.CONTINUUM_LIBRARY_URL || '',
     getTenantFromRequest,
+    getTenantApiKey,
     logger = {},
   } = options;
 
   const log = (fn, msg) => { if (logger[fn]) logger[fn](msg); };
+
+  async function headersForTenant(tenant) {
+    const headers = { 'X-Tenant-ID': tenant };
+    if (typeof getTenantApiKey === 'function') {
+      const key = await Promise.resolve(getTenantApiKey(tenant));
+      if (key && typeof key === 'string') headers['X-API-Key'] = key;
+    }
+    return headers;
+  }
 
   function mount(app, basePath = '/api/continuum/library') {
     const base = (continuumBaseUrl && continuumBaseUrl.trim()) ? continuumBaseUrl.replace(/\/$/, '') : '';
@@ -34,7 +46,7 @@ export function createContinuumCaveAdapter(options) {
         const tenant = getTenant(req);
         const qs = new URLSearchParams(req.query).toString();
         const url = base + '/api/library/search' + (qs ? '?' + qs : '');
-        const headers = { 'X-Tenant-ID': tenant };
+        const headers = await headersForTenant(tenant);
         const r = await fetch(url, { headers });
         const data = await r.json().catch(() => ({}));
         res.status(r.status).json(data);
@@ -48,7 +60,8 @@ export function createContinuumCaveAdapter(options) {
       try {
         const tenant = getTenant(req);
         const url = base + '/api/library/documents/' + req.params.id + '?tenant=' + encodeURIComponent(tenant);
-        const r = await fetch(url);
+        const headers = await headersForTenant(tenant);
+        const r = await fetch(url, { headers });
         const data = await r.json().catch(() => ({}));
         res.status(r.status).json(data);
       } catch (err) {
@@ -61,7 +74,8 @@ export function createContinuumCaveAdapter(options) {
       try {
         const tenant = getTenant(req);
         const url = base + '/api/library/documents/' + req.params.id + '/download?tenant=' + encodeURIComponent(tenant);
-        const r = await fetch(url);
+        const headers = await headersForTenant(tenant);
+        const r = await fetch(url, { headers });
         if (!r.ok) {
           const text = await r.text();
           return res.status(r.status).send(text || r.statusText);
