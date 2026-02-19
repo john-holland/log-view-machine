@@ -1,6 +1,6 @@
 {
   "name": "log-view-machine",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Log View Machine - state machine library with Cave, Tomes, adapters",
   "type": "module",
   "main": "dist/index.esm.js",
