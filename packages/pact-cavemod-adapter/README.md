@@ -40,3 +40,13 @@ Output format: `{ "consumer": "ModApiConsumer", "provider": "ModIndexProvider", 
 
 - **Mod build:** Run `test:pact` then `pact-cavemod-write-results <pass|fail>` so `pact-results.json` is produced.
 - **CI:** Run mod build (including pact step); optionally run provider verification and publish pact status to the mod index.
+
+## Monorepo usage (log-view-machine)
+
+The mod workspace (log-view-machine/mod) depends on this package via `devDependencies: { "pact-cavemod-adapter": "file:../packages/pact-cavemod-adapter" }`. From repo root, install mod’s deps then run pact build:
+
+```bash
+cd mod && npm install && npm run build:pact
+```
+
+From repo root (with `mod` in workspaces): `npm run build:mod:pact` or `npm run build:pact --workspace=mod`. The `build:pact` script runs node-mod-editor’s `test:pact` and then writes `pact-results.json` (pass or fail) into `mod/`.

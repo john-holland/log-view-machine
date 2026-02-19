@@ -4,10 +4,16 @@
   "description": "PACT contract and test runner for mod APIs; writes pact-results.json and defines pactStatus for mod index",
   "type": "module",
   "main": "src/index.js",
-  "bin": {
-    "pact-cavemod-write-results": "scripts/write-results.js"
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
   },
-  "scripts": {},
+  "bin": {
+    "pact-cavemod-write-results": "./scripts/write-results.js"
+  },
+  "scripts": {
+    "test": "node scripts/write-results.js pass"
+  },
   "keywords": ["pact", "mod", "cave", "contract"],
   "license": "MIT"
 }
