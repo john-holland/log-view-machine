@@ -1,0 +1,15 @@
+{
+  "name": "define-cavemod-adapter",
+  "version": "1.0.0",
+  "description": "Declarative mod metadata definition with dotCMS tenancy, user presence, and mod upload/installation support",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

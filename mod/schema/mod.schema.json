@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://log-view-machine/mod/schema/mod.schema.json",
+  "title": "Mod Manifest",
+  "description": "JSON Schema for mod.json - canonical mod manifest",
+  "type": "object",
+  "required": ["id", "name", "description", "version", "serverUrl", "assets"],
+  "properties": {
+    "id": { "type": "string", "description": "Unique mod identifier" },
+    "name": { "type": "string", "description": "Human-readable mod name" },
+    "description": { "type": "string", "description": "Mod description" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.-]+)?$", "description": "Semantic version" },
+    "serverUrl": { "type": "string", "format": "uri", "description": "Base URL of mod server" },
+    "assets": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Asset path mappings (e.g. templates, styles, scripts)"
+    },
+    "entryPoints": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Named entry point routes"
+    },
+    "features": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional feature tags"
+    },
+    "modMetadata": {
+      "type": "object",
+      "properties": {
+        "pathReplacements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "modCaveId": { "type": "string" },
+              "modTomeId": { "type": "string" },
+              "spelunk": { "type": "object" }
+            }
+          }
+        },
+        "assetLinks": {
+          "type": "object",
+          "properties": {
+            "templates": { "type": "string" },
+            "styles": { "type": "string" },
+            "scripts": { "type": "string" },
+            "serverUrl": { "type": "string" }
+          }
+        },
+        "spelunkMap": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "route": { "type": "string" },
+              "modCaveId": { "type": "string" },
+              "modTomeId": { "type": "string" },
+              "spelunk": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "pactStatus": { "type": "string", "enum": ["good", "fail", "unknown"] },
+    "pactVerifiedAt": { "type": "string", "format": "date-time" }
+  }
+}

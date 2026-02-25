@@ -1,0 +1,51 @@
+{
+  "contentType": "Cavemod",
+  "fields": {
+    "modId": "fish-burger-mod",
+    "modName": "Fish Burger Cart",
+    "modDescription": "Example mod demonstrating fish burger state machine with shopping cart functionality",
+    "modVersion": "1.0.0",
+    "serverUrl": "http://localhost:3004",
+    "assets": {
+      "templates": "/mods/fish-burger/templates/",
+      "styles": "/mods/fish-burger/styles/",
+      "scripts": "/mods/fish-burger/scripts/"
+    },
+    "entryPoints": {
+      "cart": "/mods/fish-burger/cart",
+      "demo": "/mods/fish-burger/demo"
+    },
+    "modMetadata": {
+      "pathReplacements": {
+        "/features": {
+          "modTomeId": "fish-burger-mod-tome",
+          "spelunk": {
+            "route": "/features",
+            "tomeId": "fish-burger-mod-tome",
+            "childCaves": {
+              "cart": {
+                "route": "/features/cart",
+                "tomeId": "fish-burger-cart-tome"
+              }
+            }
+          }
+        }
+      },
+      "assetLinks": {
+        "templates": "/mods/fish-burger/templates/",
+        "styles": "/mods/fish-burger/styles/",
+        "scripts": "/mods/fish-burger/scripts/",
+        "serverUrl": "http://localhost:3004"
+      },
+      "spelunkMap": {
+        "features-cart": {
+          "route": "/features/cart",
+          "modTomeId": "fish-burger-cart-tome"
+        },
+        "*": {
+          "modCaveId": "fish-burger-mod-cave"
+        }
+      }
+    }
+  }
+}

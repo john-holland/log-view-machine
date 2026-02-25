@@ -81,6 +81,27 @@ describe('Mod API Consumer Pact', () => {
           expect(result.mods).toBeDefined();
         });
     });
+
+    it('forwards Cookie header when provided', async () => {
+      await provider
+        .addInteraction()
+        .given('mods exist')
+        .uponReceiving('a request for mods list with Cookie')
+        .withRequest({
+          method: 'GET',
+          path: '/api/mods',
+          headers: { Accept: 'application/json', Cookie: like('session=abc123') },
+        })
+        .willRespondWith({
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: { mods: eachLike(modExample) },
+        })
+        .executeTest(async (mockServer) => {
+          const result = await fetchMods({ baseUrl: mockServer.url, cookie: 'session=abc123' });
+          expect(result.mods).toBeDefined();
+        });
+    });
   });
 
   describe('GET /api/mods/:modId', () => {

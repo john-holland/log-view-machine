@@ -15,6 +15,7 @@
     "test:coverage": "jest --config jest.config.mjs --coverage",
     "test:unit": "jest --config jest.config.mjs --testPathPattern=__tests__",
     "test:pact": "jest --config jest.config.mjs --testPathPattern=modApiClient.pact",
+    "verify:provider": "node scripts/verify-provider.mjs",
     "test:editor-publish": "node scripts/test-editor-publish.mjs",
     "test:editor-auth": "jest --config jest.config.mjs --testPathPattern=can-publish && node scripts/test-editor-publish.mjs",
     "test:e2e": "playwright test",

@@ -36,10 +36,22 @@ writePactResults({ status: 'pass', outputPath: 'pact-results.json' });
 
 Output format: `{ "consumer": "ModApiConsumer", "provider": "ModIndexProvider", "status": "pass"|"fail", "timestamp": "..." }`.
 
+## Provider verification
+
+Node-mod-editor includes a minimal Express provider server and verification script:
+
+```bash
+cd mod/node-mod-editor
+npm run test:pact   # Generate pact file first
+npm run verify:provider
+```
+
+Or from repo root: `npm run verify:provider --workspace=mod`. The provider server implements GET /api/mods and GET /api/mods/:modId with provider state handlers for "mods exist", "mod fish-burger-mod exists", "mod does not exist".
+
 ## Build and CI
 
 - **Mod build:** Run `test:pact` then `pact-cavemod-write-results <pass|fail>` so `pact-results.json` is produced.
-- **CI:** Run mod build (including pact step); optionally run provider verification and publish pact status to the mod index.
+- **CI:** Run mod build (including pact step); optionally run provider verification (`verify:provider`) and publish pact status to the mod index.
 
 ## Monorepo usage (log-view-machine)
 
