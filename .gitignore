@@ -29,7 +29,7 @@ yarn-error.log*
 *.swo 
 
 **/log-warehouse/**
-**/logs/*.log
+**/logs/**
 **/test-results/**
 **/playwright-report/**
 **/.gradle/**
