@@ -46,6 +46,8 @@ export interface TomeBinding {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   middleware?: string[];
   guards?: string[];
+  /** Optional transport hint for CaveRobit resolution (fromCave, toTome) */
+  transport?: TransportDescriptor | TransportType;
   transformers?: {
     input?: (data: any) => any;
     output?: (data: any) => any;
@@ -56,6 +58,8 @@ export interface TomeRouteConfig {
   basePath?: string;
   middleware?: string[];
   cors?: boolean;
+  /** Optional default transport hint for CaveRobit when resolving routes in this Tome */
+  transport?: TransportDescriptor | TransportType;
   rateLimit?: {
     windowMs: number;
     max: number;
@@ -67,6 +71,7 @@ export interface TomeRouteConfig {
 }
 
 import type { Spelunk } from '../Cave';
+import type { TransportDescriptor, TransportType } from '../CaveRobit';
 
 export interface ModMetadata {
   /** Map of route paths to mod cave/tome IDs that replace them. Supports "*" wildcard. */

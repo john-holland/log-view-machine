@@ -93,3 +93,4 @@ export interface CaveServerAdapter {
     /** Optional: validate message token (CSRF-style) for state-changing requests. Return false to reject (e.g. 403). */
     validateMessageToken?(req: NormalizedRequest): boolean | Promise<boolean>;
 }
+//# sourceMappingURL=CaveServerAdapter.d.ts.map

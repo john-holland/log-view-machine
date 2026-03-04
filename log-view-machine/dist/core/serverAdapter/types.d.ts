@@ -23,3 +23,4 @@ export type NormalizedMiddleware = (req: NormalizedRequest, next: () => Promise<
  * Bag of route handlers mountable under a base path (e.g. Express Router).
  */
 export type RouteHandlerBag = unknown;
+//# sourceMappingURL=types.d.ts.map

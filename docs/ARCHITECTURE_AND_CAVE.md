@@ -30,6 +30,7 @@ Single source of truth for ecommerce setup, component architecture, Cave (new st
   - `Cave('barney').getRoutedConfig(path: string)` — e.g. `getRoutedConfig('/loom')` or `getRoutedConfig('.')` for full tree.
   - `Cave('barney').getConfig()` — full cave config.
   - **`getRenderTarget(path: string)`** — returns `{ route?, container?, tomes?, tomeId? }` from the routed spelunk for the given path (convenience for apps that need "where to render" and which Tome to use).
+  - **`getTransportForTarget(fromCave: string, path: string)`** — when Cave has `caveRobit`, resolves transport for (fromCave, path) via CaveRobit; returns `TransportDescriptor`. Defaults to `{ type: 'in-app' }` when no caveRobit.
   - **`getRenderKey(): string`** — stable key for this Cave in the render tree (e.g. React `key`); optional `renderKey` in Spelunk, default uses cave name.
   - **`observeViewKey(callback: (key: string) => void): () => void`** — subscribe to render-key updates; returns unsubscribe for cleanup (enables painless React integration).
   - From a "system of caves": include external cave and get routed config by path.
@@ -89,6 +90,18 @@ flowchart TB
 - **Target**: Map **machine → client**. Client can be: a **Cave**; a **relative-routed statemachine** (e.g. `"../name"`); an **API endpoint** (with header details); a **GraphQL endpoint**.
 - **Current**: Backend URL selection (configurable toggles, apiBasePath), tracing, `sendMessage(action, data)`.
 - **Document**: Current (backend URL + sendMessage) vs target (generic client registry and resolution).
+
+### 2.4.1 CaveRobit (Dual of RobotCopy)
+
+- **CaveRobit**: Maps **(fromCave, toTome)** to `TransportDescriptor`; completes the routing graph by automating *how* to reach a Tome from a given Cave.
+- **Dual binding**: RobotCopy sends; CaveRobit resolves transport. When a machine in Cave A needs to send to Tome B, CaveRobit returns the transport (http, in-app, kafka, etc.); RobotCopy uses it.
+- **Composition**: CaveRobit sits at **CaveConfig** level (`caveRobit?: CaveRobit | CaveRobitConfig`). Use `createCaveRobit(config)` or pass config; Cave resolves and adds `getTransportForTarget(fromCave, path)` to CaveInstance.
+- **getTransportForTarget**: Resolves `target = getRenderTarget(path)`, then `caveRobit.getTransportForTarget(fromCave, target.tomeId ?? '', path)`. Returns `TransportDescriptor` (type + config).
+- **Transport types**: `in-app`, `http`, `kafka`, `udp`, `named-pipe`, `socket`, `chrome-messaging`. Adapter packages provide bindings; CaveRobit core is transport-agnostic.
+- **Decorator pattern**: `CaveRobitAdapter = (caveRobit, config?) => CaveRobit`. Use `createCaveRobitWithFallback(caveRobit, { fallbackTransport })` for guaranteed fallback on error. Apply via `CaveRobitConfig.adapters`.
+- **Integration with RobotCopy**: Use `createCaveRobitTransport({ cave, ... })` and pass as `RobotCopyConfig.transport`. Or `createRobotCopyConfigWithCaveRobit(cave, baseConfig)` to get a full config.
+- **TomeConfig.routing**: Optional `transport` hint per `TomeBinding` or `TomeRouteConfig`; CaveRobit can incorporate when resolving.
+- **Spec**: `cave-tome-security.schema.json` includes `CaveRobitConfig`, `CaveRobitRouteConfig`, `TransportDescriptor`, `TransportType`.
 
 ---
 

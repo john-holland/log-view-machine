@@ -24,6 +24,10 @@ export { StructuralTomeConnector, useStructuralTomeConnector } from './core/stru
 export { DefaultStructuralConfig, createStructuralConfig } from './core/structural/DefaultStructuralConfig';
 // Cave exports
 export { Cave, createCave, } from './core/Cave/Cave';
+// CaveRobit transport router (dual of RobotCopy)
+export { createCaveRobit, createCaveRobitWithFallback, } from './core/Cave/CaveRobit';
+// CaveRobit + RobotCopy integration (dual binding)
+export { createCaveRobitTransport, createRobotCopyConfigWithCaveRobit, } from './core/Cave/integrateCaveRobitWithRobotCopy';
 // Cave server adapter (generic contract + createCaveServer)
 export { createCaveServer, } from './core/serverAdapter';
 // useCave, useTome, useViewStateMachineInstance (React hooks for Cave/Tome/VSM with observeViewKey)

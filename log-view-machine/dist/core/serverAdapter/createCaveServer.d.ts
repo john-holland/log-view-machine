@@ -24,3 +24,4 @@ export interface CreateCaveServerConfig {
  * Each adapter's apply() is responsible for creating host resources (e.g. TomeManager) and registering routes.
  */
 export declare function createCaveServer(config: CreateCaveServerConfig): Promise<void>;
+//# sourceMappingURL=createCaveServer.d.ts.map

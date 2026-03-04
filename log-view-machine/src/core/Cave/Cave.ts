@@ -1,4 +1,5 @@
 import type { ExtensionContextType, CaveMessagingTransport } from '../messaging/CaveMessagingTransport';
+import { createCaveRobit, type CaveRobit, type CaveRobitConfig, type TransportDescriptor } from './CaveRobit';
 
 /**
  * Cave - Physical device/location description; contains Tomes; owns docker/warehousing.
@@ -78,6 +79,8 @@ export interface CaveConfig {
   security?: SecurityConfig;
   /** Optional: extension context and messaging transport (e.g. Chrome content/background/popup). */
   extensionContext?: CaveExtensionContext;
+  /** Optional: CaveRobit for transport selection (fromCave, toTome). */
+  caveRobit?: CaveRobit | CaveRobitConfig;
   /** Optional: called when tenant changes (e.g. from URL or tenant name provider); evented mod loader can subscribe. */
   onTenantChange?: (newTenant: string, previousTenant: string) => void;
 }
@@ -89,6 +92,8 @@ export interface CaveInstance {
   getRoutedConfig(path: string): Spelunk | CaveConfig;
   /** Returns route, container, and tomes for the given path from the routed spelunk. */
   getRenderTarget(path: string): RenderTarget;
+  /** Resolve transport for (fromCave, path). Uses getRenderTarget(path).tomeId and caveRobit when present. */
+  getTransportForTarget?(fromCave: string, path: string): TransportDescriptor | Promise<TransportDescriptor>;
   /** Returns a stable key for this Cave in the render tree (e.g. React key). */
   getRenderKey(): string;
   /** Subscribes to render-key updates; returns unsubscribe. Callback is invoked when the key may have changed. */
@@ -98,18 +103,28 @@ export interface CaveInstance {
   render?(): unknown;
 }
 
-function createChildCaves(spelunk: Spelunk): Record<string, CaveInstance> {
+function createChildCaves(spelunk: Spelunk, options?: CaveOptions): Record<string, CaveInstance> {
   const childCaves: Record<string, CaveInstance> = {};
   if (spelunk.childCaves) {
     for (const [key, childSpelunk] of Object.entries(spelunk.childCaves)) {
-      childCaves[key] = Cave(key, childSpelunk);
+      childCaves[key] = Cave(key, childSpelunk, options);
     }
   }
   return childCaves;
 }
 
+function resolveCaveRobit(caveRobit: CaveRobit | CaveRobitConfig | undefined): CaveRobit | undefined {
+  if (!caveRobit) return undefined;
+  if (typeof (caveRobit as CaveRobit).getTransportForTarget === 'function') {
+    return caveRobit as CaveRobit;
+  }
+  return createCaveRobit(caveRobit as CaveRobitConfig);
+}
+
 export interface CaveOptions {
   extensionContext?: CaveExtensionContext;
+  /** Optional: CaveRobit for transport selection; inherited by child caves. */
+  caveRobit?: CaveRobit | CaveRobitConfig;
 }
 
 /**
@@ -119,7 +134,8 @@ export interface CaveOptions {
 export function Cave(name: string, caveDescent: Spelunk, options?: CaveOptions): CaveInstance {
   const config: CaveConfig = { name, spelunk: caveDescent, ...options };
   let isInitialized = false;
-  const childCavesRef = createChildCaves(caveDescent);
+  const caveRobit = resolveCaveRobit(options?.caveRobit ?? config.caveRobit);
+  const childCavesRef = createChildCaves(caveDescent, options);
   const viewKeyListeners: Array<(key: string) => void> = [];
 
   function getRenderKey(): string {
@@ -164,6 +180,14 @@ export function Cave(name: string, caveDescent: Spelunk, options?: CaveOptions):
         tomes: spelunk.tomes,
         tomeId: spelunk.tomeId as string | undefined,
       };
+    },
+    getTransportForTarget(fromCave: string, path: string): TransportDescriptor | Promise<TransportDescriptor> {
+      if (!caveRobit) {
+        return { type: 'in-app' };
+      }
+      const target = instance.getRenderTarget(path);
+      const toTome = target.tomeId ?? '';
+      return caveRobit.getTransportForTarget(fromCave, toTome, path);
     },
     getRenderKey,
     observeViewKey(callback: (key: string) => void): () => void {

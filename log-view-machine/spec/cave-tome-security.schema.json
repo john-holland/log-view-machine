@@ -4,6 +4,45 @@
   "title": "Cave, Tome, and Security configuration spec",
   "description": "Machine-readable spec for Cave/Spelunk structure, TomeConfig (routing, machines, bindings), and optional security. Shared across JS, Kotlin, and Java.",
   "definitions": {
+    "TransportType": {
+      "type": "string",
+      "enum": ["in-app", "http", "kafka", "udp", "named-pipe", "socket", "chrome-messaging"],
+      "description": "Built-in transport types for Cave-Tome message routing"
+    },
+    "TransportDescriptor": {
+      "type": "object",
+      "description": "Descriptor for how to reach a Tome",
+      "properties": {
+        "type": { "$ref": "#/definitions/TransportType" },
+        "config": {
+          "type": "object",
+          "description": "Type-specific config (url, topic, path, tabId, host, port, etc.)"
+        }
+      },
+      "required": ["type"]
+    },
+    "CaveRobitRouteConfig": {
+      "type": "object",
+      "description": "Route config for (fromCave, toTome) to transport mapping",
+      "properties": {
+        "fromCave": { "type": "string", "description": "Cave name or '*' for any" },
+        "toTome": { "type": "string", "description": "Tome id or '*' for any" },
+        "pathPattern": { "type": "string", "description": "Optional path regex for finer-grained routing" },
+        "transport": { "$ref": "#/definitions/TransportDescriptor" }
+      },
+      "required": ["transport"]
+    },
+    "CaveRobitConfig": {
+      "type": "object",
+      "description": "CaveRobit configuration for transport resolution",
+      "properties": {
+        "defaultTransport": { "$ref": "#/definitions/TransportDescriptor" },
+        "routes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/CaveRobitRouteConfig" }
+        }
+      }
+    },
     "Spelunk": {
       "type": "object",
       "description": "Cave descent: nested caves and tomes",
@@ -35,6 +74,12 @@
       "properties": {
         "name": { "type": "string" },
         "spelunk": { "$ref": "#/definitions/Spelunk" },
+        "caveRobit": {
+          "oneOf": [
+            { "$ref": "#/definitions/CaveRobitConfig" }
+          ],
+          "description": "Optional CaveRobit for transport selection (fromCave, toTome)"
+        },
         "wanOsRomRegistry": {
           "type": "object",
           "properties": {
@@ -51,7 +96,14 @@
         "path": { "type": "string" },
         "method": { "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
         "middleware": { "type": "array", "items": { "type": "string" } },
-        "guards": { "type": "array", "items": { "type": "string" } }
+        "guards": { "type": "array", "items": { "type": "string" } },
+        "transport": {
+          "oneOf": [
+            { "$ref": "#/definitions/TransportDescriptor" },
+            { "$ref": "#/definitions/TransportType" }
+          ],
+          "description": "Optional transport hint for CaveRobit resolution"
+        }
       },
       "required": ["path"]
     },
@@ -75,6 +127,13 @@
         "basePath": { "type": "string" },
         "middleware": { "type": "array", "items": { "type": "string" } },
         "cors": { "type": "boolean" },
+        "transport": {
+          "oneOf": [
+            { "$ref": "#/definitions/TransportDescriptor" },
+            { "$ref": "#/definitions/TransportType" }
+          ],
+          "description": "Optional default transport hint for CaveRobit when resolving routes in this Tome"
+        },
         "rateLimit": {
           "type": "object",
           "properties": {

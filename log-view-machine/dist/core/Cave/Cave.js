@@ -1,11 +1,20 @@
-function createChildCaves(spelunk) {
+import { createCaveRobit } from './CaveRobit';
+function createChildCaves(spelunk, options) {
     const childCaves = {};
     if (spelunk.childCaves) {
         for (const [key, childSpelunk] of Object.entries(spelunk.childCaves)) {
-            childCaves[key] = Cave(key, childSpelunk);
+            childCaves[key] = Cave(key, childSpelunk, options);
         }
     }
     return childCaves;
+}
+function resolveCaveRobit(caveRobit) {
+    if (!caveRobit)
+        return undefined;
+    if (typeof caveRobit.getTransportForTarget === 'function') {
+        return caveRobit;
+    }
+    return createCaveRobit(caveRobit);
 }
 /**
  * Cave factory: (name, caveDescent, options?) => CaveInstance.
@@ -14,7 +23,8 @@ function createChildCaves(spelunk) {
 export function Cave(name, caveDescent, options) {
     const config = { name, spelunk: caveDescent, ...options };
     let isInitialized = false;
-    const childCavesRef = createChildCaves(caveDescent);
+    const caveRobit = resolveCaveRobit(options?.caveRobit ?? config.caveRobit);
+    const childCavesRef = createChildCaves(caveDescent, options);
     const viewKeyListeners = [];
     function getRenderKey() {
         return caveDescent.renderKey ?? name;
@@ -57,6 +67,14 @@ export function Cave(name, caveDescent, options) {
                 tomes: spelunk.tomes,
                 tomeId: spelunk.tomeId,
             };
+        },
+        getTransportForTarget(fromCave, path) {
+            if (!caveRobit) {
+                return { type: 'in-app' };
+            }
+            const target = instance.getRenderTarget(path);
+            const toTome = target.tomeId ?? '';
+            return caveRobit.getTransportForTarget(fromCave, toTome, path);
         },
         getRenderKey,
         observeViewKey(callback) {

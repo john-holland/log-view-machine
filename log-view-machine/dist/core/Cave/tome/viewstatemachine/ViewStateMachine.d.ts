@@ -108,7 +108,7 @@ export declare class ViewStateMachine<TModel = any> {
     useViewStateMachine(initialModel: TModel): {
         state: any;
         context: any;
-        send: any;
+        send: (event: any) => void;
         logEntries: any[];
         viewStack: React.ReactNode[];
         subMachines: Map<string, ViewStateMachine<any>>;
@@ -180,3 +180,4 @@ export declare class ProxyRobotCopyStateMachine<TModel = any> extends ViewStateM
 }
 export declare function createProxyRobotCopyStateMachine<TModel = any>(config: ProxyRobotCopyStateViewStateMachineConfig<TModel>): ProxyRobotCopyStateMachine<TModel>;
 export declare function createViewStateMachine<TModel = any>(config: ViewStateMachineConfig<TModel>): ViewStateMachine<TModel>;
+//# sourceMappingURL=ViewStateMachine.d.ts.map

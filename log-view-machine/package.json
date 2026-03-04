@@ -6,7 +6,8 @@
   "main": "dist/index.esm.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build-esm.mjs",
+    "build:tsc": "tsc",
     "build:esm": "node scripts/build-esm.mjs",
     "test": "echo \"No tests configured\"",
     "dev": "npm run build"

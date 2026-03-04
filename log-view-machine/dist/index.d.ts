@@ -12,6 +12,8 @@ export { StructuralRouter, Route, RouteFallback, useRouter, type RouterContextTy
 export { StructuralTomeConnector, useStructuralTomeConnector, type TomeConnectorContext } from './core/structural/StructuralTomeConnector';
 export { DefaultStructuralConfig, createStructuralConfig } from './core/structural/DefaultStructuralConfig';
 export { Cave, createCave, type Spelunk, type CaveConfig, type CaveInstance, type RenderTarget, type SecurityConfig, type CaveExtensionContext, type CaveOptions, } from './core/Cave/Cave';
+export { createCaveRobit, createCaveRobitWithFallback, type CaveRobit, type CaveRobitConfig, type CaveRobitAdapter, type CaveRobitFallbackOptions, type TransportDescriptor, type TransportType, type CaveRobitRouteConfig, } from './core/Cave/CaveRobit';
+export { createCaveRobitTransport, createRobotCopyConfigWithCaveRobit, type CaveRobitTransportOptions, } from './core/Cave/integrateCaveRobitWithRobotCopy';
 export { createCaveServer, type CreateCaveServerConfig, } from './core/serverAdapter';
 export type { CaveServerAdapter, CaveServerContext, AppShellDescriptor, AppShellRegistry, NormalizedRequest, NormalizedResponse, NormalizedRequestHandler, NormalizedMiddleware, RouteHandlerBag, } from './core/serverAdapter';
 export type { CaveDBAdapter, CaveDBAdapterOptions, CaveDBAdapterFactory } from './core/cavedb';
@@ -24,3 +26,4 @@ export { createDefaultResourceMonitor, createMetricsReporter, DefaultResourceMon
 export { CircuitBreaker, createCircuitBreaker, ThrottlePolicy, createThrottlePolicy, type CircuitState, type CircuitBreakerOptions, type ThrottleConfig, type ThrottlePolicyOptions, } from './core/resilience';
 export { default as EditorWrapper, type EditorWrapperProps, type EditorWrapperRouter } from './components/EditorWrapper';
 export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary';
+//# sourceMappingURL=index.d.ts.map

@@ -46,14 +46,7 @@ export declare class TomeManager implements ITomeManager {
     /**
      * Get status of all tomes
      */
-    getTomeStatus(): {
-        id: string;
-        name: any;
-        description: any;
-        version: any;
-        machines: {};
-        context: any;
-    }[];
+    getTomeStatus(): never[];
     /**
      * Send message to a specific machine in a tome
      */
@@ -71,3 +64,4 @@ export declare class TomeManager implements ITomeManager {
  * Create a TomeManager instance
  */
 export declare function createTomeManager(app: express.Application, options?: TomeManagerOptions): TomeManager;
+//# sourceMappingURL=TomeManager.d.ts.map

@@ -119,6 +119,26 @@ export {
   type CaveOptions,
 } from './core/Cave/Cave';
 
+// CaveRobit transport router (dual of RobotCopy)
+export {
+  createCaveRobit,
+  createCaveRobitWithFallback,
+  type CaveRobit,
+  type CaveRobitConfig,
+  type CaveRobitAdapter,
+  type CaveRobitFallbackOptions,
+  type TransportDescriptor,
+  type TransportType,
+  type CaveRobitRouteConfig,
+} from './core/Cave/CaveRobit';
+
+// CaveRobit + RobotCopy integration (dual binding)
+export {
+  createCaveRobitTransport,
+  createRobotCopyConfigWithCaveRobit,
+  type CaveRobitTransportOptions,
+} from './core/Cave/integrateCaveRobitWithRobotCopy';
+
 // Cave server adapter (generic contract + createCaveServer)
 export {
   createCaveServer,

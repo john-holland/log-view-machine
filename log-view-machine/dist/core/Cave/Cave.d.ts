@@ -1,4 +1,5 @@
 import type { ExtensionContextType, CaveMessagingTransport } from '../messaging/CaveMessagingTransport';
+import { type CaveRobit, type CaveRobitConfig, type TransportDescriptor } from './CaveRobit';
 /**
  * Cave - Physical device/location description; contains Tomes; owns docker/warehousing.
  * Config-only until initialize() is called; isInitialized reflects whether the Cave has been initialized.
@@ -78,6 +79,8 @@ export interface CaveConfig {
     security?: SecurityConfig;
     /** Optional: extension context and messaging transport (e.g. Chrome content/background/popup). */
     extensionContext?: CaveExtensionContext;
+    /** Optional: CaveRobit for transport selection (fromCave, toTome). */
+    caveRobit?: CaveRobit | CaveRobitConfig;
     /** Optional: called when tenant changes (e.g. from URL or tenant name provider); evented mod loader can subscribe. */
     onTenantChange?: (newTenant: string, previousTenant: string) => void;
 }
@@ -88,6 +91,8 @@ export interface CaveInstance {
     getRoutedConfig(path: string): Spelunk | CaveConfig;
     /** Returns route, container, and tomes for the given path from the routed spelunk. */
     getRenderTarget(path: string): RenderTarget;
+    /** Resolve transport for (fromCave, path). Uses getRenderTarget(path).tomeId and caveRobit when present. */
+    getTransportForTarget?(fromCave: string, path: string): TransportDescriptor | Promise<TransportDescriptor>;
     /** Returns a stable key for this Cave in the render tree (e.g. React key). */
     getRenderKey(): string;
     /** Subscribes to render-key updates; returns unsubscribe. Callback is invoked when the key may have changed. */
@@ -98,6 +103,8 @@ export interface CaveInstance {
 }
 export interface CaveOptions {
     extensionContext?: CaveExtensionContext;
+    /** Optional: CaveRobit for transport selection; inherited by child caves. */
+    caveRobit?: CaveRobit | CaveRobitConfig;
 }
 /**
  * Cave factory: (name, caveDescent, options?) => CaveInstance.
@@ -105,3 +112,4 @@ export interface CaveOptions {
  */
 export declare function Cave(name: string, caveDescent: Spelunk, options?: CaveOptions): CaveInstance;
 export declare function createCave(name: string, spelunk: Spelunk, options?: CaveOptions): CaveInstance;
+//# sourceMappingURL=Cave.d.ts.map
