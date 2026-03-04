@@ -1,12 +1,13 @@
 /**
  * Mod API Consumer Pact Tests
  * Contract: ModApiConsumer expects ModIndexProvider to return GET /api/mods and GET /api/mods/:modId
+ * @jest-environment node
  */
 import path from 'path';
-import { Pact, Matchers } from '@pact-foundation/pact';
+import { PactV3, MatchersV3 } from '@pact-foundation/pact';
 import { fetchMods, fetchMod } from './modApiClient.js';
 
-const { eachLike, like } = Matchers;
+const { eachLike, like } = MatchersV3;
 
 const modExample = {
   id: 'fish-burger-mod',
@@ -20,20 +21,17 @@ const modExample = {
 };
 
 describe('Mod API Consumer Pact', () => {
-  const provider = new Pact({
+  const provider = new PactV3({
     consumer: 'ModApiConsumer',
     provider: 'ModIndexProvider',
     dir: path.resolve(process.cwd(), 'pacts'),
-    spec: 2,
+    spec: 3,
     logLevel: 'warn',
   });
 
-  afterAll(() => provider.cleanup());
-
   describe('GET /api/mods', () => {
     it('returns mods list', async () => {
-      await provider
-        .addInteraction()
+      provider
         .given('mods exist')
         .uponReceiving('a request for mods list')
         .withRequest({
@@ -47,23 +45,23 @@ describe('Mod API Consumer Pact', () => {
           body: {
             mods: eachLike(modExample),
           },
-        })
-        .executeTest(async (mockServer) => {
-          const result = await fetchMods({ baseUrl: mockServer.url });
-          expect(result).toHaveProperty('mods');
-          expect(Array.isArray(result.mods)).toBe(true);
-          expect(result.mods.length).toBeGreaterThanOrEqual(0);
-          if (result.mods[0]) {
-            expect(result.mods[0]).toHaveProperty('id');
-            expect(result.mods[0]).toHaveProperty('name');
-            expect(result.mods[0]).toHaveProperty('serverUrl');
-          }
         });
+
+      return provider.executeTest(async (mockServer) => {
+        const result = await fetchMods({ baseUrl: mockServer.url });
+        expect(result).toHaveProperty('mods');
+        expect(Array.isArray(result.mods)).toBe(true);
+        expect(result.mods.length).toBeGreaterThanOrEqual(0);
+        if (result.mods[0]) {
+          expect(result.mods[0]).toHaveProperty('id');
+          expect(result.mods[0]).toHaveProperty('name');
+          expect(result.mods[0]).toHaveProperty('serverUrl');
+        }
+      });
     });
 
     it('forwards Authorization header when provided', async () => {
-      await provider
-        .addInteraction()
+      provider
         .given('mods exist')
         .uponReceiving('a request for mods list with Authorization')
         .withRequest({
@@ -75,16 +73,16 @@ describe('Mod API Consumer Pact', () => {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
           body: { mods: eachLike(modExample) },
-        })
-        .executeTest(async (mockServer) => {
-          const result = await fetchMods({ baseUrl: mockServer.url, authorization: 'Bearer token' });
-          expect(result.mods).toBeDefined();
         });
+
+      return provider.executeTest(async (mockServer) => {
+        const result = await fetchMods({ baseUrl: mockServer.url, authorization: 'Bearer token' });
+        expect(result.mods).toBeDefined();
+      });
     });
 
     it('forwards Cookie header when provided', async () => {
-      await provider
-        .addInteraction()
+      provider
         .given('mods exist')
         .uponReceiving('a request for mods list with Cookie')
         .withRequest({
@@ -96,18 +94,18 @@ describe('Mod API Consumer Pact', () => {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
           body: { mods: eachLike(modExample) },
-        })
-        .executeTest(async (mockServer) => {
-          const result = await fetchMods({ baseUrl: mockServer.url, cookie: 'session=abc123' });
-          expect(result.mods).toBeDefined();
         });
+
+      return provider.executeTest(async (mockServer) => {
+        const result = await fetchMods({ baseUrl: mockServer.url, cookie: 'session=abc123' });
+        expect(result.mods).toBeDefined();
+      });
     });
   });
 
   describe('GET /api/mods/:modId', () => {
     it('returns single mod when found', async () => {
-      await provider
-        .addInteraction()
+      provider
         .given('mod fish-burger-mod exists')
         .uponReceiving('a request for fish-burger-mod')
         .withRequest({
@@ -119,18 +117,18 @@ describe('Mod API Consumer Pact', () => {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
           body: like(modExample),
-        })
-        .executeTest(async (mockServer) => {
-          const mod = await fetchMod('fish-burger-mod', { baseUrl: mockServer.url });
-          expect(mod).not.toBeNull();
-          expect(mod).toHaveProperty('id', 'fish-burger-mod');
-          expect(mod).toHaveProperty('serverUrl');
         });
+
+      return provider.executeTest(async (mockServer) => {
+        const mod = await fetchMod('fish-burger-mod', { baseUrl: mockServer.url });
+        expect(mod).not.toBeNull();
+        expect(mod).toHaveProperty('id', 'fish-burger-mod');
+        expect(mod).toHaveProperty('serverUrl');
+      });
     });
 
     it('returns null for 404', async () => {
-      await provider
-        .addInteraction()
+      provider
         .given('mod does not exist')
         .uponReceiving('a request for unknown mod')
         .withRequest({
@@ -142,11 +140,12 @@ describe('Mod API Consumer Pact', () => {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
           body: { error: like('Mod not found') },
-        })
-        .executeTest(async (mockServer) => {
-          const mod = await fetchMod('unknown-mod', { baseUrl: mockServer.url });
-          expect(mod).toBeNull();
         });
+
+      return provider.executeTest(async (mockServer) => {
+        const mod = await fetchMod('unknown-mod', { baseUrl: mockServer.url });
+        expect(mod).toBeNull();
+      });
     });
   });
 });

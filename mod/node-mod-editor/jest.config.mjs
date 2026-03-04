@@ -14,10 +14,8 @@ export default {
   testMatch: [
     '**/zoom-state-machine.cjs.test.js',
     '**/__tests__/can-publish.cjs.test.js',
-    '**/__tests__/cave-adapters.test.js',
     '**/mod-api-client/*.pact.test.js'
   ],
-  
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   
@@ -45,8 +43,11 @@ export default {
   // Restore mocks between tests
   restoreMocks: true,
   
-  // Transform ignore patterns (transform @pact-foundation/pact for ESM)
+  // Transform ignore patterns (transform ESM packages for Jest)
   transformIgnorePatterns: [
-    'node_modules/(?!(babel-jest|@pact-foundation/pact)/)'
+    'node_modules/(?!(babel-jest|@pact-foundation/pact|unleash-cavetoggles-adapter|opentelemetry-cavemetrics-adapter)/)',
   ],
+
+  // Pact tests need to run serially (single mock server)
+  maxWorkers: 1,
 };

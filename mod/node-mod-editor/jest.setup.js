@@ -1,5 +1,15 @@
 // Jest setup file for testing environment
 
+// Polyfill fetch for Pact tests (jsdom does not provide fetch; Node 18+ has it in node env)
+if (typeof globalThis.fetch === 'undefined') {
+  try {
+    const { fetch } = require('undici');
+    globalThis.fetch = fetch;
+  } catch {
+    // Node 18+ has native fetch in node env
+  }
+}
+
 // Mock console methods to avoid noise in tests
 global.console = {
   ...console,
@@ -8,7 +18,8 @@ global.console = {
   error: jest.fn(),
 };
 
-// Mock DOM methods that might not be available
+// Mock DOM methods that might not be available (skip in node env)
+if (typeof window !== 'undefined') {
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
@@ -22,6 +33,7 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 });
+}
 
 // Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({

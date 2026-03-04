@@ -1,0 +1,246 @@
+{
+  "consumer": {
+    "name": "ModApiConsumer"
+  },
+  "interactions": [
+    {
+      "description": "a request for fish-burger-mod",
+      "providerState": "mod fish-burger-mod exists",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/mods/fish-burger-mod"
+      },
+      "response": {
+        "body": {
+          "assets": {
+            "scripts": "/mods/fish-burger/scripts/",
+            "styles": "/mods/fish-burger/styles/",
+            "templates": "/mods/fish-burger/templates/"
+          },
+          "description": "Interactive shopping cart with fish burger state machine.",
+          "entryPoints": {
+            "cart": "/mods/fish-burger/cart",
+            "demo": "/mods/fish-burger/demo"
+          },
+          "id": "fish-burger-mod",
+          "modMetadata": {
+            "assetLinks": {},
+            "pathReplacements": {},
+            "spelunkMap": {}
+          },
+          "name": "Fish Burger Cart",
+          "serverUrl": "http://localhost:3004",
+          "version": "1.0.0"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for mods list",
+      "providerState": "mods exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/mods"
+      },
+      "response": {
+        "body": {
+          "mods": [
+            {
+              "assets": {
+                "scripts": "/mods/fish-burger/scripts/",
+                "styles": "/mods/fish-burger/styles/",
+                "templates": "/mods/fish-burger/templates/"
+              },
+              "description": "Interactive shopping cart with fish burger state machine.",
+              "entryPoints": {
+                "cart": "/mods/fish-burger/cart",
+                "demo": "/mods/fish-burger/demo"
+              },
+              "id": "fish-burger-mod",
+              "modMetadata": {
+                "assetLinks": {},
+                "pathReplacements": {},
+                "spelunkMap": {}
+              },
+              "name": "Fish Burger Cart",
+              "serverUrl": "http://localhost:3004",
+              "version": "1.0.0"
+            }
+          ]
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.mods": {
+            "match": "type",
+            "min": 1
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for mods list with Authorization",
+      "providerState": "mods exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer token"
+        },
+        "matchingRules": {
+          "$.headers.Authorization": {
+            "match": "type"
+          }
+        },
+        "method": "GET",
+        "path": "/api/mods"
+      },
+      "response": {
+        "body": {
+          "mods": [
+            {
+              "assets": {
+                "scripts": "/mods/fish-burger/scripts/",
+                "styles": "/mods/fish-burger/styles/",
+                "templates": "/mods/fish-burger/templates/"
+              },
+              "description": "Interactive shopping cart with fish burger state machine.",
+              "entryPoints": {
+                "cart": "/mods/fish-burger/cart",
+                "demo": "/mods/fish-burger/demo"
+              },
+              "id": "fish-burger-mod",
+              "modMetadata": {
+                "assetLinks": {},
+                "pathReplacements": {},
+                "spelunkMap": {}
+              },
+              "name": "Fish Burger Cart",
+              "serverUrl": "http://localhost:3004",
+              "version": "1.0.0"
+            }
+          ]
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.mods": {
+            "match": "type",
+            "min": 1
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for mods list with Cookie",
+      "providerState": "mods exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Cookie": "session=abc123"
+        },
+        "matchingRules": {
+          "$.headers.Cookie": {
+            "match": "type"
+          }
+        },
+        "method": "GET",
+        "path": "/api/mods"
+      },
+      "response": {
+        "body": {
+          "mods": [
+            {
+              "assets": {
+                "scripts": "/mods/fish-burger/scripts/",
+                "styles": "/mods/fish-burger/styles/",
+                "templates": "/mods/fish-burger/templates/"
+              },
+              "description": "Interactive shopping cart with fish burger state machine.",
+              "entryPoints": {
+                "cart": "/mods/fish-burger/cart",
+                "demo": "/mods/fish-burger/demo"
+              },
+              "id": "fish-burger-mod",
+              "modMetadata": {
+                "assetLinks": {},
+                "pathReplacements": {},
+                "spelunkMap": {}
+              },
+              "name": "Fish Burger Cart",
+              "serverUrl": "http://localhost:3004",
+              "version": "1.0.0"
+            }
+          ]
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.mods": {
+            "match": "type",
+            "min": 1
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for unknown mod",
+      "providerState": "mod does not exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/mods/unknown-mod"
+      },
+      "response": {
+        "body": {
+          "error": "Mod not found"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.error": {
+            "match": "type"
+          }
+        },
+        "status": 404
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "14.0.0"
+    },
+    "pactRust": {
+      "ffi": "0.4.28",
+      "models": "1.3.5"
+    },
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  },
+  "provider": {
+    "name": "ModIndexProvider"
+  }
+}
