@@ -47,11 +47,23 @@ export interface RoutingConfig {
   };
 }
 
+/** Container adapter config for composed-view override and header/footer injection. */
+export interface TomeContainerAdapterConfig {
+  containerOverrideTag?: string;
+  /** Classes for the container element (e.g. "container-mod-foo composed-view"). */
+  containerOverrideClasses?: string;
+  containerOverrideLimit?: number;
+  headerFragment?: string | React.ReactNode;
+  footerFragment?: string | React.ReactNode;
+}
+
 export interface TomeDefinition {
   machineId: string;
   description: string;
   states: string[];
   events: string[];
+  /** Optional container adapter for ViewStateMachine render. */
+  containerAdapter?: TomeContainerAdapterConfig;
 }
 
 export interface TomeConfig {

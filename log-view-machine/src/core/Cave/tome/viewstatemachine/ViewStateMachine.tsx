@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMachine } from '@xstate/react';
 import { createMachine, assign, interpret, AnyStateMachine } from 'xstate';
 import { RobotCopy } from './robotcopy/RobotCopy';
+import { useContainerAdapter, parseContainerOverrideTag } from 'container-cave-adapter';
 
 export interface LogEntry {
   id: string;
@@ -651,25 +652,78 @@ export class ViewStateMachine<TModel = any> {
     return this;
   }
 
-  // Render the composed view
-  render(model: TModel): React.ReactNode {
+  /** Returns the inner view content (viewStack + subMachines) for container adapter wrapping. */
+  getRenderContent(model: TModel): React.ReactNode {
     return (
-      <div className="composed-view">
+      <>
         {this.viewStack.map((view, index) => (
           <div key={index} className="view-container">
             {view}
           </div>
         ))}
-        {/* Render sub-machines
-        todo: should we add a UI order for subMachines to specifically order? */}
         {Array.from(this.subMachines.entries()).map(([id, subMachine]) => (
           <div key={id} className="sub-machine-container">
             {subMachine.render(model)}
           </div>
         ))}
-      </div>
+      </>
     );
   }
+
+  // Render the composed view (delegates to ViewStateMachineRenderer when context available)
+  render(model: TModel): React.ReactNode {
+    return (
+      <ViewStateMachineRenderer viewMachine={this} model={model} />
+    );
+  }
+}
+
+/** Renders a ViewStateMachine with optional ContainerAdapter context (header/footer, container override). */
+function ViewStateMachineRenderer<TModel>({ viewMachine, model }: { viewMachine: ViewStateMachine<TModel>; model: TModel }): React.ReactNode {
+  const adapter = useContainerAdapter();
+  const useOverride = adapter.incrementContainerOverride();
+  const showHeader = adapter.claimHeaderInjection() && adapter.headerFragment;
+  const showFooter = adapter.claimFooterInjection() && adapter.footerFragment;
+
+  const containerTag = useOverride && adapter.containerOverrideTag
+    ? parseContainerOverrideTag(adapter.containerOverrideTag)
+    : 'div';
+
+  const viewContent = viewMachine.getRenderContent(model);
+
+  const containerClassName =
+    useOverride && adapter.containerOverrideClasses != null
+      ? adapter.containerOverrideClasses
+      : 'composed-view';
+
+  const isDev =
+    typeof (globalThis as any).process !== 'undefined' &&
+    (globalThis as any).process?.env?.NODE_ENV === 'development';
+  if (isDev && useOverride && adapter.containerOverrideClasses != null) {
+    console.info(
+      '[ContainerAdapter] Replaced container classes',
+      { from: 'composed-view', to: adapter.containerOverrideClasses, tomeId: adapter.tomeId }
+    );
+  }
+
+  const containerProps = { className: containerClassName };
+  const container = React.createElement(containerTag, containerProps, viewContent);
+
+  const renderFragment = (frag: string | React.ReactNode): React.ReactNode => {
+    if (frag == null) return null;
+    if (typeof frag === 'string') {
+      return <div className="container-adapter-fragment" dangerouslySetInnerHTML={{ __html: frag }} />;
+    }
+    return <>{frag}</>;
+  };
+
+  return (
+    <>
+      {showHeader && renderFragment(adapter.headerFragment!)}
+      {container}
+      {showFooter && renderFragment(adapter.footerFragment!)}
+    </>
+  );
 }
 
 export type ServerStateContext<TModel = any> = {

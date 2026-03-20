@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, ReactNode } from 'react';
 import { ViewStateMachine } from '../Cave/tome/viewstatemachine/ViewStateMachine';
+import { ContainerAdapterProvider } from 'container-cave-adapter';
 import { StructuralSystem, AppStructureConfig } from './StructuralSystem';
 
 // Props for the structural tome connector
@@ -191,12 +192,29 @@ export const StructuralTomeConnector: React.FC<StructuralTomeConnectorProps> = (
     componentMapping
   };
 
+  const containerAdapter = tomeConfig?.containerAdapter;
+
   // Render children
   if (typeof children === 'function') {
-    return <>{children(contextValue)}</>;
+    const content = children(contextValue);
+    if (containerAdapter) {
+      return (
+        <ContainerAdapterProvider
+          tomeId={`${componentName}-tome`}
+          containerOverrideTag={containerAdapter.containerOverrideTag}
+          containerOverrideClasses={containerAdapter.containerOverrideClasses}
+          containerOverrideLimit={containerAdapter.containerOverrideLimit}
+          headerFragment={containerAdapter.headerFragment}
+          footerFragment={containerAdapter.footerFragment}
+        >
+          {content}
+        </ContainerAdapterProvider>
+      );
+    }
+    return <>{content}</>;
   }
 
-  return (
+  const layout = (
     <div className="structural-tome-connector">
       <TomeHeader context={contextValue} />
       <TomeContent context={contextValue}>
@@ -205,6 +223,23 @@ export const StructuralTomeConnector: React.FC<StructuralTomeConnectorProps> = (
       <TomeFooter context={contextValue} />
     </div>
   );
+
+  if (containerAdapter) {
+    return (
+      <ContainerAdapterProvider
+        tomeId={`${componentName}-tome`}
+        containerOverrideTag={containerAdapter.containerOverrideTag}
+        containerOverrideClasses={containerAdapter.containerOverrideClasses}
+        containerOverrideLimit={containerAdapter.containerOverrideLimit}
+        headerFragment={containerAdapter.headerFragment}
+        footerFragment={containerAdapter.footerFragment}
+      >
+        {layout}
+      </ContainerAdapterProvider>
+    );
+  }
+
+  return layout;
 };
 
 // Tome header component

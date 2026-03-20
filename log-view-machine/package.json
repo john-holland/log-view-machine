@@ -12,6 +12,9 @@
     "test": "jest --config jest.config.cjs",
     "dev": "npm run build"
   },
+  "dependencies": {
+    "container-cave-adapter": "^1.0.0"
+  },
   "peerDependencies": {
     "react": "^18.0.0"
   },

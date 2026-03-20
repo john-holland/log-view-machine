@@ -6,10 +6,11 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
 });
 
 // src/core/Cave/tome/viewstatemachine/ViewStateMachine.tsx
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useMachine } from "@xstate/react";
 import { createMachine, assign, interpret } from "xstate";
-import { jsx, jsxs } from "react/jsx-runtime";
+import { useContainerAdapter, parseContainerOverrideTag } from "container-cave-adapter";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 var ViewStateMachine = class _ViewStateMachine {
   constructor(config) {
     this.serverStateHandlers = /* @__PURE__ */ new Map();
@@ -487,14 +488,48 @@ var ViewStateMachine = class _ViewStateMachine {
     this.isTomeSynchronized = true;
     return this;
   }
-  // Render the composed view
-  render(model) {
-    return /* @__PURE__ */ jsxs("div", { className: "composed-view", children: [
+  /** Returns the inner view content (viewStack + subMachines) for container adapter wrapping. */
+  getRenderContent(model) {
+    return /* @__PURE__ */ jsxs(Fragment, { children: [
       this.viewStack.map((view, index) => /* @__PURE__ */ jsx("div", { className: "view-container", children: view }, index)),
       Array.from(this.subMachines.entries()).map(([id, subMachine]) => /* @__PURE__ */ jsx("div", { className: "sub-machine-container", children: subMachine.render(model) }, id))
     ] });
   }
+  // Render the composed view (delegates to ViewStateMachineRenderer when context available)
+  render(model) {
+    return /* @__PURE__ */ jsx(ViewStateMachineRenderer, { viewMachine: this, model });
+  }
 };
+function ViewStateMachineRenderer({ viewMachine, model }) {
+  const adapter = useContainerAdapter();
+  const useOverride = adapter.incrementContainerOverride();
+  const showHeader = adapter.claimHeaderInjection() && adapter.headerFragment;
+  const showFooter = adapter.claimFooterInjection() && adapter.footerFragment;
+  const containerTag = useOverride && adapter.containerOverrideTag ? parseContainerOverrideTag(adapter.containerOverrideTag) : "div";
+  const viewContent = viewMachine.getRenderContent(model);
+  const containerClassName = useOverride && adapter.containerOverrideClasses != null ? adapter.containerOverrideClasses : "composed-view";
+  const isDev = typeof globalThis.process !== "undefined" && globalThis.process?.env?.NODE_ENV === "development";
+  if (isDev && useOverride && adapter.containerOverrideClasses != null) {
+    console.info(
+      "[ContainerAdapter] Replaced container classes",
+      { from: "composed-view", to: adapter.containerOverrideClasses, tomeId: adapter.tomeId }
+    );
+  }
+  const containerProps = { className: containerClassName };
+  const container = React.createElement(containerTag, containerProps, viewContent);
+  const renderFragment = (frag) => {
+    if (frag == null) return null;
+    if (typeof frag === "string") {
+      return /* @__PURE__ */ jsx("div", { className: "container-adapter-fragment", dangerouslySetInnerHTML: { __html: frag } });
+    }
+    return /* @__PURE__ */ jsx(Fragment, { children: frag });
+  };
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    showHeader && renderFragment(adapter.headerFragment),
+    container,
+    showFooter && renderFragment(adapter.footerFragment)
+  ] });
+}
 var ProxyMachine = class {
   constructor(robotCopy) {
     this.robotCopy = robotCopy;
@@ -1755,6 +1790,249 @@ function createClientGenerator() {
   return new ClientGenerator();
 }
 
+// src/core/adapters/TeleportHQAdapter.ts
+import React2 from "react";
+var TeleportHQAdapter = class {
+  constructor(config) {
+    this.templates = /* @__PURE__ */ new Map();
+    this.viewStateMachines = /* @__PURE__ */ new Map();
+    this.config = config;
+  }
+  // Load template from TeleportHQ API
+  async loadTemplate(templateId) {
+    try {
+      const response = await fetch(`https://api.teleporthq.io/templates/${templateId}`, {
+        headers: {
+          "Authorization": `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to load template: ${response.statusText}`);
+      }
+      const template = await response.json();
+      this.templates.set(templateId, template);
+      return template;
+    } catch (error) {
+      console.error("Error loading TeleportHQ template:", error);
+      throw error;
+    }
+  }
+  // Convert TeleportHQ template to React components with ViewStateMachine integration
+  createViewStateMachineFromTemplate(templateId, initialState = {}) {
+    const template = this.templates.get(templateId);
+    if (!template) {
+      throw new Error(`Template ${templateId} not found. Load it first with loadTemplate().`);
+    }
+    const config = this.convertTemplateToViewStateMachineConfig(template, initialState);
+    const viewStateMachine = new ViewStateMachine(config);
+    this.viewStateMachines.set(templateId, viewStateMachine);
+    return viewStateMachine;
+  }
+  convertTemplateToViewStateMachineConfig(template, initialState) {
+    const stateVariables = this.extractStateVariables(template);
+    const xstateConfig = {
+      id: `teleporthq-${template.id}`,
+      initial: "idle",
+      context: {
+        ...initialState,
+        templateId: template.id,
+        components: template.components,
+        variables: template.variables
+      },
+      states: {
+        idle: {
+          on: {
+            // Dynamic events based on template callbacks
+            ...this.createEventsFromCallbacks(template)
+          }
+        },
+        loading: {
+          on: {
+            LOADED: "idle",
+            ERROR: "error"
+          }
+        },
+        error: {
+          on: {
+            RETRY: "loading"
+          }
+        }
+      }
+    };
+    const logStates = {
+      idle: async ({ state, model, log, view, transition }) => {
+        await log("TeleportHQ template rendered", {
+          templateId: model.templateId,
+          componentCount: model.components.length
+        });
+        const renderedComponents = this.renderTeleportHQComponents(
+          model.components,
+          model.variables,
+          transition
+        );
+        view(
+          React2.createElement(
+            "div",
+            { className: "teleporthq-template" },
+            React2.createElement("h3", null, `Template: ${template.name}`),
+            ...renderedComponents
+          )
+        );
+      }
+    };
+    return {
+      machineId: `teleporthq-${template.id}`,
+      xstateConfig,
+      logStates
+    };
+  }
+  extractStateVariables(template) {
+    const variables = {};
+    if (template.variables) {
+      Object.entries(template.variables).forEach(([key, value]) => {
+        variables[key] = value;
+      });
+    }
+    template.components.forEach((component) => {
+      if (component.state) {
+        Object.entries(component.state).forEach(([key, value]) => {
+          variables[`${component.id}_${key}`] = value;
+        });
+      }
+    });
+    return variables;
+  }
+  createEventsFromCallbacks(template) {
+    const events = {};
+    template.components.forEach((component) => {
+      if (component.callbacks) {
+        Object.entries(component.callbacks).forEach(([callbackName, eventType]) => {
+          events[eventType] = {
+            target: "idle",
+            actions: `handle${callbackName.charAt(0).toUpperCase() + callbackName.slice(1)}`
+          };
+        });
+      }
+    });
+    return events;
+  }
+  renderTeleportHQComponents(components, variables, transition) {
+    return components.map((component) => {
+      const Component2 = this.createReactComponentFromTeleportHQ(component, variables, transition);
+      return React2.createElement(Component2, { key: component.id });
+    });
+  }
+  createReactComponentFromTeleportHQ(component, variables, transition) {
+    const Component2 = (props) => {
+      const componentProps = {
+        ...component.props,
+        ...variables,
+        ...props
+      };
+      const callbackProps = {};
+      if (component.callbacks) {
+        Object.entries(component.callbacks).forEach(([callbackName, eventType]) => {
+          callbackProps[callbackName] = (data) => {
+            transition(eventType, data);
+          };
+        });
+      }
+      switch (component.name) {
+        case "Button":
+          return React2.createElement("button", {
+            ...componentProps,
+            ...callbackProps,
+            className: "teleporthq-button"
+          }, componentProps.children || componentProps.text);
+        case "Input":
+          return React2.createElement("input", {
+            ...componentProps,
+            className: "teleporthq-input"
+          });
+        case "Container":
+          return React2.createElement("div", {
+            ...componentProps,
+            className: "teleporthq-container"
+          }, component.children?.map(
+            (child) => this.createReactComponentFromTeleportHQ(child, variables, transition)(props)
+          ));
+        default:
+          return React2.createElement("div", {
+            className: `teleporthq-${component.name.toLowerCase()}`
+          }, componentProps.children || componentProps.text);
+      }
+    };
+    return Component2;
+  }
+  // Sync ViewStateMachine state with TeleportHQ
+  syncWithTeleportHQ(viewStateMachine, templateId) {
+    if (this.config.enableRealTimeSync) {
+      this.setupRealTimeSync(viewStateMachine, templateId);
+    }
+  }
+  setupRealTimeSync(viewStateMachine, templateId) {
+    console.log(`Setting up real-time sync for template ${templateId}`);
+  }
+  // Export ViewStateMachine state to TeleportHQ
+  async exportToTeleportHQ(templateId, state) {
+    try {
+      await fetch(`https://api.teleporthq.io/templates/${templateId}/state`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ state })
+      });
+    } catch (error) {
+      console.error("Error exporting state to TeleportHQ:", error);
+    }
+  }
+  // Get all loaded templates
+  getLoadedTemplates() {
+    return Array.from(this.templates.keys());
+  }
+  // Get ViewStateMachine for template
+  getViewStateMachine(templateId) {
+    return this.viewStateMachines.get(templateId);
+  }
+};
+function createTeleportHQAdapter(config) {
+  return new TeleportHQAdapter(config);
+}
+
+// src/core/adapters/index.ts
+import {
+  ContainerAdapterProvider,
+  useContainerAdapter as useContainerAdapter2,
+  parseContainerOverrideTag as parseContainerOverrideTag2,
+  ContainerAdapterContext,
+  useContainerAdapterFragmentsFromApi,
+  CONTAINER_ADAPTER_DESCRIPTOR
+} from "container-cave-adapter";
+var ADAPTER_DESCRIPTORS = [
+  {
+    id: "client-generator",
+    name: "ClientGenerator",
+    type: "typescript",
+    features: ["discovery", "documentation", "examples"]
+  },
+  {
+    id: "teleport-hq",
+    name: "TeleportHQAdapter",
+    type: "typescript",
+    features: ["template_loading", "component_mapping", "state_sync"]
+  },
+  {
+    id: "container-cave-adapter",
+    name: "Container Cave Adapter",
+    type: "typescript",
+    features: ["header_tracking", "footer_tracking", "container_override", "composed_view_override"],
+    usedIn: ["log-view-machine", "StructuralTomeConnector"]
+  }
+];
+
 // src/core/Cave/tome/TomeManager.ts
 import express from "express";
 var TomeManager = class {
@@ -2197,7 +2475,8 @@ function createTomeConfig(config) {
     },
     isModableTome: config.isModableTome,
     modMetadata: config.modMetadata,
-    permission: config.permission
+    permission: config.permission,
+    containerAdapter: config.containerAdapter
   };
 }
 var FishBurgerTomeConfig = createTomeConfig({
@@ -2418,7 +2697,7 @@ var DonationTomeConfig = createTomeConfig({
 });
 
 // src/core/structural/StructuralSystem.tsx
-import React2 from "react";
+import React3 from "react";
 import { assign as assign2 } from "xstate";
 var StructuralSystem = class {
   constructor(config) {
@@ -2597,8 +2876,8 @@ var StructuralSystem = class {
   }
 };
 function useStructuralSystem(config) {
-  const [system] = React2.useState(() => new StructuralSystem(config));
-  React2.useEffect(() => {
+  const [system] = React3.useState(() => new StructuralSystem(config));
+  React3.useEffect(() => {
     const validation = system.validate();
     if (!validation.isValid) {
       console.warn("Structural system validation errors:", validation.errors);
@@ -2755,7 +3034,8 @@ var RouteFallback = () => {
 
 // src/core/structural/StructuralTomeConnector.tsx
 import { useEffect as useEffect3, useState as useState3, useRef, useMemo } from "react";
-import { Fragment, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+import { ContainerAdapterProvider as ContainerAdapterProvider2 } from "container-cave-adapter";
+import { Fragment as Fragment2, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 var StructuralTomeConnector = ({
   componentName,
   structuralSystem,
@@ -2873,14 +3153,45 @@ var StructuralTomeConnector = ({
     tomeConfig,
     componentMapping
   };
+  const containerAdapter = tomeConfig?.containerAdapter;
   if (typeof children === "function") {
-    return /* @__PURE__ */ jsx3(Fragment, { children: children(contextValue) });
+    const content = children(contextValue);
+    if (containerAdapter) {
+      return /* @__PURE__ */ jsx3(
+        ContainerAdapterProvider2,
+        {
+          tomeId: `${componentName}-tome`,
+          containerOverrideTag: containerAdapter.containerOverrideTag,
+          containerOverrideClasses: containerAdapter.containerOverrideClasses,
+          containerOverrideLimit: containerAdapter.containerOverrideLimit,
+          headerFragment: containerAdapter.headerFragment,
+          footerFragment: containerAdapter.footerFragment,
+          children: content
+        }
+      );
+    }
+    return /* @__PURE__ */ jsx3(Fragment2, { children: content });
   }
-  return /* @__PURE__ */ jsxs3("div", { className: "structural-tome-connector", children: [
+  const layout = /* @__PURE__ */ jsxs3("div", { className: "structural-tome-connector", children: [
     /* @__PURE__ */ jsx3(TomeHeader, { context: contextValue }),
     /* @__PURE__ */ jsx3(TomeContent, { context: contextValue, children }),
     /* @__PURE__ */ jsx3(TomeFooter, { context: contextValue })
   ] });
+  if (containerAdapter) {
+    return /* @__PURE__ */ jsx3(
+      ContainerAdapterProvider2,
+      {
+        tomeId: `${componentName}-tome`,
+        containerOverrideTag: containerAdapter.containerOverrideTag,
+        containerOverrideClasses: containerAdapter.containerOverrideClasses,
+        containerOverrideLimit: containerAdapter.containerOverrideLimit,
+        headerFragment: containerAdapter.headerFragment,
+        footerFragment: containerAdapter.footerFragment,
+        children: layout
+      }
+    );
+  }
+  return layout;
 };
 var TomeHeader = ({ context }) => {
   const { componentName, currentState, tomeConfig, error } = context;
@@ -3897,10 +4208,14 @@ var EditorWrapper = ({
 };
 var EditorWrapper_default = EditorWrapper;
 export {
+  ADAPTER_DESCRIPTORS,
+  CONTAINER_ADAPTER_DESCRIPTOR,
   CartTomeConfig,
   Cave,
   CircuitBreaker,
   ClientGenerator,
+  ContainerAdapterContext,
+  ContainerAdapterProvider,
   DefaultResourceMonitor,
   DefaultStructuralConfig,
   DonationTomeConfig,
@@ -3916,6 +4231,7 @@ export {
   StructuralRouter,
   StructuralSystem,
   StructuralTomeConnector,
+  TeleportHQAdapter,
   ThrottlePolicy,
   TomeConnector,
   TomeManager,
@@ -3938,6 +4254,7 @@ export {
   createRobotCopyConfigWithCaveRobit,
   createStructuralConfig,
   createStructuralSystem,
+  createTeleportHQAdapter,
   createThrottlePolicy,
   createTome,
   createTomeConfig,
@@ -3948,11 +4265,14 @@ export {
   escapeText,
   generateToken,
   generateTokenAsync,
+  parseContainerOverrideTag2 as parseContainerOverrideTag,
   parseHtml,
   parseToken,
   serializeToken,
   unescapeText,
   useCave,
+  useContainerAdapter2 as useContainerAdapter,
+  useContainerAdapterFragmentsFromApi,
   useRouter,
   useStructuralSystem,
   useStructuralTomeConnector,

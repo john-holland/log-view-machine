@@ -5,6 +5,8 @@
  * allowing each tome to insert gracefully into a routing hierarchy.
  */
 
+import type { ReactNode } from 'react';
+
 /** Safe env read for Node; returns undefined in browser so config can use fallbacks. */
 function getEnv(name: string): string | undefined {
   try {
@@ -174,6 +176,20 @@ export interface TomeConfig {
   modMetadata?: ModMetadata;
   /** Optional: permission spec for this tome (e.g. ">anonymous", ">=user"). Default ">anonymous". */
   permission?: string;
+
+  /** Optional: container adapter for composed-view override and header/footer injection */
+  containerAdapter?: {
+    /** Custom tag to use instead of div.composed-view (e.g. "section", "article"). Parsed for valid HTML/React tag; default "div". */
+    containerOverrideTag?: string;
+    /** Classes for the container element (e.g. "container-mod-foo composed-view"). */
+    containerOverrideClasses?: string;
+    /** Max number of composed-view containers to override; undefined = infinite. Stops overrides for deeper sub-machine renders. */
+    containerOverrideLimit?: number;
+    /** Header HTML or ReactNode (from Cave API or static). */
+    headerFragment?: string | ReactNode;
+    /** Footer HTML or ReactNode. */
+    footerFragment?: string | ReactNode;
+  };
 }
 
 export interface TomeInstance {
@@ -264,7 +280,8 @@ export function createTomeConfig(config: Partial<TomeConfig>): TomeConfig {
     },
     isModableTome: config.isModableTome,
     modMetadata: config.modMetadata,
-    permission: config.permission
+    permission: config.permission,
+    containerAdapter: config.containerAdapter
   };
 }
 

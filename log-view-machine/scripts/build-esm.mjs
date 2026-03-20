@@ -25,6 +25,7 @@ await esbuild.build({
     'xstate',
     '@xstate/react',
     'express',
+    'container-cave-adapter',
   ],
 });
 

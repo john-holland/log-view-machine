@@ -32,14 +32,32 @@ export {
   type RobotCopyConfig
 } from './core/Cave/tome/viewstatemachine/robotcopy/RobotCopy';
 
-// ClientGenerator exports
+// Adapters (ClientGenerator, TeleportHQAdapter, ContainerAdapter)
 export {
   ClientGenerator,
   createClientGenerator,
-  type ClientGeneratorConfig,
-  type ClientGeneratorExample,
-  type ClientGeneratorDiscovery
-} from './core/adapters/ClientGenerator';
+  TeleportHQAdapter,
+  createTeleportHQAdapter,
+  ContainerAdapterProvider,
+  useContainerAdapter,
+  parseContainerOverrideTag,
+  ContainerAdapterContext,
+  useContainerAdapterFragmentsFromApi,
+  CONTAINER_ADAPTER_DESCRIPTOR,
+  ADAPTER_DESCRIPTORS,
+} from './core/adapters/index';
+
+export type {
+  ClientGeneratorConfig,
+  ClientGeneratorExample,
+  ClientGeneratorDiscovery,
+  TeleportHQConfig,
+  TeleportHQComponent,
+  TeleportHQTemplate,
+  ContainerAdapterContextValue,
+  ContainerAdapterProviderProps,
+  UseContainerAdapterFragmentsResult,
+} from './core/adapters/index';
 
 // TomeManager exports
 export {
@@ -81,7 +99,8 @@ export {
   type RouteConfig,
   type NavigationItem,
   type RoutingConfig,
-  type TomeDefinition
+  type TomeDefinition,
+  type TomeContainerAdapterConfig
 } from './core/structural/StructuralSystem';
 
 // Structural Router exports
@@ -234,10 +253,12 @@ export {
   type ThrottlePolicyOptions,
 } from './core/resilience';
 
+// todo: check cave adapters and webpack build
+export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary'; 
+
 // Editor components (EditorWrapper from wave-reader alignment)
 export {
   default as EditorWrapper,
   type EditorWrapperProps,
   type EditorWrapperRouter
 } from './components/EditorWrapper';
-export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary'; 
