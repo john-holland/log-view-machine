@@ -1,0 +1,56 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build log-view-machine
+        run: npm run build
+
+      - name: Install mod workspace
+        run: npm install
+        working-directory: mod
+
+      - name: log-view-machine tests
+        run: npm run test --workspace=log-view-machine
+
+      - name: node-mod-editor tests
+        run: npm run test --workspace=node-mod-editor
+
+      - name: node-fish-burger tests
+        run: npm run test --workspace=node-fish-burger
+
+      - name: pythonapp-caveservice-adapter tests
+        run: npm run test --workspace=pythonapp-caveservice-adapter
+
+      - name: pact-cavemod-adapter tests
+        run: npm run test --workspace=pact-cavemod-adapter
+
+      - name: payloadhash-cavemessage-adapter tests
+        run: npm run test --workspace=payloadhash-cavemessage-adapter
+
+      - name: payloadencrypt-cavemessage-adapter tests
+        run: npm run test --workspace=payloadencrypt-cavemessage-adapter
