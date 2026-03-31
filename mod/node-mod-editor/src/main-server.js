@@ -237,9 +237,15 @@ const editorLandingSpelunk = {
 };
 
 // Root Cave for node-mod-editor: route/entry describe where each feature is exposed (path → handler/Tome).
-// Editor childCaves: editor (main panel), library, donation. Mod metadata comes from Index.
+// Features first so registry default/landing is /features (not editor). Editor childCaves: library, donation.
 const nodeExampleSpelunk = {
   childCaves: {
+    features: {
+      route: '/features',
+      container: 'features',
+      tomeId: 'features-tome',
+      permission: '>=anonymous',
+    },
     editor: {
       route: '/editor',
       container: 'editor',
@@ -257,12 +263,6 @@ const nodeExampleSpelunk = {
           tomeId: 'donation-tome',
         },
       },
-    },
-    features: {
-      route: '/features',
-      container: 'features',
-      tomeId: 'features-tome',
-      permission: '>=anonymous',
     },
   },
 };
@@ -358,7 +358,7 @@ const caveAdapter = expressCaveAdapter({
     levelOrder: ['anonymous', 'user', 'admin'],
     getTenantName: (_cave, req) => deriveTenantFromRequest(req),
     redirectLoginPath: '/features',
-    allowAnonymousPaths: ['/api/login', '/api/editor/presence', '/api/mods'],
+    allowAnonymousPaths: ['/', '/home', '/features', '/registry', '/api/login', '/api/editor/presence', '/api/mods'],
   },
 });
 
@@ -746,8 +746,11 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });
 
-// Home page – mods from Index, link to features
-app.get('/', (req, res) => {
+// Root redirects to Features (landing); cave-adapter registry default is features so localhost opens Features, not Editor.
+app.get('/', (req, res) => res.redirect(302, '/features'));
+
+// Home page – mods from Index, link to features (kept at /home for nav)
+app.get('/home', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -809,7 +812,7 @@ app.get('/', (req, res) => {
         <div class="container">
             <h1>Log View Machine</h1>
             <div class="nav-links">
-                <a href="/" class="nav-link">Home</a>
+                <a href="/home" class="nav-link">Home</a>
                 <a href="/features" class="nav-link">Features (login &amp; mods)</a>
                 <a href="/editor" class="nav-link">Editor</a>
                 <a href="/api/teleporthq/demo" class="nav-link">TeleportHQ Demo</a>
@@ -993,8 +996,11 @@ app.get('/features', (req, res) => {
             const r = await api('/api/editor/presence?caveOrTomeId=features-tome');
             const list = r.ok ? await r.json() : [];
             const el = document.getElementById('presence-list');
-            el.innerHTML = Array.isArray(list) && list.length ? list.map(u => '<span class="user-badge">' + (u.user || u) + '</span>').join('') : 'No one yet';
-          } catch (_) { document.getElementById('presence-list').textContent = '—'; }
+            if (el) el.innerHTML = Array.isArray(list) && list.length ? list.map(u => '<span class="user-badge">' + ((u && (u.user || u)) || '') + '</span>').join('') : 'No one yet';
+          } catch (_) {
+            const el = document.getElementById('presence-list');
+            if (el) el.textContent = '—';
+          }
         }
         async function loadMods() {
           try {
@@ -1002,11 +1008,15 @@ app.get('/features', (req, res) => {
             const data = r.ok ? await r.json() : { mods: [] };
             const mods = Array.isArray(data.mods) ? data.mods : [];
             const el = document.getElementById('mod-list');
-            el.innerHTML = mods.length ? mods.map(m => {
+            if (!el) return;
+            el.innerHTML = mods.length ? mods.filter(Boolean).map(m => {
               const demoPath = (m.entryPoints && m.entryPoints.demo) ? m.entryPoints.demo : '/fish-burger-demo';
               const serverUrl = (m.serverUrl || '').replace(/\/$/, '');
               const demoUrl = serverUrl ? (serverUrl + demoPath) : null;
-              let card = '<div class="mod-card" data-mod-id="' + (m.id || '').replace(/"/g, '&quot;') + '" data-demo-url="' + (demoUrl || '').replace(/"/g, '&quot;') + '" data-mod-name="' + (m.name || m.id || '').replace(/"/g, '&quot;') + '"><strong>' + (m.name || m.id) + '</strong><br>' + (m.description || '');
+              const id = (m.id || '').toString().replace(/"/g, '&quot;');
+              const name = (m.name || m.id || '').toString().replace(/"/g, '&quot;');
+              const desc = (m.description || '').toString();
+              let card = '<div class="mod-card" data-mod-id="' + id + '" data-demo-url="' + (demoUrl || '').replace(/"/g, '&quot;') + '" data-mod-name="' + name + '"><strong>' + name + '</strong><br>' + desc;
               if (demoUrl) card += '<br><button type="button" class="open-demo-btn">Open Demo</button>';
               card += '</div>';
               return card;
@@ -1067,8 +1077,9 @@ app.get('/fish-burger-demo', (req, res) => res.redirect(302, '/features'));
 app.get('/cart', (req, res) => res.redirect(302, '/features'));
 
 // Editor: render-target for Cave getRenderTarget(path) — used by generic-editor entry to resolve container/tomeId.
+// Default path /features so localhost/registry first address opens Features, not Editor.
 app.get('/api/editor/render-target', (req, res) => {
-  const requestPath = (req.query.path || req.query.p || '/editor').toString().replace(/^\.\/?|\/$/g, '') || 'editor';
+  const requestPath = (req.query.path || req.query.p || '/features').toString().replace(/^\.\/?|\/$/g, '') || 'features';
   const target = cave.getRenderTarget(requestPath);
   res.json({ path: requestPath, ...target });
 });
