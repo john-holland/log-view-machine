@@ -12,6 +12,25 @@ export interface LogEntry {
   metadata?: any;
 }
 
+/** Summary of XState states/events extracted from the chart config (for tooling / ClientGenerator). */
+export type ViewStateMachineXStateDefinitionSummary = {
+  initial?: string;
+  stateIds: string[];
+  transitionEvents: string[];
+  actions: string[];
+  services: string[];
+  /** Root events merged by ViewStateMachine (UI / log plumbing), not domain transitions. */
+  internalRootEvents: readonly string[];
+};
+
+const VIEWSTATE_INTERNAL_ROOT_EVENT_TYPES = [
+  'VIEW_ADDED',
+  'VIEW_CLEARED',
+  'LOG_ADDED',
+  'SUB_MACHINE_CREATED',
+  'ROBOTCOPY_MESSAGE',
+] as const;
+
 /** Optional view storage config: RxDB schema and find/findOne specs to populate model. */
 export type ViewStorageConfig = {
   schema?: any;
@@ -29,6 +48,8 @@ export type ViewStorageConfig = {
 export type StateContext<TModel = any> = {
   state: string;
   model: TModel;
+  /** Last XState event for this snapshot (when available). */
+  event?: any;
   transitions: any[];
   /** Single document from findOne; undefined when no findOne or no db. */
   result?: unknown;
@@ -68,6 +89,13 @@ export type ViewStateMachineConfig<TModel = any> = {
   db?: any;
   /** Optional view storage config: schema, find, findOne to populate model from db. */
   viewStorage?: ViewStorageConfig;
+  /**
+   * When true, the interpreted service runs `withState` / `logStates` handlers on each transition
+   * (Node / HTTP paths). Leave false when only using `useViewStateMachine` to avoid duplicate runs.
+   */
+  runHandlersOnTransition?: boolean;
+  /** Model passed to handlers when `runHandlersOnTransition` is true (server-side). */
+  defaultModelForTransitionHandlers?: TModel;
 };
 
 export class ViewStateMachine<TModel = any> {
@@ -92,6 +120,10 @@ export class ViewStateMachine<TModel = any> {
   private configRenderKey?: string;
   private renderKeyClearCount = 0;
   private viewKeyListeners: Array<(key: string) => void> = [];
+  /** XState chart as passed into `createMachine` (after Tome mod enhancements), for introspection. */
+  private xstateBlueprint: Record<string, unknown>;
+  /** Last `snapshot.value` serialized for `runHandlersOnTransition` (ignore internal events in same state). */
+  private lastServiceHandlerStateValueSerialized: string | undefined;
 
   constructor(config: ViewStateMachineConfig<TModel>) {
     this.stateHandlers = new Map();
@@ -133,6 +165,8 @@ export class ViewStateMachine<TModel = any> {
         };
       });
     }
+
+    this.xstateBlueprint = enhancedXstateConfig as Record<string, unknown>;
 
     // Create the XState machine (predictableActionArguments in config per XState v5)
     const machineDefinition = createMachine({
@@ -190,6 +224,123 @@ export class ViewStateMachine<TModel = any> {
         this.subMachines.set(id, subMachine);
       });
     }
+
+    if (config.runHandlersOnTransition && this.machine && typeof (this.machine as any).onTransition === 'function') {
+      const model = (config.defaultModelForTransitionHandlers ?? {}) as TModel;
+      (this.machine as any).onTransition((snapshot: any) => {
+        void this.runStateHandlerForServiceSnapshot(snapshot, model);
+      });
+    }
+  }
+
+  /** @internal Used by ClientGenerator; also safe for other tooling. */
+  static summarizeXStateBlueprint(blueprint: Record<string, unknown> | undefined | null): ViewStateMachineXStateDefinitionSummary {
+    const stateIds: string[] = [];
+    const transitionEvents = new Set<string>();
+    const actions = new Set<string>();
+    const services = new Set<string>();
+
+    const collectActions = (a: unknown) => {
+      if (a == null) return;
+      if (typeof a === 'string') actions.add(a);
+      else if (Array.isArray(a)) a.forEach(collectActions);
+    };
+
+    const walkStateNode = (node: Record<string, unknown> | undefined) => {
+      if (!node || typeof node !== 'object') return;
+      if (node.on && typeof node.on === 'object') {
+        Object.keys(node.on as object).forEach((e) => transitionEvents.add(e));
+      }
+      collectActions(node.entry);
+      collectActions(node.exit);
+      const inv = node.invoke as unknown;
+      if (inv) {
+        const list = Array.isArray(inv) ? inv : [inv];
+        for (const item of list) {
+          if (item && typeof item === 'object' && (item as { src?: unknown }).src != null) {
+            services.add(String((item as { src: unknown }).src));
+          }
+        }
+      }
+      const nested = node.states as Record<string, Record<string, unknown>> | undefined;
+      if (nested && typeof nested === 'object') {
+        for (const child of Object.values(nested)) {
+          walkStateNode(child);
+        }
+      }
+    };
+
+    const states = blueprint?.states as Record<string, unknown> | undefined;
+    if (states && typeof states === 'object') {
+      stateIds.push(...Object.keys(states));
+      for (const node of Object.values(states)) {
+        walkStateNode(node as Record<string, unknown>);
+      }
+    }
+
+    const rootOn = blueprint?.on as Record<string, unknown> | undefined;
+    if (rootOn && typeof rootOn === 'object') {
+      Object.keys(rootOn).forEach((e) => transitionEvents.add(e));
+    }
+
+    return {
+      initial: typeof blueprint?.initial === 'string' ? (blueprint.initial as string) : undefined,
+      stateIds,
+      transitionEvents: [...transitionEvents].sort(),
+      actions: [...actions].sort(),
+      services: [...services].sort(),
+      internalRootEvents: VIEWSTATE_INTERNAL_ROOT_EVENT_TYPES,
+    };
+  }
+
+  getMachineId(): string {
+    return this.machineId;
+  }
+
+  /** Names of states that have a `withState` / `logStates` handler registered. */
+  getRegisteredStateHandlerNames(): string[] {
+    return [...this.stateHandlers.keys()];
+  }
+
+  /** States, transition events, and LVM-internal root events derived from the chart config. */
+  getXStateDefinitionSummary(): ViewStateMachineXStateDefinitionSummary {
+    return ViewStateMachine.summarizeXStateBlueprint(this.xstateBlueprint);
+  }
+
+  private serializeStateValueForServiceHandler(value: unknown): string {
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  private async runStateHandlerForServiceSnapshot(snapshot: any, model: TModel): Promise<void> {
+    const serialized = this.serializeStateValueForServiceHandler(snapshot?.value);
+    if (serialized === this.lastServiceHandlerStateValueSerialized) {
+      return;
+    }
+    this.lastServiceHandlerStateValueSerialized = serialized;
+    const stateKey =
+      typeof snapshot?.value === 'string'
+        ? snapshot.value
+        : snapshot?.value != null && typeof (snapshot.value as any)?.toString === 'function'
+          ? String((snapshot.value as any).toString())
+          : String(snapshot?.value ?? '');
+    const effectiveStorage: Partial<ViewStorageConfig> = {
+      ...this.viewStorage,
+      ...this.stateViewStorage.get(stateKey),
+    };
+    const { result, results } = await this.runFindFindOne(effectiveStorage);
+    const sendFromService = (event: any) => {
+      if (this.machine && typeof this.machine.send === 'function') {
+        this.machine.send(event);
+      }
+    };
+    const ctx = this.createStateContext(snapshot, model, sendFromService, result, results, effectiveStorage);
+    const handler = this.stateHandlers.get(stateKey);
+    if (handler) await handler(ctx);
   }
 
   // Add RobotCopy support methods
@@ -317,20 +468,36 @@ export class ViewStateMachine<TModel = any> {
     if (!this.db || !effectiveStorage) return out;
     const collectionName = effectiveStorage.collection ?? 'views';
     const coll = this.db[collectionName] ?? (typeof this.db.get === 'function' ? this.db.get(collectionName) : null);
-    if (!coll) return out;
+    const caveDb =
+      !coll &&
+      this.db &&
+      typeof (this.db as any).find === 'function' &&
+      typeof (this.db as any).findOne === 'function'
+        ? (this.db as { find: (s?: Record<string, unknown>) => Promise<unknown[]>; findOne: (s?: Record<string, unknown>) => Promise<Record<string, unknown> | null> })
+        : null;
+    if (!coll && !caveDb) return out;
     try {
       if (effectiveStorage.find != null) {
         const spec = effectiveStorage.find as Record<string, unknown>;
         const selector = spec && typeof spec === 'object' && 'selector' in spec ? (spec.selector as object) : spec;
-        const query = coll.find && typeof coll.find === 'function' ? coll.find(selector) : null;
-        out.results = query && typeof query.exec === 'function' ? await query.exec() : [];
+        if (coll) {
+          const query = coll.find && typeof coll.find === 'function' ? coll.find(selector) : null;
+          out.results = query && typeof query.exec === 'function' ? await query.exec() : [];
+        } else if (caveDb) {
+          out.results = await caveDb.find(selector as Record<string, unknown>);
+        }
       }
       if (effectiveStorage.findOne != null) {
         const spec = effectiveStorage.findOne as Record<string, unknown>;
         const selector = spec && typeof spec === 'object' && 'selector' in spec ? (spec.selector as object) : spec;
-        const query = coll.findOne && typeof coll.findOne === 'function' ? coll.findOne(selector) : null;
-        const one = query && typeof query.exec === 'function' ? await query.exec() : null;
-        out.result = one ?? undefined;
+        if (coll) {
+          const query = coll.findOne && typeof coll.findOne === 'function' ? coll.findOne(selector) : null;
+          const one = query && typeof query.exec === 'function' ? await query.exec() : null;
+          out.result = one ?? undefined;
+        } else if (caveDb) {
+          const one = await caveDb.findOne(selector as Record<string, unknown>);
+          out.result = one ?? undefined;
+        }
       }
     } catch (_e) {
       out.results = [];
@@ -367,6 +534,7 @@ export class ViewStateMachine<TModel = any> {
     return {
       state: state.value,
       model,
+      event: (state as any).event ?? (state as any)._event,
       transitions: state.history?.events || [],
       result,
       results: results ?? [],
@@ -450,7 +618,7 @@ export class ViewStateMachine<TModel = any> {
 
   // React hook for using the machine (pass machine definition; @xstate/react v5/v6 expects machine, not service)
   useViewStateMachine(initialModel: TModel) {
-    const [state, send] = useMachine(this.machineDefinition);
+    const [state, send] = useMachine(this.machineDefinition as any);
     const [context, setContext] = useState<StateContext<TModel> | null>(null);
 
     // Execute state handler: compute effectiveStorage, run find/findOne, create context, then run handler

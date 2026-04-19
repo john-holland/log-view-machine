@@ -41,6 +41,12 @@ export interface TomeMachineConfig {
   location?: LocationHint;
   /** When location is remote: URL or client descriptor for RobotCopy to use when sending. */
   remoteClient?: RemoteClientDescriptor;
+  /** Optional CaveDB / RxDB facade for ViewStateMachine view storage (same as ViewStateMachineConfig.db). */
+  db?: any;
+  viewStorage?: ViewStorageConfig;
+  /** When true, interpreted service invokes `logStates` / `withState` handlers on each transition (HTTP/Node). */
+  runHandlersOnTransition?: boolean;
+  defaultModelForTransitionHandlers?: any;
 }
 
 export interface TomeBinding {
@@ -74,6 +80,7 @@ export interface TomeRouteConfig {
 
 import type { Spelunk } from '../Cave';
 import type { TransportDescriptor, TransportType } from '../CaveRobit';
+import type { ViewStorageConfig } from './viewstatemachine/ViewStateMachine';
 
 export interface ModMetadata {
   /** Map of route paths to mod cave/tome IDs that replace them. Supports "*" wildcard. */
@@ -270,6 +277,7 @@ export function createTomeConfig(config: Partial<TomeConfig>): TomeConfig {
     persistence: {
       enabled: config.persistence?.enabled ?? false,
       type: config.persistence?.type || 'memory',
+      adapter: config.persistence?.adapter,
       config: config.persistence?.config || {}
     },
     monitoring: {

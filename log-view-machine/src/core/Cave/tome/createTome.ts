@@ -15,14 +15,27 @@ export function createTome(config: TomeConfig): TomeInstance {
   const machines = new Map<string, any>();
 
   for (const [machineKey, machineConfig] of Object.entries(config.machines)) {
-    const machine = createViewStateMachine({
-      machineId: machineConfig.id,
-      xstateConfig: machineConfig.xstateConfig,
+    const mergedXstate = {
+      ...machineConfig.xstateConfig,
       context: {
         ...(config.context || {}),
         ...(machineConfig.context || {}),
+        ...(machineConfig.xstateConfig?.context || {}),
       },
+    };
+    const machine = createViewStateMachine({
+      machineId: machineConfig.id,
+      xstateConfig: mergedXstate,
+      tomeConfig: config,
       ...(machineConfig.logStates && { logStates: machineConfig.logStates }),
+      ...((machineConfig as any).db !== undefined && { db: (machineConfig as any).db }),
+      ...((machineConfig as any).viewStorage !== undefined && { viewStorage: (machineConfig as any).viewStorage }),
+      ...((machineConfig as any).runHandlersOnTransition !== undefined && {
+        runHandlersOnTransition: (machineConfig as any).runHandlersOnTransition,
+      }),
+      ...((machineConfig as any).defaultModelForTransitionHandlers !== undefined && {
+        defaultModelForTransitionHandlers: (machineConfig as any).defaultModelForTransitionHandlers,
+      }),
     });
     machines.set(machineKey, machine);
   }

@@ -12,6 +12,7 @@ import { useServer } from 'graphql-ws/use/ws';
 import dotenv from 'dotenv';
 import winston from 'winston';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import { createViewStateMachine, createRobotCopy, createProxyRobotCopyStateMachine, Cave, FishBurgerTomeConfig, EditorTomeConfig, createTomeConfig, createCaveServer } from 'log-view-machine';
@@ -19,6 +20,7 @@ import { expressCaveAdapter } from 'express-cave-adapter';
 import { genericeditorCaveModAdapter } from 'genericeditor-cavemod-adapter';
 import { createDuckDBCaveDBAdapter } from 'duckdb-cavedb-adapter';
 import { buildPersistenceRegistry } from './persistence-registry.js';
+import { buildResaurceHrPilotTomeConfig, buildSaurceWalletHoldPilotTomeConfig } from '@inventory/cave-pilot-configs';
 import { createDotCmsPamCaveAdapter } from 'dotcms-pam-cave-adapter';
 import { createDotcmsLoginAdapter, evaluatePermission, deriveTenantFromRequest } from 'dotcms-login-adapter';
 import { createEventedModLoader } from 'modload-eventedcavemodorder-adapter';
@@ -49,6 +51,14 @@ import { createSharePointCaveAdapter } from 'sharepoint-cave-adapter';
 
 // Load environment variables
 dotenv.config();
+
+const __editorDir = path.dirname(fileURLToPath(import.meta.url));
+const CAVE_DB_DIR = process.env.CAVE_DB_DIR || path.join(__editorDir, '..', 'data', 'cavedb');
+try {
+  fs.mkdirSync(CAVE_DB_DIR, { recursive: true });
+} catch (_) {
+  /* ignore */
+}
 
 // Configure logging
 const logger = winston.createLogger({
@@ -262,6 +272,16 @@ const nodeExampleSpelunk = {
           container: 'donation',
           tomeId: 'donation-tome',
         },
+        resaurceHrPilot: {
+          route: '/editor/pilot/resaurce-hr',
+          container: 'pilot',
+          tomeId: 'resaurce-hr-pilot-tome',
+        },
+        saurceWalletPilot: {
+          route: '/editor/pilot/saurce-wallet',
+          container: 'pilot',
+          tomeId: 'saurce-wallet-pilot-tome',
+        },
       },
     },
   },
@@ -322,12 +342,25 @@ const FeaturesTomeConfig = createTomeConfig({
   }
 });
 
+const resaurcePilotUrl = process.env.SOA_RES_AURCE_URL || process.env.RESAURCE_URL || 'http://127.0.0.1:3456';
+const saurcePilotUrl = process.env.SOA_SAURCE_URL || process.env.SAURCE_URL || 'http://127.0.0.1:3457';
+const ResaurceHrPilotTomeConfig = buildResaurceHrPilotTomeConfig({
+  resaurceBaseUrl: resaurcePilotUrl,
+  duckdbPath: path.join(CAVE_DB_DIR, 'resaurce-hr-pilot.duckdb'),
+});
+const SaurceWalletPilotTomeConfig = buildSaurceWalletHoldPilotTomeConfig({
+  saurceBaseUrl: saurcePilotUrl,
+  duckdbPath: path.join(CAVE_DB_DIR, 'saurce-wallet-pilot.duckdb'),
+});
+
 const tomeConfigsList = [
   FishBurgerTomeConfig,
   EditorTomeConfig,
   LibraryTomeConfig,
   DonationTomeConfig,
   FeaturesTomeConfig,
+  ResaurceHrPilotTomeConfig,
+  SaurceWalletPilotTomeConfig,
 ];
 
 // Persistence override: build registry from TomeConfig.persistence.adapter so store API uses the right backend per Tome
@@ -345,6 +378,15 @@ try {
   cavedbFactories.memcache = (opts) => createMemcacheCaveDBAdapter(opts);
 } catch (_) {}
 const persistenceRegistry = await buildPersistenceRegistry(tomeConfigsList, cavedbFactories);
+
+const hrPilotDb = persistenceRegistry.get('resaurce-hr-pilot-tome');
+if (hrPilotDb) {
+  ResaurceHrPilotTomeConfig.machines.hrHelpPilot.db = hrPilotDb;
+}
+const walletPilotDb = persistenceRegistry.get('saurce-wallet-pilot-tome');
+if (walletPilotDb) {
+  SaurceWalletPilotTomeConfig.machines.walletHoldPilot.db = walletPilotDb;
+}
 
 const cave = Cave('node-mod-editor', nodeExampleSpelunk);
 const caveAdapter = expressCaveAdapter({
@@ -424,7 +466,7 @@ await createCaveServer({
 });
 const tomeManager = caveAdapter.getTomeManager();
 if (tomeManager) {
-  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'donation-tome', 'features-tome']) {
+  for (const tomeId of ['fish-burger-tome', 'editor-tome', 'library-tome', 'donation-tome', 'features-tome', 'resaurce-hr-pilot-tome', 'saurce-wallet-pilot-tome']) {
     const tome = tomeManager.getTome(tomeId);
     if (tome && typeof tome.synchronizeWithCave === 'function') {
       tome.synchronizeWithCave(cave);

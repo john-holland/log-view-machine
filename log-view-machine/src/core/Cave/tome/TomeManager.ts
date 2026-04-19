@@ -34,13 +34,27 @@ export class TomeManager implements ITomeManager {
     const machines = new Map<string, any>();
     
     for (const [machineKey, machineConfig] of Object.entries(config.machines)) {
+      const mergedXstate = {
+        ...machineConfig.xstateConfig,
+        context: {
+          ...(config.context || {}),
+          ...(machineConfig.context || {}),
+          ...(machineConfig.xstateConfig?.context || {}),
+        },
+      };
       const machine = createViewStateMachine({
         machineId: machineConfig.id,
-        xstateConfig: machineConfig.xstateConfig,
-        context: {
-          ...config.context,
-          ...machineConfig.context
-        }
+        xstateConfig: mergedXstate,
+        tomeConfig: config,
+        ...(machineConfig.logStates ? { logStates: machineConfig.logStates } : {}),
+        ...(machineConfig.db !== undefined ? { db: machineConfig.db } : {}),
+        ...(machineConfig.viewStorage !== undefined ? { viewStorage: machineConfig.viewStorage } : {}),
+        ...(machineConfig.runHandlersOnTransition !== undefined
+          ? { runHandlersOnTransition: machineConfig.runHandlersOnTransition }
+          : {}),
+        ...(machineConfig.defaultModelForTransitionHandlers !== undefined
+          ? { defaultModelForTransitionHandlers: machineConfig.defaultModelForTransitionHandlers }
+          : {}),
       });
       
       machines.set(machineKey, machine);
@@ -113,7 +127,12 @@ export class TomeManager implements ITomeManager {
         if (!machine) {
           throw new Error(`Machine ${machineId} not found in tome ${this.id}`);
         }
-        return await machine.send(event, data);
+        const eventObj =
+          typeof event === 'string'
+            ? { type: event, ...(data !== undefined && data !== null ? { data } : {}) }
+            : event;
+        machine.send(eventObj);
+        return typeof machine.getState === 'function' ? machine.getState() : undefined;
       },
       
       getState(machineId: string) {
@@ -201,7 +220,8 @@ export class TomeManager implements ITomeManager {
             // Apply input transformer if configured
             let transformedData = data;
             if (routeConfig.transformers?.input) {
-              transformedData = routeConfig.transformers.input(data, 'forward');
+              const inputFn = routeConfig.transformers.input as (d: any, direction?: string) => any;
+              transformedData = inputFn.length > 1 ? inputFn(data, 'forward') : inputFn(data);
             }
 
             // Send message to machine
@@ -210,7 +230,8 @@ export class TomeManager implements ITomeManager {
             // Apply output transformer if configured
             let response = result;
             if (routeConfig.transformers?.output) {
-              response = routeConfig.transformers.output(result, 'forward');
+              const outputFn = routeConfig.transformers.output as (r: any, direction?: string) => any;
+              response = outputFn.length > 1 ? outputFn(result, 'forward') : outputFn(result);
             }
 
             res.json({
@@ -222,11 +243,12 @@ export class TomeManager implements ITomeManager {
               timestamp: new Date().toISOString()
             });
 
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`❌ Error in tome route ${config.id}:${machineKey}:`, error);
+            const message = error instanceof Error ? error.message : String(error);
             res.status(500).json({
               success: false,
-              error: error.message,
+              error: message,
               tome: config.id,
               machine: machineKey,
               timestamp: new Date().toISOString()

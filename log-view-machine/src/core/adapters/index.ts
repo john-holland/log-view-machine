@@ -3,11 +3,13 @@
  * Lists all TypeScript adapters provided by the package.
  */
 
-export { ClientGenerator, createClientGenerator } from './ClientGenerator';
+export { ClientGenerator, createClientGenerator, parseNodeCaveMachineManifest } from './ClientGenerator';
 export type {
   ClientGeneratorConfig,
   ClientGeneratorExample,
   ClientGeneratorDiscovery,
+  NodeCaveMachineManifest,
+  NodeCaveMachineManifestEntry,
 } from './ClientGenerator';
 
 export { TeleportHQAdapter, createTeleportHQAdapter } from './TeleportHQAdapter';

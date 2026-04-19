@@ -1,7 +1,14 @@
 /**
  * DuckDB-backed storage adapter for the backend (Node/TomeManager).
- * Optional dependency: use when DuckDB is configured; library works without it.
- * See docs/ARCHITECTURE_AND_CAVE.md.
+ *
+ * **Canonical persistence for Tomes / ViewStateMachine snapshots in this workspace** is the
+ * editor CaveDB path: `duckdb-cavedb-adapter` + `buildPersistenceRegistry` in `mod/node-mod-editor`
+ * (REST under `/api/editor/store/:tomeId/...`). That stack implements the real {@link CaveDBAdapter}
+ * contract per Tome. This module stays a small optional stub so `log-view-machine` core stays
+ * lightweight when DuckDB is not installed.
+ *
+ * Optional: install the `duckdb` npm package and extend `createDuckDBStorage` to open a file or
+ * `:memory:` database if you need DuckDB **outside** the editor package.
  */
 
 export interface DuckDBStorageAdapter {
@@ -47,10 +54,6 @@ export async function createDuckDBStorage(
   _options?: { path?: string; readOnly?: boolean }
 ): Promise<DuckDBStorageAdapter> {
   try {
-    // Optional: require('duckdb') and open connection
-    // const DuckDB = require('duckdb');
-    // const db = new DuckDB.Database(':memory:');
-    // return new DuckDBStorageImpl(db);
     return new DuckDBStorageStub();
   } catch {
     return new DuckDBStorageStub();

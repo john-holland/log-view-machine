@@ -25,6 +25,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^container-cave-adapter$': '<rootDir>/../packages/container-cave-adapter/dist/index.js',
   },
   testTimeout: 5000,
 };

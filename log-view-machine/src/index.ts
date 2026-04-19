@@ -6,7 +6,8 @@ export {
   type ViewStateMachineConfig,
   type StateContext,
   type StateHandler,
-  type ViewStorageConfig
+  type ViewStorageConfig,
+  type ViewStateMachineXStateDefinitionSummary,
 } from './core/Cave/tome/viewstatemachine/ViewStateMachine';
 
 // Tracing exports
@@ -36,6 +37,7 @@ export {
 export {
   ClientGenerator,
   createClientGenerator,
+  parseNodeCaveMachineManifest,
   TeleportHQAdapter,
   createTeleportHQAdapter,
   ContainerAdapterProvider,
@@ -51,6 +53,8 @@ export type {
   ClientGeneratorConfig,
   ClientGeneratorExample,
   ClientGeneratorDiscovery,
+  NodeCaveMachineManifest,
+  NodeCaveMachineManifestEntry,
   TeleportHQConfig,
   TeleportHQComponent,
   TeleportHQTemplate,
@@ -177,6 +181,7 @@ export type {
 
 // CaveDB adapter contract (canonical; cavedb adapters implement this)
 export type { CaveDBAdapter, CaveDBAdapterOptions, CaveDBAdapterFactory } from './core/cavedb';
+export { createCaveDbViewStorageDb } from './core/cavedb';
 
 // useCave, useTome, useViewStateMachineInstance (React hooks for Cave/Tome/VSM with observeViewKey)
 export {

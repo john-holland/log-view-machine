@@ -16,28 +16,116 @@ export interface ClientGeneratorExample {
   language: 'typescript' | 'javascript' | 'react' | 'kotlin' | 'java';
 }
 
+/** Parsed `contracts/lvm2/*-machines.json` from saurce / resaurce Node Cave hosts. */
+export interface NodeCaveMachineManifestEntry {
+  id: string;
+  prefixes?: string[];
+  structural_routes?: string[];
+  xstate_states?: string[];
+  xstate_events?: string[];
+}
+
+export interface NodeCaveMachineManifest {
+  service: string;
+  schema_version?: string;
+  machines: NodeCaveMachineManifestEntry[];
+}
+
 export interface ClientGeneratorDiscovery {
   machines: Map<string, ViewStateMachine<any>>;
   states: Map<string, string[]>;
   events: Map<string, string[]>;
   actions: Map<string, string[]>;
   services: Map<string, string[]>;
+  /** States that have a registered `withState` / `logStates` handler (same machineId key). */
+  stateHandlers: Map<string, string[]>;
   examples: ClientGeneratorExample[];
   documentation: string;
+  /** Flattened entries from manifests ingested via `ingestNodeCaveManifest`. */
+  nodeCaveMachines?: Array<{
+    service: string;
+    machineId: string;
+    prefixes: string[];
+    structuralRoutes: string[];
+    states: string[];
+    events: string[];
+  }>;
+}
+
+export function parseNodeCaveMachineManifest(raw: unknown): NodeCaveMachineManifest | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const service = o.service;
+  if (typeof service !== 'string' || !service.trim()) return null;
+  const machines = o.machines;
+  if (!Array.isArray(machines) || machines.length === 0) return null;
+  const normalized: NodeCaveMachineManifestEntry[] = [];
+  for (const m of machines) {
+    if (!m || typeof m !== 'object') return null;
+    const me = m as Record<string, unknown>;
+    if (typeof me.id !== 'string' || !me.id.trim()) return null;
+    normalized.push({
+      id: me.id,
+      prefixes: Array.isArray(me.prefixes) ? me.prefixes.filter((p): p is string => typeof p === 'string') : undefined,
+      structural_routes: Array.isArray(me.structural_routes)
+        ? me.structural_routes.filter((p): p is string => typeof p === 'string')
+        : undefined,
+      xstate_states: Array.isArray(me.xstate_states)
+        ? me.xstate_states.filter((p): p is string => typeof p === 'string')
+        : undefined,
+      xstate_events: Array.isArray(me.xstate_events)
+        ? me.xstate_events.filter((p): p is string => typeof p === 'string')
+        : undefined,
+    });
+  }
+  return {
+    service,
+    schema_version: typeof o.schema_version === 'string' ? o.schema_version : undefined,
+    machines: normalized,
+  };
 }
 
 export class ClientGenerator {
   private machines: Map<string, ViewStateMachine<any>> = new Map();
   private configs: Map<string, ClientGeneratorConfig> = new Map();
+  private nodeCaveManifests: NodeCaveMachineManifest[] = [];
 
   constructor() {}
 
   // Register a machine for discovery
   registerMachine(machineId: string, machine: ViewStateMachine<any>, config?: ClientGeneratorConfig): void {
     this.machines.set(machineId, machine);
-    if (config) {
-      this.configs.set(machineId, config);
+    const merged: ClientGeneratorConfig = {
+      machineId,
+      description: config?.description ?? `ViewStateMachine ${machineId}`,
+      ...config,
+    };
+    this.configs.set(machineId, merged);
+  }
+
+  /** Register a saurce / resaurce `contracts/lvm2/*-machines.json` document for merged discovery output. */
+  ingestNodeCaveManifest(manifest: unknown): boolean {
+    const parsed = parseNodeCaveMachineManifest(manifest);
+    if (!parsed) return false;
+    this.nodeCaveManifests.push(parsed);
+    return true;
+  }
+
+  private flattenNodeCaveManifests(): NonNullable<ClientGeneratorDiscovery['nodeCaveMachines']> {
+    const out: NonNullable<ClientGeneratorDiscovery['nodeCaveMachines']> = [];
+    for (const m of this.nodeCaveManifests) {
+      for (const mc of m.machines) {
+        out.push({
+          service: m.service,
+          machineId: mc.id,
+          prefixes: mc.prefixes ?? [],
+          structuralRoutes: mc.structural_routes ?? [],
+          states: mc.xstate_states ?? [],
+          events: mc.xstate_events ?? [],
+        });
+      }
     }
+    return out;
   }
 
   // Discover all registered machines
@@ -48,23 +136,18 @@ export class ClientGenerator {
       events: new Map(),
       actions: new Map(),
       services: new Map(),
+      stateHandlers: new Map(),
       examples: [],
-      documentation: ''
+      documentation: '',
+      nodeCaveMachines: this.flattenNodeCaveManifests(),
     };
 
     this.machines.forEach((machine, machineId) => {
       discovery.machines.set(machineId, machine);
-      
-      // Analyze machine structure
+      this.analyzeMachine(machine, machineId, discovery);
       const config = this.configs.get(machineId);
-      if (config) {
-        // Extract states, events, actions, services from XState config
-        this.analyzeMachine(machine, machineId, discovery);
-        
-        // Add examples
-        if (config.examples) {
-          discovery.examples.push(...config.examples);
-        }
+      if (config?.examples) {
+        discovery.examples.push(...config.examples);
       }
     });
 
@@ -75,12 +158,13 @@ export class ClientGenerator {
   }
 
   private analyzeMachine(machine: ViewStateMachine<any>, machineId: string, discovery: ClientGeneratorDiscovery): void {
-    // This would analyze the XState machine configuration
-    // For now, we'll create a basic structure
-    discovery.states.set(machineId, ['idle', 'creating', 'success', 'error']);
-    discovery.events.set(machineId, ['ADD_INGREDIENT', 'CREATE_BURGER', 'CONTINUE']);
-    discovery.actions.set(machineId, ['addIngredient', 'setLoading', 'handleSuccess']);
-    discovery.services.set(machineId, ['createBurgerService']);
+    const summary = machine.getXStateDefinitionSummary();
+    discovery.states.set(machineId, summary.stateIds);
+    const domainEvents = [...summary.transitionEvents, ...summary.internalRootEvents];
+    discovery.events.set(machineId, [...new Set(domainEvents)].sort());
+    discovery.actions.set(machineId, summary.actions);
+    discovery.services.set(machineId, summary.services);
+    discovery.stateHandlers.set(machineId, machine.getRegisteredStateHandlerNames().sort());
   }
 
   private generateDocumentation(discovery: ClientGeneratorDiscovery): string {
@@ -98,6 +182,7 @@ export class ClientGenerator {
       const events = discovery.events.get(machineId) || [];
       const actions = discovery.actions.get(machineId) || [];
       const services = discovery.services.get(machineId) || [];
+      const withStates = discovery.stateHandlers.get(machineId) || [];
 
       doc += `### States\n`;
       states.forEach(state => {
@@ -108,6 +193,12 @@ export class ClientGenerator {
       doc += `### Events\n`;
       events.forEach(event => {
         doc += `- \`${event}\`\n`;
+      });
+      doc += '\n';
+
+      doc += `### withState handlers\n`;
+      withStates.forEach((s) => {
+        doc += `- \`${s}\`\n`;
       });
       doc += '\n';
 
@@ -123,6 +214,18 @@ export class ClientGenerator {
       });
       doc += '\n';
     });
+
+    const nodeCave = discovery.nodeCaveMachines || [];
+    if (nodeCave.length) {
+      doc += '## Node Cave manifests (XState route interpreters)\n\n';
+      nodeCave.forEach((row) => {
+        doc += `### ${row.service} — ${row.machineId}\n\n`;
+        doc += `- **Prefixes:** ${row.prefixes.map((p) => `\`${p}\``).join(', ') || '—'}\n`;
+        doc += `- **Structural routes:** ${row.structuralRoutes.map((p) => `\`${p}\``).join(', ') || '—'}\n`;
+        doc += `- **Chart states:** ${row.states.map((p) => `\`${p}\``).join(', ') || '—'}\n`;
+        doc += `- **Chart events:** ${row.events.map((p) => `\`${p}\``).join(', ') || '—'}\n\n`;
+      });
+    }
 
     return doc;
   }
